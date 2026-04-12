@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Manager — Indumentaria</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface2: #1c1c1c;
+    --border: #2a2a2a;
+    --accent: #c9a84c;
+    --accent2: #e8c96d;
+    --text: #f0ede6;
+    --muted: #888;
+    --danger: #e05c5c;
+    --success: #5cba8a;
+    --warning: #e0a050;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; }
+
+  /* LOADER */
+  #loader {
+    position:fixed; inset:0; background:var(--bg); z-index:999;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+  }
+  .spinner {
+    width:40px; height:40px; border:3px solid var(--border);
+    border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  #loader p { color:var(--muted); font-size:0.85rem; letter-spacing:1px; }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, #0f0f0f 0%, #1a1610 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top:0; z-index:100;
+  }
+  .logo { font-family:'Playfair Display',serif; font-size:1.5rem; color:var(--accent); letter-spacing:2px; }
+  .logo span { color:var(--text); font-weight:400; }
+  .sync-dot { width:8px; height:8px; border-radius:50%; background:var(--success); display:inline-block; margin-left:8px; animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .stats-header { display:flex; gap:32px; }
+  .stat-h { text-align:right; }
+  .stat-h .val { font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--accent); }
+  .stat-h .lbl { font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+
+  /* NAV */
+  nav { background:var(--surface); border-bottom:1px solid var(--border); padding:0 32px; display:flex; gap:4px; }
+  .tab { padding:14px 24px; cursor:pointer; font-size:0.85rem; letter-spacing:1px; text-transform:uppercase; color:var(--muted); border-bottom:2px solid transparent; transition:all .2s; background:none; border-top:none; border-left:none; border-right:none; font-family:'DM Sans',sans-serif; }
+  .tab:hover { color:var(--text); }
+  .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+  /* MAIN */
+  main { padding:32px; max-width:1400px; margin:0 auto; }
+  .section { display:none; }
+  .section.active { display:block; }
+
+  /* CARDS */
+  .cards-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:32px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; position:relative; overflow:hidden; }
+  .card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--accent),transparent); }
+  .card .card-val { font-family:'Playfair Display',serif; font-size:2rem; color:var(--accent); margin-bottom:4px; }
+  .card .card-lbl { font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+
+  /* TABLE */
+  .table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .table-header { padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .table-header h2 { font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--accent); }
+  table { width:100%; border-collapse:collapse; }
+  th { padding:12px 16px; text-align:left; font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); border-bottom:1px solid var(--border); background:var(--surface2); }
+  td { padding:12px 16px; font-size:0.88rem; border-bottom:1px solid #1e1e1e; vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:#161616; }
+
+  .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:0.72rem; font-weight:500; }
+  .badge-ok { background:#1a3a2a; color:var(--success); }
+  .badge-low { background:#3a2a1a; color:var(--warning); }
+  .badge-out { background:#3a1a1a; color:var(--danger); }
+  .badge-liq { background:#2a2a3a; color:#8888cc; }
+
+  .btn { padding:9px 20px; border-radius:8px; border:none; cursor:pointer; font-size:0.82rem; font-family:'DM Sans',sans-serif; transition:all .2s; font-weight:500; }
+  .btn-gold { background:var(--accent); color:#0a0a0a; }
+  .btn-gold:hover { background:var(--accent2); }
+  .btn-outline { background:transparent; border:1px solid var(--border); color:var(--text); }
+  .btn-outline:hover { border-color:var(--accent); color:var(--accent); }
+  .btn-danger { background:transparent; border:1px solid var(--danger); color:var(--danger); padding:6px 12px; font-size:0.78rem; }
+  .btn-danger:hover { background:#3a1a1a; }
+
+  .filters { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  input[type=text], input[type=number], select { background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:9px 14px; border-radius:8px; font-size:0.85rem; font-family:'DM Sans',sans-serif; outline:none; transition:border .2s; }
+  input[type=text]:focus, input[type=number]:focus, select:focus { border-color:var(--accent); }
+  select option { background:var(--surface2); }
+  input[type=text]::placeholder { color:var(--muted); }
+
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:200; align-items:center; justify-content:center; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:32px; width:100%; max-width:480px; position:relative; max-height:90vh; overflow-y:auto; }
+  .modal h3 { font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--accent); margin-bottom:24px; }
+  .form-row { margin-bottom:16px; }
+  .form-row label { display:block; font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+  .form-row input, .form-row select { width:100%; }
+  .form-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:24px; }
+  .close-modal { position:absolute; top:16px; right:16px; background:none; border:none; color:var(--muted); font-size:1.2rem; cursor:pointer; }
+
+  .venta-item { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:16px 20px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .venta-info { flex:1; }
+  .venta-producto { font-weight:500; font-size:0.92rem; }
+  .venta-detalle { font-size:0.78rem; color:var(--muted); margin-top:3px; }
+  .venta-precio { font-family:'Playfair Display',serif; font-size:1.1rem; color:var(--success); }
+  .venta-fecha { font-size:0.75rem; color:var(--muted); }
+
+  .ganancia-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin-top:6px; }
+  .ganancia-bar-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:3px; }
+
+  .empty-state { text-align:center; padding:48px; color:var(--muted); }
+  .empty-state .icon { font-size:2.5rem; margin-bottom:12px; }
+
+  .toast { position:fixed; bottom:24px; right:24px; background:var(--surface); border:1px solid var(--accent); color:var(--text); padding:12px 20px; border-radius:10px; font-size:0.85rem; z-index:300; transform:translateY(80px); opacity:0; transition:all .3s; }
+  .toast.show { transform:translateY(0); opacity:1; }
+
+  @media(max-width:600px){
+    header { flex-direction:column; gap:12px; align-items:flex-start; }
+    main { padding:16px; }
+    nav { padding:0 16px; overflow-x:auto; }
+    .tab { padding:12px 14px; font-size:0.75rem; white-space:nowrap; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="spinner"></div>
+  <p>Conectando con la nube...</p>
+</div>
+
+<header>
+  <div class="logo">STOCK<span>MGR</span> <span class="sync-dot" title="Sincronizado en tiempo real"></span></div>
+  <div class="stats-header">
+    <div class="stat-h"><div class="val" id="hdr-total">—</div><div class="lbl">Unidades</div></div>
+    <div class="stat-h"><div class="val" id="hdr-ventas">—</div><div class="lbl">Ventas</div></div>
+    <div class="stat-h"><div class="val" id="hdr-gan">—</div><div class="lbl">Ganancias</div></div>
+  </div>
+</header>
+
+<nav>
+  <button class="tab active" onclick="showTab('stock',this)">📦 Stock</button>
+  <button class="tab" onclick="showTab('ventas',this)">🛒 Ventas</button>
+  <button class="tab" onclick="showTab('ganancias',this)">📊 Ganancias</button>
+</nav>
+
+<main>
+
+<!-- STOCK -->
+<div id="tab-stock" class="section active">
+  <div class="cards-grid">
+    <div class="card"><div class="card-val" id="c-total">—</div><div class="card-lbl">Unidades en stock</div></div>
+    <div class="card"><div class="card-val" id="c-productos">—</div><div class="card-lbl">Productos distintos</div></div>
+    <div class="card"><div class="card-val" id="c-sin-precio">—</div><div class="card-lbl">Sin precio cargado</div></div>
+    <div class="card"><div class="card-val" id="c-liq">—</div><div class="card-lbl">En liquidación</div></div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header">
+      <h2>Inventario</h2>
+      <div class="filters">
+        <input type="text" id="search" placeholder="Buscar..." style="width:180px" oninput="renderStock()">
+        <select id="filter-cat" onchange="renderStock()"><option value="">Todas las categorías</option></select>
+        <button class="btn btn-gold" onclick="openModal('add')">+ Agregar</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table><thead><tr>
+        <th>Categoría</th><th>Modelo / Tipo</th><th>Color</th><th>Talle</th><th>Stock</th><th>Precio</th><th>Estado</th><th>Acciones</th>
+      </tr></thead><tbody id="stock-tbody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- VENTAS -->
+<div id="tab-ventas" class="section">
+  <div class="cards-grid">
+    <div class="card"><div class="card-val" id="v-total">—</div><div class="card-lbl">Total ventas</div></div>
+    <div class="card"><div class="card-val" id="v-unidades">—</div><div class="card-lbl">Unidades vendidas</div></div>
+    <div class="card"><div class="card-val" id="v-hoy">—</div><div class="card-lbl">Ventas hoy</div></div>
+    <div class="card"><div class="card-val" id="v-ticket">$0</div><div class="card-lbl">Ticket promedio</div></div>
+  </div>
+  <div class="table-wrap" style="margin-bottom:24px">
+    <div class="table-header"><h2>Registrar Venta</h2></div>
+    <div style="padding:24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;align-items:end">
+      <div class="form-row" style="margin:0"><label>Producto</label>
+        <select id="v-producto" style="width:100%" onchange="fillVentaInfo()"><option value="">Seleccionar...</option></select>
+      </div>
+      <div class="form-row" style="margin:0"><label>Precio venta ($)</label>
+        <input type="number" id="v-precio" placeholder="0" style="width:100%">
+      </div>
+      <div class="form-row" style="margin:0"><label>Precio costo ($)</label>
+        <input type="number" id="v-costo" placeholder="Opcional" style="width:100%">
+      </div>
+      <div class="form-row" style="margin:0"><label>Cantidad</label>
+        <input type="number" id="v-cantidad" value="1" min="1" style="width:100%">
+      </div>
+      <div><button class="btn btn-gold" style="width:100%;padding:11px" onclick="registrarVenta()">✓ Registrar</button></div>
+    </div>
+  </div>
+  <div id="ventas-list"></div>
+</div>
+
+<!-- GANANCIAS -->
+<div id="tab-ganancias" class="section">
+  <div class="cards-grid">
+    <div class="card"><div class="card-val" id="g-ingresos">$0</div><div class="card-lbl">Ingresos totales</div></div>
+    <div class="card"><div class="card-val" id="g-costos">$0</div><div class="card-lbl">Costos registrados</div></div>
+    <div class="card"><div class="card-val" id="g-ganancia">$0</div><div class="card-lbl">Ganancia neta</div></div>
+    <div class="card"><div class="card-val" id="g-margen">0%</div><div class="card-lbl">Margen promedio</div></div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><h2>Rentabilidad por producto</h2></div>
+    <div style="overflow-x:auto">
+      <table><thead><tr>
+        <th>Producto</th><th>Unidades</th><th>Ingresos</th><th>Costos</th><th>Ganancia</th><th>Margen</th>
+      </tr></thead><tbody id="gan-tbody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <button class="close-modal" onclick="closeModal()">✕</button>
+    <h3 id="modal-title">Agregar Producto</h3>
+    <input type="hidden" id="edit-id">
+    <div class="form-row"><label>Categoría</label><input type="text" id="f-cat" style="width:100%"></div>
+    <div class="form-row"><label>Modelo / Tipo</label><input type="text" id="f-modelo" style="width:100%"></div>
+    <div class="form-row"><label>Color <span style="color:var(--muted);font-size:0.75rem">(opcional)</span></label><input type="text" id="f-color" style="width:100%"></div>
+    <div class="form-row"><label>Talle</label><input type="text" id="f-talle" style="width:100%"></div>
+    <div class="form-row"><label>Cantidad</label><input type="number" id="f-qty" value="1" min="0" style="width:100%"></div>
+    <div class="form-row"><label>Precio de venta ($) <span style="color:var(--muted);font-size:0.75rem">(opcional)</span></label><input type="number" id="f-precio" style="width:100%"></div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-gold" onclick="saveProduct()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, addDoc, setDoc, deleteDoc, onSnapshot, query, orderBy, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBdw_kkoaFUKGl2HX4FfUEV-I-0SR0n1go",
+  authDomain: "mi-stock-ropa.firebaseapp.com",
+  projectId: "mi-stock-ropa",
+  storageBucket: "mi-stock-ropa.firebasestorage.app",
+  messagingSenderId: "517134595094",
+  appId: "1:517134595094:web:f3ce949a1ef8d09d5db137"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ═══════════════════════════════════════
+// ESTADO LOCAL
+// ═══════════════════════════════════════
+let stockData = [];
+let ventasData = [];
+
+// ═══════════════════════════════════════
+// STOCK INICIAL
+// ═══════════════════════════════════════
+const initialStock = [
+  {cat:"Bermuda",modelo:"Jean (Liquidación)",color:"Jean claro con brillos",talle:"44",qty:1,precio:null},
+  {cat:"Bermuda",modelo:"Jean (Liquidación)",color:"Negro con estampas",talle:"44",qty:1,precio:null},
+  {cat:"Bermuda",modelo:"Jean (Liquidación)",color:"Jean claro",talle:"48",qty:1,precio:null},
+  {cat:"Buzo",modelo:"Algodón sin frisa (Liquidación)",color:"",talle:"L",qty:1,precio:null},
+  {cat:"Campera",modelo:"Puffer Nike Reflex",color:"",talle:"L",qty:1,precio:null},
+  {cat:"Campera",modelo:"Puffer Nike Reflex",color:"",talle:"XL",qty:1,precio:null},
+  {cat:"Campera",modelo:"Puffer Nike Reflex",color:"",talle:"XXL",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Argentina 2025 Jugador",color:"",talle:"M",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Argentina 2026 Juego (Manga corta)",color:"Titular",talle:"S",qty:2,precio:null},
+  {cat:"Camiseta",modelo:"Argentina 2026 Juego (Manga corta)",color:"Titular",talle:"M",qty:3,precio:null},
+  {cat:"Camiseta",modelo:"Argentina 2026 Juego (Manga corta)",color:"Titular",talle:"L",qty:3,precio:null},
+  {cat:"Camiseta",modelo:"Argentina 2026 Juego (Manga corta)",color:"Titular",talle:"XL",qty:4,precio:null},
+  {cat:"Camiseta",modelo:"Argentina 2026 Juego (Manga corta)",color:"Titular",talle:"XXL",qty:4,precio:null},
+  {cat:"Camiseta",modelo:"Argentina 2026 Juego (Manga larga)",color:"Titular",talle:"S",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Argentina 2026 Juego (Manga larga)",color:"Titular",talle:"M",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Argentina 2026 Juego (Manga larga)",color:"Titular",talle:"L",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Argentina 2026 Juego (Manga larga)",color:"Titular",talle:"XL",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Argentina 2026 Juego (Manga larga)",color:"Titular",talle:"XXL",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Barcelona Titular",color:"",talle:"XL",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Boca Jugador Titular",color:"",talle:"S",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Boca NFL",color:"",talle:"XXL",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Boca Suplente Original",color:"",talle:"L",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Boca (Camisa)",color:"",talle:"XL",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Boca Conjunto (Remera + Short)",color:"",talle:"XXL",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Celtics Musculosa",color:"Negra",talle:"XXL",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Chelsea Total 90 Hincha",color:"",talle:"L",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Chelsea Total 90 Hincha",color:"",talle:"XL",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Chelsea Total 90 Hincha",color:"",talle:"XXL",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Chelsea Total 90 Jugador",color:"",talle:"L",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Flamengo Hincha",color:"Beige",talle:"M",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Flamengo Hincha",color:"Beige",talle:"XL",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Flamengo Hincha",color:"Blanco con rojo",talle:"XXL",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Independiente Hincha",color:"",talle:"S",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Japón Hincha",color:"",talle:"L",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Juventus Hincha (Cuello V)",color:"",talle:"S",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Newcastle Jugador",color:"Blanco con negro",talle:"M",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Real Madrid (Chomba Dragón)",color:"",talle:"M",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Sao Paulo Jugador",color:"Negra",talle:"M",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Sao Paulo Jugador",color:"Negra",talle:"L",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Sao Paulo Jugador",color:"Negra",talle:"XL",qty:1,precio:null},
+  {cat:"Camiseta",modelo:"Sao Paulo Jugador",color:"Negra",talle:"XXL",qty:1,precio:null},
+  {cat:"Conjunto",modelo:"Algodón Importado (Liquidación)",color:"",talle:"S",qty:1,precio:null},
+  {cat:"Conjunto",modelo:"Barcelona",color:"Negro",talle:"XXL",qty:1,precio:null},
+  {cat:"Conjunto",modelo:"Boca Entrenamiento",color:"Amarillo",talle:"L",qty:1,precio:null},
+  {cat:"Conjunto",modelo:"Juventus (Con campera)",color:"Negro con rosa",talle:"L",qty:1,precio:null},
+  {cat:"Conjunto",modelo:"Juventus (Con campera)",color:"Negro con rosa",talle:"XXL",qty:1,precio:null},
+  {cat:"Conjunto",modelo:"Lacoste G5",color:"Azul con blanco",talle:"S",qty:1,precio:null},
+  {cat:"Conjunto",modelo:"Lacoste G5",color:"Azul",talle:"M",qty:1,precio:null},
+  {cat:"Conjunto",modelo:"Lacoste G5",color:"Negro con verde",talle:"M",qty:1,precio:null},
+  {cat:"Conjunto",modelo:"Lacoste (Tiras laterales)",color:"Azul",talle:"L",qty:1,precio:null},
+  {cat:"Conjunto",modelo:"Lacoste (Tiras laterales)",color:"Negro",talle:"XL",qty:1,precio:null},
+  {cat:"Conjunto",modelo:"Lino (Liquidación)",color:"Beige",talle:"M",qty:1,precio:null},
+  {cat:"Conjunto",modelo:"Lino (Liquidación)",color:"Beige",talle:"XL",qty:1,precio:null},
+  {cat:"Conjunto",modelo:"Milan Entrenamiento",color:"Negro",talle:"L",qty:1,precio:null},
+  {cat:"Conjunto",modelo:"Palmeiras (Con campera y capucha)",color:"",talle:"L",qty:1,precio:null},
+  {cat:"Conjunto",modelo:"Real Madrid Entrenamiento",color:"Beige",talle:"XXL",qty:1,precio:null},
+  {cat:"Conjunto",modelo:"Spurs NBA",color:"Negro",talle:"L",qty:1,precio:null},
+  {cat:"Jean",modelo:"Desgastado (Liquidación)",color:"Óxido",talle:"40",qty:1,precio:null},
+  {cat:"Short",modelo:"Argentina Juego",color:"Azul",talle:"S",qty:1,precio:null},
+  {cat:"Short",modelo:"Argentina Juego",color:"Azul",talle:"M",qty:1,precio:null},
+  {cat:"Short",modelo:"Argentina Juego",color:"Azul",talle:"L",qty:2,precio:null},
+  {cat:"Short",modelo:"Argentina Juego",color:"Blanco",talle:"S",qty:1,precio:null},
+  {cat:"Short",modelo:"Argentina Juego",color:"Blanco",talle:"M",qty:1,precio:null},
+  {cat:"Short",modelo:"Argentina Juego",color:"Blanco",talle:"XL",qty:4,precio:null},
+  {cat:"Short",modelo:"Argentina Juego",color:"Blanco",talle:"XXL",qty:2,precio:null},
+  {cat:"Short",modelo:"Boca",color:"Versión de juego",talle:"L",qty:1,precio:null},
+  {cat:"Short",modelo:"Importado Jordan",color:"Camuflaje blanco",talle:"L",qty:1,precio:null},
+  {cat:"Short",modelo:"Importado Jordan",color:"Camuflaje negro",talle:"XL",qty:1,precio:null},
+  {cat:"Short",modelo:"Importado Jordan",color:"Negro básico",talle:"M",qty:1,precio:null},
+  {cat:"Short",modelo:"Importado Jordan",color:"Negro con rojo",talle:"L",qty:1,precio:null},
+  {cat:"Short",modelo:"Importado Jordan",color:"Negro con violeta",talle:"S",qty:1,precio:null},
+  {cat:"Short",modelo:"Importado Jordan",color:"Negro con violeta",talle:"M",qty:2,precio:null},
+  {cat:"Short",modelo:"Importado Jordan",color:"Negro con violeta",talle:"XXL",qty:1,precio:null},
+  {cat:"Short",modelo:"Importado iJordan",color:"Negro con rojo",talle:"S",qty:1,precio:null},
+  {cat:"Short",modelo:"NBA Importado Celtics",color:"Verde",talle:"XL",qty:1,precio:null},
+  {cat:"Short",modelo:"NBA Importado Grizzlies",color:"",talle:"XL",qty:1,precio:null},
+  {cat:"Short",modelo:"NBA Importado Magic",color:"Negro",talle:"XL",qty:1,precio:null},
+];
+
+// ═══════════════════════════════════════
+// INIT — carga inicial si Firestore vacío
+// ═══════════════════════════════════════
+async function initFirestore() {
+  const snap = await getDocs(collection(db, 'stock'));
+  if (snap.empty) {
+    showToast('Cargando stock inicial...');
+    for (const p of initialStock) {
+      await addDoc(collection(db, 'stock'), {...p, createdAt: Date.now()});
+    }
+  }
+}
+
+// ═══════════════════════════════════════
+// LISTENERS EN TIEMPO REAL
+// ═══════════════════════════════════════
+function startListeners() {
+  // Stock
+  onSnapshot(collection(db, 'stock'), snap => {
+    stockData = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    renderStock();
+    updateHeader();
+    fillVentaSelect();
+  });
+
+  // Ventas
+  onSnapshot(query(collection(db, 'ventas'), orderBy('fecha','desc')), snap => {
+    ventasData = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    renderVentas();
+    renderGanancias();
+    updateHeader();
+  });
+
+  document.getElementById('loader').style.display = 'none';
+}
+
+// ═══════════════════════════════════════
+// RENDER STOCK
+// ═══════════════════════════════════════
+window.renderStock = function() {
+  const q = (document.getElementById('search')?.value||'').toLowerCase();
+  const cat = document.getElementById('filter-cat')?.value||'';
+
+  const cats = [...new Set(stockData.map(p=>p.cat))].sort();
+  const sel = document.getElementById('filter-cat');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todas las categorías</option>';
+  cats.forEach(c => { const o=document.createElement('option'); o.value=c; o.textContent=c; if(c===cur)o.selected=true; sel.appendChild(o); });
+
+  const filtered = stockData.filter(p => {
+    const txt=[p.cat,p.modelo,p.color,p.talle].join(' ').toLowerCase();
+    return (!q||txt.includes(q))&&(!cat||p.cat===cat);
+  }).sort((a,b)=>a.cat.localeCompare(b.cat)||a.modelo.localeCompare(b.modelo));
+
+  const tbody = document.getElementById('stock-tbody');
+  if(!filtered.length){
+    tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state"><div class="icon">📦</div>No hay productos</div></td></tr>`;
+  } else {
+    tbody.innerHTML = filtered.map(p => {
+      const isLiq = p.modelo.toLowerCase().includes('liquidación');
+      let badge,badgeTxt;
+      if(p.qty===0){badge='badge-out';badgeTxt='Sin stock';}
+      else if(isLiq){badge='badge-liq';badgeTxt='Liquidación';}
+      else if(p.qty<=1){badge='badge-low';badgeTxt='Última unidad';}
+      else{badge='badge-ok';badgeTxt='En stock';}
+      const precio=p.precio?'$'+Number(p.precio).toLocaleString('es-AR'):'<span style="color:var(--muted);font-size:0.78rem">Sin precio</span>';
+      return `<tr>
+        <td>${p.cat}</td>
+        <td>${p.modelo}</td>
+        <td>${p.color||'—'}</td>
+        <td><strong>${p.talle}</strong></td>
+        <td><strong style="color:${p.qty===0?'var(--danger)':p.qty<=1?'var(--warning)':'var(--text)'}">${p.qty}</strong></td>
+        <td>${precio}</td>
+        <td><span class="badge ${badge}">${badgeTxt}</span></td>
+        <td style="display:flex;gap:6px">
+          <button class="btn btn-outline" style="padding:5px 10px;font-size:0.75rem" onclick="openModal('edit','${p.id}')">✏️</button>
+          <button class="btn btn-danger" onclick="deleteProduct('${p.id}')">🗑</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  const total=stockData.reduce((a,p)=>a+p.qty,0);
+  const sinPrecio=stockData.filter(p=>!p.precio).length;
+  const liq=stockData.filter(p=>p.modelo.toLowerCase().includes('liquidación')).reduce((a,p)=>a+p.qty,0);
+  document.getElementById('c-total').textContent=total;
+  document.getElementById('c-productos').textContent=stockData.length;
+  document.getElementById('c-sin-precio').textContent=sinPrecio;
+  document.getElementById('c-liq').textContent=liq;
+}
+
+// ═══════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════
+window.openModal = function(mode, id) {
+  document.getElementById('modal-title').textContent=mode==='add'?'Agregar Producto':'Editar Producto';
+  document.getElementById('edit-id').value=id||'';
+  if(mode==='edit'&&id){
+    const p=stockData.find(x=>x.id===id);
+    if(p){
+      document.getElementById('f-cat').value=p.cat;
+      document.getElementById('f-modelo').value=p.modelo;
+      document.getElementById('f-color').value=p.color||'';
+      document.getElementById('f-talle').value=p.talle;
+      document.getElementById('f-qty').value=p.qty;
+      document.getElementById('f-precio').value=p.precio||'';
+    }
+  } else {
+    ['f-cat','f-modelo','f-color','f-precio'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('f-talle').value='';
+    document.getElementById('f-qty').value=1;
+  }
+  document.getElementById('modal').classList.add('open');
+}
+
+window.closeModal = function(){ document.getElementById('modal').classList.remove('open'); }
+
+window.saveProduct = async function() {
+  const cat=document.getElementById('f-cat').value.trim();
+  const modelo=document.getElementById('f-modelo').value.trim();
+  const talle=document.getElementById('f-talle').value.trim();
+  if(!cat||!modelo||!talle){alert('Completá categoría, modelo y talle.');return;}
+  const color=document.getElementById('f-color').value.trim();
+  const qty=parseInt(document.getElementById('f-qty').value)||0;
+  const precio=parseFloat(document.getElementById('f-precio').value)||null;
+  const editId=document.getElementById('edit-id').value;
+  if(editId){
+    await updateDoc(doc(db,'stock',editId),{cat,modelo,color,talle,qty,precio});
+    showToast('Producto actualizado ✓');
+  } else {
+    await addDoc(collection(db,'stock'),{cat,modelo,color,talle,qty,precio,createdAt:Date.now()});
+    showToast('Producto agregado ✓');
+  }
+  closeModal();
+}
+
+window.deleteProduct = async function(id) {
+  if(!confirm('¿Eliminar este producto?'))return;
+  await deleteDoc(doc(db,'stock',id));
+  showToast('Producto eliminado');
+}
+
+// ═══════════════════════════════════════
+// VENTAS
+// ═══════════════════════════════════════
+window.fillVentaSelect = function() {
+  const sel=document.getElementById('v-producto');
+  if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Seleccionar producto...</option>';
+  stockData.filter(p=>p.qty>0).sort((a,b)=>a.cat.localeCompare(b.cat)).forEach(p=>{
+    const o=document.createElement('option');
+    o.value=p.id;
+    o.textContent=`${p.cat} — ${p.modelo}${p.color?' ('+p.color+')':''} T.${p.talle} [x${p.qty}]`;
+    if(p.id===cur)o.selected=true;
+    sel.appendChild(o);
+  });
+}
+
+window.fillVentaInfo = function() {
+  const id=document.getElementById('v-producto').value;
+  if(!id)return;
+  const p=stockData.find(x=>x.id===id);
+  if(p&&p.precio)document.getElementById('v-precio').value=p.precio;
+}
+
+window.registrarVenta = async function() {
+  const id=document.getElementById('v-producto').value;
+  const precio=parseFloat(document.getElementById('v-precio').value);
+  const costo=parseFloat(document.getElementById('v-costo').value)||null;
+  const cantidad=parseInt(document.getElementById('v-cantidad').value)||1;
+  if(!id||!precio){alert('Seleccioná producto y precio.');return;}
+  const prod=stockData.find(p=>p.id===id);
+  if(!prod){alert('Producto no encontrado.');return;}
+  if(prod.qty<cantidad){alert(`Solo hay ${prod.qty} unidades disponibles.`);return;}
+  await updateDoc(doc(db,'stock',id),{qty:prod.qty-cantidad});
+  await addDoc(collection(db,'ventas'),{
+    prodId:id, cat:prod.cat, modelo:prod.modelo, color:prod.color, talle:prod.talle,
+    precio, costo, cantidad, fecha:Date.now()
+  });
+  document.getElementById('v-producto').value='';
+  document.getElementById('v-precio').value='';
+  document.getElementById('v-costo').value='';
+  document.getElementById('v-cantidad').value=1;
+  showToast('Venta registrada ✓');
+}
+
+window.renderVentas = function() {
+  fillVentaSelect();
+  const today=new Date().toDateString();
+  const totalMonto=ventasData.reduce((a,v)=>a+v.precio*v.cantidad,0);
+  const totalUnid=ventasData.reduce((a,v)=>a+v.cantidad,0);
+  const hoy=ventasData.filter(v=>new Date(v.fecha).toDateString()===today).length;
+  const ticket=ventasData.length?totalMonto/ventasData.length:0;
+  document.getElementById('v-total').textContent=ventasData.length;
+  document.getElementById('v-unidades').textContent=totalUnid;
+  document.getElementById('v-hoy').textContent=hoy;
+  document.getElementById('v-ticket').textContent='$'+Math.round(ticket).toLocaleString('es-AR');
+
+  const list=document.getElementById('ventas-list');
+  if(!ventasData.length){
+    list.innerHTML=`<div class="empty-state"><div class="icon">🛒</div><p>No hay ventas registradas</p></div>`;return;
+  }
+  list.innerHTML=ventasData.map(v=>{
+    const gan=v.costo?(v.precio-v.costo)*v.cantidad:null;
+    const fecha=new Date(v.fecha);
+    const fs=fecha.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+fecha.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="venta-item">
+      <div class="venta-info">
+        <div class="venta-producto">${v.cat} — ${v.modelo}${v.color?' ('+v.color+')':''}</div>
+        <div class="venta-detalle">Talle ${v.talle} · Cant: ${v.cantidad}${v.costo?' · Costo: $'+v.costo.toLocaleString('es-AR'):''}</div>
+        <div class="venta-fecha">${fs}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="venta-precio">$${(v.precio*v.cantidad).toLocaleString('es-AR')}</div>
+        ${gan!==null?`<div style="font-size:0.78rem;color:var(--success)">Gan: $${gan.toLocaleString('es-AR')}</div>`:''}
+      </div>
+      <button class="btn btn-danger" onclick="deleteVenta('${v.id}')">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+window.deleteVenta = async function(id) {
+  if(!confirm('¿Eliminar esta venta?'))return;
+  await deleteDoc(doc(db,'ventas',id));
+  showToast('Venta eliminada');
+}
+
+// ═══════════════════════════════════════
+// GANANCIAS
+// ═══════════════════════════════════════
+window.renderGanancias = function() {
+  const totalIngresos=ventasData.reduce((a,v)=>a+v.precio*v.cantidad,0);
+  const totalCostos=ventasData.filter(v=>v.costo).reduce((a,v)=>a+v.costo*v.cantidad,0);
+  const totalGan=totalIngresos-totalCostos;
+  const vc=ventasData.filter(v=>v.costo);
+  const margenProm=vc.length?vc.reduce((a,v)=>a+((v.precio-v.costo)/v.precio*100),0)/vc.length:0;
+  document.getElementById('g-ingresos').textContent='$'+Math.round(totalIngresos).toLocaleString('es-AR');
+  document.getElementById('g-costos').textContent='$'+Math.round(totalCostos).toLocaleString('es-AR');
+  document.getElementById('g-ganancia').textContent='$'+Math.round(totalGan).toLocaleString('es-AR');
+  document.getElementById('g-margen').textContent=Math.round(margenProm)+'%';
+
+  const grupos={};
+  ventasData.forEach(v=>{
+    const k=`${v.cat}|${v.modelo}|${v.color}|${v.talle}`;
+    if(!grupos[k])grupos[k]={cat:v.cat,modelo:v.modelo,color:v.color,talle:v.talle,unidades:0,ingresos:0,costos:0};
+    grupos[k].unidades+=v.cantidad;
+    grupos[k].ingresos+=v.precio*v.cantidad;
+    if(v.costo)grupos[k].costos+=v.costo*v.cantidad;
+  });
+  const rows=Object.values(grupos).sort((a,b)=>b.ingresos-a.ingresos);
+  const maxIng=rows[0]?.ingresos||1;
+  const tbody=document.getElementById('gan-tbody');
+  if(!rows.length){
+    tbody.innerHTML=`<tr><td colspan="6"><div class="empty-state"><div class="icon">📊</div>Registrá ventas para ver ganancias</div></td></tr>`;return;
+  }
+  tbody.innerHTML=rows.map(r=>{
+    const gan=r.ingresos-r.costos;
+    const margen=r.costos?Math.round((r.ingresos-r.costos)/r.ingresos*100):null;
+    const pct=r.ingresos/maxIng*100;
+    return `<tr>
+      <td><strong>${r.cat}</strong> — ${r.modelo}${r.color?' ('+r.color+')':''} T.${r.talle}
+        <div class="ganancia-bar"><div class="ganancia-bar-fill" style="width:${pct}%"></div></div>
+      </td>
+      <td>${r.unidades}</td>
+      <td>$${Math.round(r.ingresos).toLocaleString('es-AR')}</td>
+      <td>${r.costos?'$'+Math.round(r.costos).toLocaleString('es-AR'):'<span style="color:var(--muted)">—</span>'}</td>
+      <td style="color:var(--success)">$${Math.round(gan).toLocaleString('es-AR')}</td>
+      <td>${margen!==null?`<span style="color:${margen>30?'var(--success)':margen>10?'var(--warning)':'var(--danger)'}">${margen}%</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// HEADER
+// ═══════════════════════════════════════
+window.updateHeader = function() {
+  const totalUnid=stockData.reduce((a,p)=>a+p.qty,0);
+  const totalGan=ventasData.filter(v=>v.costo).reduce((a,v)=>a+(v.precio-v.costo)*v.cantidad,0);
+  document.getElementById('hdr-total').textContent=totalUnid;
+  document.getElementById('hdr-ventas').textContent=ventasData.length;
+  document.getElementById('hdr-gan').textContent=totalGan?'$'+Math.round(totalGan).toLocaleString('es-AR'):'—';
+}
+
+// ═══════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════
+window.showTab = function(name, btn) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(btn)btn.classList.add('active');
+}
+
+window.showToast = function(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+document.getElementById('modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+
+// ARRANCAR
+await initFirestore();
+startListeners();
+</script>
+</body>
+</html>
