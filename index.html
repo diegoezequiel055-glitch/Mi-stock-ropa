@@ -17,6 +17,7 @@
   --purple:#9b7fe8; --purple-dim:rgba(155,127,232,0.1);
   --blue:#5b9cf6; --blue-dim:rgba(91,156,246,0.1);
   --teal:#3ecfb2; --teal-dim:rgba(62,207,178,0.1);
+  --orange:#f0834a; --orange-dim:rgba(240,131,74,0.1);
   --radius:10px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
@@ -67,6 +68,7 @@ main{padding:28px;max-width:1440px;margin:0 auto}
 .kpi.purple::after{background:linear-gradient(90deg,var(--purple),transparent)}
 .kpi.blue::after{background:linear-gradient(90deg,var(--blue),transparent)}
 .kpi.teal::after{background:linear-gradient(90deg,var(--teal),transparent)}
+.kpi.orange::after{background:linear-gradient(90deg,var(--orange),transparent)}
 .kpi .v{font-family:'Cormorant Garamond',serif;font-size:2rem;line-height:1;margin-bottom:4px}
 .kpi.gold .v{color:var(--accent)}
 .kpi.green .v{color:var(--success)}
@@ -74,6 +76,7 @@ main{padding:28px;max-width:1440px;margin:0 auto}
 .kpi.purple .v{color:var(--purple)}
 .kpi.blue .v{color:var(--blue)}
 .kpi.teal .v{color:var(--teal)}
+.kpi.orange .v{color:var(--orange)}
 .kpi .l{font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
 
 /* PANEL */
@@ -98,6 +101,33 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .b-liq{background:var(--purple-dim);color:var(--purple)}
 .b-may{background:var(--blue-dim);color:var(--blue)}
 .b-cur{background:var(--teal-dim);color:var(--teal)}
+.b-cuota{background:var(--orange-dim);color:var(--orange)}
+.b-cobrado{background:var(--success-dim);color:var(--success)}
+.b-vencido{background:var(--danger-dim);color:var(--danger)}
+.b-proximo{background:var(--warning-dim);color:var(--warning)}
+
+/* COBROS / CUOTAS */
+.cuota-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:10px;transition:border-color .2s}
+.cuota-card:hover{border-color:var(--border2)}
+.cuota-card.vencida{border-left:3px solid var(--danger)}
+.cuota-card.proxima{border-left:3px solid var(--warning)}
+.cuota-card.al-dia{border-left:3px solid var(--success)}
+.cuota-card.cobrada{border-left:3px solid var(--border2);opacity:.65}
+.cuota-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+.cuota-cliente{font-weight:600;font-size:.95rem}
+.cuota-prod{font-size:.78rem;color:var(--muted);margin-top:2px}
+.cuota-progress{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap}
+.cuota-dot{width:28px;height:28px;border-radius:50%;font-size:.7rem;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;border:2px solid transparent;flex-shrink:0}
+.cuota-dot.pendiente{background:var(--surface3);color:var(--muted);border-color:var(--border2)}
+.cuota-dot.pendiente:hover{border-color:var(--success);color:var(--success)}
+.cuota-dot.pagada{background:var(--success-dim);color:var(--success);border-color:var(--success)}
+.cuota-dot.vencida-dot{background:var(--danger-dim);color:var(--danger);border-color:var(--danger)}
+.cuota-footer{display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid var(--border)}
+
+/* FORM CUOTAS */
+.cuota-form-extra{display:none;grid-column:1/-1;background:var(--surface2);border:1px solid var(--orange-dim);border-radius:var(--radius);padding:14px 16px}
+.cuota-form-extra.visible{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px}
+.cuota-calc{background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.82rem;color:var(--text2);grid-column:1/-1}
 
 /* BUTTONS */
 .btn{padding:8px 18px;border-radius:8px;border:none;cursor:pointer;font-size:0.8rem;font-family:'Outfit',sans-serif;font-weight:500;transition:all .18s;letter-spacing:.3px}
@@ -303,6 +333,7 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
 <nav>
   <button class="tab active" onclick="showTab('stock',this)">📦 Stock</button>
   <button class="tab" onclick="showTab('ventas',this)">🛒 Ventas</button>
+  <button class="tab" onclick="showTab('cobros',this)">💳 Cobros</button>
   <button class="tab" onclick="showTab('compras',this)">📥 Compras</button>
   <button class="tab" onclick="showTab('gastos',this)">💸 Gastos</button>
   <button class="tab" onclick="showTab('ganancias',this)">📊 Ganancias</button>
@@ -365,6 +396,7 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
         <button class="tipo-btn active-min" id="tipo-min" onclick="setTipoVenta('minorista')">Minorista</button>
         <button class="tipo-btn" id="tipo-may" onclick="setTipoVenta('mayorista')">Mayorista</button>
         <button class="tipo-btn" id="tipo-cur" onclick="setTipoVenta('curva')">Por curva</button>
+        <button class="tipo-btn" id="tipo-cuo" onclick="setTipoVenta('cuotas')" style="color:var(--orange)">En cuotas</button>
       </div>
     </div>
     <div class="panel-body">
@@ -437,6 +469,59 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
           <button class="btn" style="background:var(--teal);color:#080808;padding:10px 24px" id="btn-registrar-curva" onclick="registrarCurva()">✓ Confirmar pedido curva</button>
         </div>
       </div>
+      <!-- CUOTAS -->
+      <div id="form-cuotas" style="display:none">
+        <div class="venta-form-grid">
+          <div class="field venta-search-wrap" style="grid-column:1/-1">
+            <label>🔍 Buscar producto</label>
+            <span class="search-icon" style="top:calc(50% + 10px)">🔍</span>
+            <input type="text" id="cuo-search" placeholder="Escribí modelo, talle, color..." autocomplete="off" oninput="cuotaSearchFilter()" onfocus="cuotaSearchFilter()">
+            <div class="venta-search-results" id="cuo-results"></div>
+          </div>
+          <div class="field">
+            <label>— o por Categoría</label>
+            <select id="cuo-cat" onchange="fillCuotaProductos()" style="width:100%"><option value="">Seleccionar categoría...</option></select>
+          </div>
+          <div class="field">
+            <label>Producto</label>
+            <select id="cuo-prod" onchange="fillCuotaPrecios()" style="width:100%"><option value="">Primero elegí categoría</option></select>
+          </div>
+          <div class="prod-preview" id="cuo-preview">
+            <div class="prod-preview-title">Producto seleccionado</div>
+            <div class="prod-preview-data" id="cuo-preview-data"></div>
+          </div>
+          <div class="field">
+            <label>Nombre del cliente</label>
+            <input type="text" id="cuo-cliente" placeholder="Ej: Juan García...">
+          </div>
+          <div class="field">
+            <label>Precio total ($)</label>
+            <input type="number" id="cuo-total" placeholder="0" min="1" oninput="calcCuotas()">
+          </div>
+          <div class="field">
+            <label>Precio costo ($)</label>
+            <input type="number" id="cuo-costo" placeholder="Autocompleta si cargaste" min="0">
+          </div>
+          <div class="field">
+            <label>Cantidad de cuotas</label>
+            <select id="cuo-ncuotas" onchange="calcCuotas()">
+              <option value="2">2 cuotas</option>
+              <option value="3" selected>3 cuotas</option>
+              <option value="4">4 cuotas</option>
+              <option value="6">6 cuotas</option>
+              <option value="12">12 cuotas</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Fecha primera cuota</label>
+            <input type="date" id="cuo-fecha1">
+          </div>
+          <div class="cuota-calc" id="cuo-calc" style="display:none"></div>
+          <div class="field" style="display:flex;align-items:flex-end;grid-column:1/-1">
+            <button class="btn" id="btn-registrar-cuota" style="width:100%;padding:10px;background:var(--orange);color:#080808;font-weight:600" onclick="registrarCuota()">💳 Registrar venta en cuotas</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -451,6 +536,27 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
       </div>
     </div>
     <div class="panel-body" id="ventas-list"></div>
+  </div>
+</div>
+
+<!-- ══ COBROS ══ -->
+<div id="tab-cobros" class="section">
+  <div class="kpi-grid">
+    <div class="kpi orange"><div class="v" id="co-pendiente">$0</div><div class="l">Por cobrar</div></div>
+    <div class="kpi green"><div class="v" id="co-cobrado">$0</div><div class="l">Cobrado total</div></div>
+    <div class="kpi red"><div class="v" id="co-vencido">$0</div><div class="l">Vencido sin cobrar</div></div>
+    <div class="kpi gold"><div class="v" id="co-activos">0</div><div class="l">Planes activos</div></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Planes de cuotas activos</h2>
+      <div class="date-filters">
+        <button class="date-btn active" onclick="setCobrosFilter('activos',this)">Activos</button>
+        <button class="date-btn" onclick="setCobrosFilter('vencidos',this)">Vencidos</button>
+        <button class="date-btn" onclick="setCobrosFilter('todos',this)">Todos</button>
+      </div>
+    </div>
+    <div class="panel-body" id="cobros-list"></div>
   </div>
 </div>
 
@@ -694,11 +800,13 @@ let gastosData  = [];
 let dateFilter     = 'all';
 let compraFilter   = 'all';
 let gastoFilter    = 'all';
+let cobrosFilter   = 'activos';
 let tipoVenta      = 'minorista';
-let curvaItems     = [];   // [{prodId, cant, pcosto, pventa_unit}]
-let cpItems        = [];   // [{prodId, cant, pcosto_unit}]
+let curvaItems     = [];
+let cpItems        = [];
 let confirmCb      = null;
-let unsubStock = null, unsubVentas = null, unsubCompras = null, unsubGastos = null;
+let unsubStock = null, unsubVentas = null, unsubCompras = null, unsubGastos = null, unsubCuotas = null;
+let cuotasData  = [];
 let lastCatList = '';
 let currentEditId = null;
 
@@ -802,6 +910,7 @@ async function init() {
     const hoy = new Date().toISOString().slice(0,10);
     document.getElementById('cp-fecha').value = hoy;
     document.getElementById('ga-fecha').value = hoy;
+    document.getElementById('cuo-fecha1').value = hoy;
     startListeners();
   } catch(err) {
     console.error(err);
@@ -845,6 +954,17 @@ function startListeners() {
     renderGastos(); renderGastosKPI();
     if(document.getElementById('tab-ganancias').classList.contains('active')) renderGanancias();
   },err=>{ toast('Error gastos: '+err.message,'error'); });
+
+  if(unsubCuotas) unsubCuotas();
+  unsubCuotas = onSnapshot(query(collection(db,'cuotas'),orderBy('createdAt','desc'),limit(100)), snap=>{
+    cuotasData=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderCobros(); renderCobrosKPI();
+    if(document.getElementById('tab-ganancias').classList.contains('active')) renderGanancias();
+  },err=>{ toast('Error cuotas: '+err.message,'error'); });
+
+  // Fix curva listeners: registrar aquí después de que el DOM está listo
+  document.getElementById('curva-precio-unit').addEventListener('input', renderCurvaItems);
+  document.getElementById('curva-costo-unit').addEventListener('input', renderCurvaItems);
 
   document.getElementById('loader').style.display='none';
 }
@@ -998,16 +1118,19 @@ window.setTipoVenta=function(tipo){
   document.getElementById('tipo-min').className='tipo-btn'+(tipo==='minorista'?' active-min':'');
   document.getElementById('tipo-may').className='tipo-btn'+(tipo==='mayorista'?' active-may':'');
   document.getElementById('tipo-cur').className='tipo-btn'+(tipo==='curva'?' active-cur':'');
-  document.getElementById('form-single').style.display=tipo==='curva'?'none':'grid';
+  document.getElementById('tipo-cuo').className='tipo-btn'+(tipo==='cuotas'?'':'')+' '+(tipo==='cuotas'?'active-min':'');
+  if(tipo==='cuotas') document.getElementById('tipo-cuo').style.cssText='background:var(--orange-dim);color:var(--orange)';
+  else document.getElementById('tipo-cuo').style.cssText='color:var(--orange)';
+  document.getElementById('form-single').style.display=(tipo==='curva'||tipo==='cuotas')?'none':'grid';
   document.getElementById('form-curva').style.display=tipo==='curva'?'block':'none';
+  document.getElementById('form-cuotas').style.display=tipo==='cuotas'?'block':'none';
   const mayExtra=document.getElementById('mayorista-extra');
   mayExtra.classList.toggle('visible',tipo==='mayorista');
   if(tipo==='mayorista'){
     document.getElementById('lbl-precio-venta').textContent='Precio mayorista ($)';
-    // Autocompletar precio mayorista si el producto ya está seleccionado
     const id=document.getElementById('v-prod').value;
     if(id){ const p=stockData.find(x=>x.id===id); if(p?.pmayorista) document.getElementById('v-precio').value=p.pmayorista; }
-  } else {
+  } else if(tipo!=='cuotas'&&tipo!=='curva') {
     document.getElementById('lbl-precio-venta').textContent='Precio venta ($)';
     const id=document.getElementById('v-prod').value;
     if(id){ const p=stockData.find(x=>x.id===id); if(p?.pventa) document.getElementById('v-precio').value=p.pventa; }
@@ -1016,11 +1139,13 @@ window.setTipoVenta=function(tipo){
 
 // ── VENTAS ──
 window.fillVentaCats=function(){
-  const sel=document.getElementById('v-cat'); if(!sel)return;
-  const cur=sel.value;
   const cats=[...new Set(stockData.filter(p=>p.qty>0).map(p=>p.cat))].sort();
-  sel.innerHTML='<option value="">Seleccionar categoría...</option>';
-  cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;if(c===cur)o.selected=true;sel.appendChild(o);});
+  ['v-cat','cuo-cat'].forEach(selId=>{
+    const sel=document.getElementById(selId); if(!sel)return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">Seleccionar categoría...</option>';
+    cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;if(c===cur)o.selected=true;sel.appendChild(o);});
+  });
 }
 window.fillProductosByCat=function(){
   const cat=document.getElementById('v-cat').value;
@@ -1180,9 +1305,6 @@ function renderCurvaItems(){
     `$${fmt(Math.round(totalMonto))} — ${totalCant} prenda${totalCant!==1?'s':''}` +
     (ganTotal!==null?` <span style="font-size:.85rem;color:${ganTotal>=0?'var(--success)':'var(--danger)'}">· gan: $${fmt(Math.round(ganTotal))}</span>`:'');
 }
-document.getElementById('curva-precio-unit').addEventListener('input',renderCurvaItems);
-document.getElementById('curva-costo-unit').addEventListener('input',renderCurvaItems);
-
 window.registrarCurva=async function(){
   if(!curvaItems.length){toast('Agregá al menos un producto a la curva.','error');return;}
   const precioUnit=parseFloat(document.getElementById('curva-precio-unit').value);
@@ -1307,6 +1429,222 @@ window.delCurvaCompleta=async function(curvaId){
       if(v.prodId){const s=await getDoc(doc(db,'stock',v.prodId));if(s.exists())batch.update(doc(db,'stock',v.prodId),{qty:increment(v.cant)});}
     }
     await batch.commit(); toast(`Curva eliminada — ${totalPrendas} prendas repuestas ✓`,'success');
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+// ── CUOTAS ──
+window.cuotaSearchFilter=function(){
+  const q=document.getElementById('cuo-search').value.toLowerCase().trim();
+  const results=document.getElementById('cuo-results');
+  if(!q){results.classList.remove('open');return;}
+  const matches=stockData.filter(p=>p.qty>0).filter(p=>[p.cat,p.modelo,p.color||'',p.talle].join(' ').toLowerCase().includes(q)).slice(0,8);
+  results.innerHTML=matches.length?matches.map(p=>`<div class="vs-item" onmousedown="selectCuotaProduct('${p.id}')">
+    <div class="vs-item-title">${p.modelo}${p.color?' — '+p.color:''}</div>
+    <div class="vs-item-sub"><span>${p.cat}</span><span>T.${p.talle}</span><span style="color:${p.qty<=1?'var(--warning)':'var(--success)'}">x${p.qty}</span>${p.pventa?`<span style="color:var(--accent)">$${fmt(p.pventa)}</span>`:''}</div>
+  </div>`).join(''):`<div class="vs-item"><div class="vs-item-title" style="color:var(--muted)">Sin resultados</div></div>`;
+  results.classList.add('open');
+}
+window.fillCuotaProductos=function(){
+  const cat=document.getElementById('cuo-cat').value;
+  const sel=document.getElementById('cuo-prod');
+  sel.innerHTML='<option value="">Seleccionar producto...</option>';
+  if(!cat)return;
+  stockData.filter(p=>p.cat===cat&&p.qty>0).forEach(p=>{
+    const o=document.createElement('option'); o.value=p.id;
+    o.textContent=`${p.modelo}${p.color?' ('+p.color+')':''} — T.${p.talle} [x${p.qty}]`;
+    sel.appendChild(o);
+  });
+  document.getElementById('cuo-total').value='';
+  document.getElementById('cuo-preview').classList.remove('visible');
+}
+window.fillCuotaPrecios=function(){
+  const id=document.getElementById('cuo-prod').value;
+  if(!id){document.getElementById('cuo-preview').classList.remove('visible');return;}
+  const p=stockData.find(x=>x.id===id); if(!p)return;
+  if(p.pventa&&!document.getElementById('cuo-total').value) document.getElementById('cuo-total').value=p.pventa;
+  if(p.pcosto&&!document.getElementById('cuo-costo').value) document.getElementById('cuo-costo').value=p.pcosto;
+  // Show preview in cuotas panel
+  const data=document.getElementById('cuo-preview-data');
+  data.innerHTML=`
+    <div class="prod-preview-item"><span>Cat:</span> ${p.cat}</div>
+    <div class="prod-preview-item"><span>Talle:</span> ${p.talle}</div>
+    <div class="prod-preview-item"><span>Stock:</span> <strong style="color:${p.qty<=1?'var(--warning)':'var(--success)'}">${p.qty} ud.</strong></div>
+    ${p.pventa?`<div class="prod-preview-item"><span>P.Venta:</span> <strong>$${fmt(p.pventa)}</strong></div>`:''}
+    ${p.pcosto?`<div class="prod-preview-item"><span>Costo:</span> $${fmt(p.pcosto)}</div>`:''}`;
+  document.getElementById('cuo-preview').classList.add('visible');
+  calcCuotas();
+}
+window.selectCuotaProduct=function(id){
+  const p=stockData.find(x=>x.id===id); if(!p)return;
+  document.getElementById('cuo-cat').value=p.cat; fillCuotaProductos();
+  document.getElementById('cuo-prod').value=p.id; fillCuotaPrecios();
+  document.getElementById('cuo-search').value='';
+  document.getElementById('cuo-results').classList.remove('open');
+  document.getElementById('cuo-cliente').focus();
+}
+window.calcCuotas=function(){
+  const total=parseFloat(document.getElementById('cuo-total').value)||0;
+  const n=parseInt(document.getElementById('cuo-ncuotas').value)||3;
+  const costo=parseFloat(document.getElementById('cuo-costo').value)||0;
+  const calc=document.getElementById('cuo-calc');
+  if(!total){calc.style.display='none';return;}
+  const porCuota=Math.ceil(total/n);
+  const ganProyectada=costo?total-costo:null;
+  calc.style.display='block';
+  calc.innerHTML=`💳 <strong>${n} cuotas de $${fmt(porCuota)}</strong> = $${fmt(n*porCuota)} total`+
+    (ganProyectada!==null?` · Ganancia proyectada: <strong style="color:${ganProyectada>=0?'var(--success)':'var(--danger)'}">$${fmt(Math.round(ganProyectada))}</strong>`:'');
+}
+window.registrarCuota=async function(){
+  const prodId=document.getElementById('cuo-prod').value;
+  const cliente=document.getElementById('cuo-cliente').value.trim();
+  const total=parseFloat(document.getElementById('cuo-total').value);
+  const costo=parseFloat(document.getElementById('cuo-costo').value)||null;
+  const n=parseInt(document.getElementById('cuo-ncuotas').value)||3;
+  const fecha1Str=document.getElementById('cuo-fecha1').value;
+  if(!prodId){toast('Seleccioná un producto.','error');return;}
+  if(!cliente){toast('Ingresá el nombre del cliente.','error');return;}
+  if(!total||total<=0){toast('El precio total debe ser mayor a 0.','error');return;}
+  if(!fecha1Str){toast('Ingresá la fecha de la primera cuota.','error');return;}
+  const prod=stockData.find(p=>p.id===prodId);
+  if(!prod||prod.qty<1){toast('Sin stock disponible.','error');return;}
+  const btn=document.getElementById('btn-registrar-cuota'); btn.disabled=true; btn.textContent='Registrando...';
+  try{
+    // Generar array de cuotas con vencimientos mensuales
+    const montoCuota=Math.ceil(total/n);
+    const cuotas=[];
+    const fecha1=new Date(fecha1Str+'T12:00:00');
+    for(let i=0;i<n;i++){
+      const venc=new Date(fecha1);
+      venc.setMonth(venc.getMonth()+i);
+      cuotas.push({nro:i+1,monto:i<n-1?montoCuota:total-(montoCuota*(n-1)),vencimiento:venc.getTime(),pagada:false,fechaPago:null});
+    }
+    const batch=writeBatch(db);
+    // Descontar stock
+    batch.update(doc(db,'stock',prodId),{qty:prod.qty-1});
+    if(costo&&!prod.pcosto) batch.update(doc(db,'stock',prodId),{pcosto:costo});
+    // Crear plan de cuotas
+    batch.set(doc(collection(db,'cuotas')),{
+      prodId,cat:prod.cat,modelo:prod.modelo,color:prod.color||'',talle:prod.talle,
+      cliente,totalVenta:total,pcosto:costo,cuotas,
+      estado:'pendiente', // pendiente | parcial | cobrado
+      createdAt:Date.now()
+    });
+    await batch.commit();
+    // Limpiar form
+    document.getElementById('cuo-cat').value='';
+    document.getElementById('cuo-prod').innerHTML='<option value="">Primero elegí categoría</option>';
+    document.getElementById('cuo-total').value='';
+    document.getElementById('cuo-costo').value='';
+    document.getElementById('cuo-search').value='';
+    document.getElementById('cuo-cliente').value='';
+    document.getElementById('cuo-preview').classList.remove('visible');
+    document.getElementById('cuo-calc').style.display='none';
+    toast(`Venta en ${n} cuotas registrada para ${cliente} ✓`,'success');
+  }catch(e){toast('Error: '+e.message,'error');}
+  finally{btn.disabled=false;btn.textContent='💳 Registrar venta en cuotas';}
+}
+
+// ── COBROS ──
+window.setCobrosFilter=function(f,btn){
+  cobrosFilter=f;
+  document.querySelectorAll('#tab-cobros .date-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderCobros();
+}
+function renderCobrosKPI(){
+  const now=Date.now();
+  let pendiente=0,cobrado=0,vencido=0,activos=0;
+  cuotasData.forEach(c=>{
+    const cobradas=c.cuotas.filter(q=>q.pagada);
+    const pendientes=c.cuotas.filter(q=>!q.pagada);
+    cobrado+=cobradas.reduce((a,q)=>a+q.monto,0);
+    pendiente+=pendientes.reduce((a,q)=>a+q.monto,0);
+    vencido+=pendientes.filter(q=>q.vencimiento<now).reduce((a,q)=>a+q.monto,0);
+    if(c.estado!=='cobrado') activos++;
+  });
+  document.getElementById('co-pendiente').textContent='$'+fmt(Math.round(pendiente));
+  document.getElementById('co-cobrado').textContent='$'+fmt(Math.round(cobrado));
+  document.getElementById('co-vencido').textContent='$'+fmt(Math.round(vencido));
+  document.getElementById('co-activos').textContent=activos;
+}
+window.renderCobros=function(){
+  const now=Date.now();
+  const hoy=new Date(); hoy.setHours(0,0,0,0);
+  const en7dias=new Date(hoy); en7dias.setDate(en7dias.getDate()+7);
+  let filtered=cuotasData;
+  if(cobrosFilter==='activos') filtered=cuotasData.filter(c=>c.estado!=='cobrado');
+  else if(cobrosFilter==='vencidos') filtered=cuotasData.filter(c=>c.cuotas.some(q=>!q.pagada&&q.vencimiento<now));
+  const list=document.getElementById('cobros-list');
+  if(!filtered.length){list.innerHTML=`<div class="empty"><div class="empty-icon">💳</div><p>${cobrosFilter==='activos'?'No hay planes de cuotas activos':'No hay resultados'}</p></div>`;return;}
+  list.innerHTML=filtered.map(c=>{
+    const pendientes=c.cuotas.filter(q=>!q.pagada);
+    const tieneVencidas=pendientes.some(q=>q.vencimiento<now);
+    const tieneProximas=pendientes.some(q=>q.vencimiento>=now&&q.vencimiento<en7dias.getTime());
+    const cardClass=c.estado==='cobrado'?'cobrada':tieneVencidas?'vencida':tieneProximas?'proxima':'al-dia';
+    const estadoBadge=c.estado==='cobrado'?'<span class="badge b-cobrado">✓ Cobrado</span>':
+      tieneVencidas?'<span class="badge b-vencido">⚠ Vencido</span>':
+      tieneProximas?'<span class="badge b-proximo">⏰ Próximo</span>':
+      '<span class="badge b-cuota">💳 Al día</span>';
+    const pagadas=c.cuotas.filter(q=>q.pagada).length;
+    const totalCuotas=c.cuotas.length;
+    const montoPagado=c.cuotas.filter(q=>q.pagada).reduce((a,q)=>a+q.monto,0);
+    // Dots de cuotas
+    const dots=c.cuotas.map((q,idx)=>{
+      const cls=q.pagada?'pagada':q.vencimiento<now?'vencida-dot':'pendiente';
+      const title=q.pagada?`Cuota ${q.nro} pagada el ${new Date(q.fechaPago).toLocaleDateString('es-AR')}`:`Cuota ${q.nro} — $${fmt(q.monto)} — vence ${new Date(q.vencimiento).toLocaleDateString('es-AR')}`;
+      const onclick=q.pagada?`desmarcarCuota('${c.id}',${idx})`:`marcarCuota('${c.id}',${idx})`;
+      return`<div class="cuota-dot ${cls}" title="${title}" onclick="${onclick}">${q.nro}</div>`;
+    }).join('');
+    return`<div class="cuota-card ${cardClass}">
+      <div class="cuota-head">
+        <div>
+          <div class="cuota-cliente">👤 ${c.cliente} ${estadoBadge}</div>
+          <div class="cuota-prod">${c.cat} — ${c.modelo}${c.color?' ('+c.color+')':''} · T.${c.talle}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--orange)">$${fmt(Math.round(c.totalVenta))}</div>
+          <div style="font-size:.72rem;color:var(--muted)">${pagadas}/${totalCuotas} cuotas · $${fmt(Math.round(montoPagado))} cobrado</div>
+        </div>
+      </div>
+      <div class="cuota-progress">${dots}</div>
+      <div class="cuota-footer">
+        <div style="font-size:.75rem;color:var(--muted)">Tocá una cuota para marcarla como cobrada</div>
+        <button class="btn-ghost btn" onclick="delCuota('${c.id}','${c.prodId}',${c.estado!=='cobrado'})" style="font-size:.72rem">🗑 Eliminar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+window.marcarCuota=async function(cuotaId,idx){
+  const c=cuotasData.find(x=>x.id===cuotaId); if(!c)return;
+  const nuevasCuotas=[...c.cuotas];
+  nuevasCuotas[idx]={...nuevasCuotas[idx],pagada:true,fechaPago:Date.now()};
+  const todasPagadas=nuevasCuotas.every(q=>q.pagada);
+  const algunaPagada=nuevasCuotas.some(q=>q.pagada);
+  const nuevoEstado=todasPagadas?'cobrado':algunaPagada?'parcial':'pendiente';
+  try{
+    await updateDoc(doc(db,'cuotas',cuotaId),{cuotas:nuevasCuotas,estado:nuevoEstado});
+    if(todasPagadas) toast(`✓ Plan de ${c.cliente} cobrado completamente!`,'success');
+    else toast(`Cuota ${idx+1} marcada como cobrada ✓`,'success');
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+window.desmarcarCuota=async function(cuotaId,idx){
+  const c=cuotasData.find(x=>x.id===cuotaId); if(!c)return;
+  const ok=await confirm2('¿Desmarcar cuota?','Se marcará como no cobrada.','Desmarcar','var(--warning)'); if(!ok)return;
+  const nuevasCuotas=[...c.cuotas];
+  nuevasCuotas[idx]={...nuevasCuotas[idx],pagada:false,fechaPago:null};
+  const algunaPagada=nuevasCuotas.some(q=>q.pagada);
+  try{
+    await updateDoc(doc(db,'cuotas',cuotaId),{cuotas:nuevasCuotas,estado:algunaPagada?'parcial':'pendiente'});
+    toast('Cuota desmarcada','success');
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+window.delCuota=async function(id,prodId,reponerStock){
+  const msg=reponerStock?'Se repone 1 unidad al stock.':'El plan ya estaba cobrado, no se repone stock.';
+  const ok=await confirm2('¿Eliminar plan de cuotas?',msg); if(!ok)return;
+  try{
+    const batch=writeBatch(db);
+    batch.delete(doc(db,'cuotas',id));
+    if(reponerStock&&prodId){const s=await getDoc(doc(db,'stock',prodId));if(s.exists())batch.update(doc(db,'stock',prodId),{qty:increment(1)});}
+    await batch.commit(); toast('Plan eliminado y stock repuesto ✓','success');
   }catch(e){toast('Error: '+e.message,'error');}
 }
 
@@ -1542,15 +1880,26 @@ window.renderGanancias=function(){
   ventasData.forEach(v=>{
     totalIng+=v.pventa*v.cant;
     if(v.pcosto){totalCos+=v.pcosto*v.cant;margenSum+=(v.pventa-v.pcosto)/v.pventa*100;margenCount++;}
-    // Clave sin tipo: mismo producto se agrupa siempre
     const k=`${v.cat}||${v.modelo}||${v.color||''}||${v.talle}`;
     if(!grupos[k])grupos[k]={cat:v.cat,modelo:v.modelo,color:v.color||'',talle:v.talle,unid:0,ing:0,cos:0,tipos:{}};
     grupos[k].unid+=v.cant; grupos[k].ing+=v.pventa*v.cant;
     if(v.pcosto)grupos[k].cos+=v.pcosto*v.cant;
-    // Contar por tipo para desglose
     const t=v.tipo||'minorista';
     if(!grupos[k].tipos[t])grupos[k].tipos[t]={unid:0,ing:0};
     grupos[k].tipos[t].unid+=v.cant; grupos[k].tipos[t].ing+=v.pventa*v.cant;
+  });
+  // Incluir cuotas cobradas en ingresos
+  cuotasData.forEach(c=>{
+    const ingCobrado=c.cuotas.filter(q=>q.pagada).reduce((a,q)=>a+q.monto,0);
+    if(!ingCobrado)return;
+    if(c.pcosto){totalCos+=c.pcosto;margenSum+=(c.totalVenta-c.pcosto)/c.totalVenta*100;margenCount++;}
+    totalIng+=ingCobrado;
+    const k=`${c.cat}||${c.modelo}||${c.color||''}||${c.talle}`;
+    if(!grupos[k])grupos[k]={cat:c.cat,modelo:c.modelo,color:c.color||'',talle:c.talle,unid:0,ing:0,cos:0,tipos:{}};
+    grupos[k].unid+=1; grupos[k].ing+=ingCobrado;
+    if(c.pcosto)grupos[k].cos+=c.pcosto;
+    if(!grupos[k].tipos['cuotas'])grupos[k].tipos['cuotas']={unid:0,ing:0};
+    grupos[k].tipos['cuotas'].unid+=1; grupos[k].tipos['cuotas'].ing+=ingCobrado;
   });
   const totalGasNeg=gastosData.filter(g=>g.cat==='negocio').reduce((a,g)=>a+g.monto,0);
   const ganNeta=(totalIng-totalCos)-totalGasNeg;
@@ -1572,9 +1921,9 @@ window.renderGanancias=function(){
     // Desglose de tipos si hay más de uno
     const tiposKeys=Object.keys(r.tipos);
     const tiposHTML=tiposKeys.length>1?tiposKeys.map(t=>{
-      const badge=t==='mayorista'?'b-may':t==='curva'?'b-cur':'b-ok';
+      const badge=t==='mayorista'?'b-may':t==='curva'?'b-cur':t==='cuotas'?'b-cuota':'b-ok';
       return`<span class="badge ${badge}" style="font-size:.6rem">${t}: ${r.tipos[t].unid}u</span>`;
-    }).join(' '):(tiposKeys[0]==='mayorista'?'<span class="badge b-may" style="font-size:.6rem">Mayorista</span>':tiposKeys[0]==='curva'?'<span class="badge b-cur" style="font-size:.6rem">Curva</span>':'<span class="badge b-ok" style="font-size:.6rem">Minorista</span>');
+    }).join(' '):(tiposKeys[0]==='mayorista'?'<span class="badge b-may" style="font-size:.6rem">Mayorista</span>':tiposKeys[0]==='curva'?'<span class="badge b-cur" style="font-size:.6rem">Curva</span>':tiposKeys[0]==='cuotas'?'<span class="badge b-cuota" style="font-size:.6rem">Cuotas</span>':'<span class="badge b-ok" style="font-size:.6rem">Minorista</span>');
     return`<tr>
       <td><strong style="font-size:.85rem">${r.cat}</strong><span style="color:var(--muted)"> — ${r.modelo}${r.color?' ('+r.color+')':''} T.${r.talle}</span><div class="g-bar"><div class="g-bar-fill" style="width:${pct}%"></div></div></td>
       <td>${tiposHTML}</td>
@@ -1638,6 +1987,7 @@ window.showTab=function(name,btn){
   if(name==='ganancias') renderGanancias();
   if(name==='compras'){ renderComprasKPI(); renderCompras(); }
   if(name==='gastos'){ renderGastosKPI(); renderGastos(); }
+  if(name==='cobros'){ renderCobrosKPI(); renderCobros(); }
 }
 
 // ── TOAST ──
