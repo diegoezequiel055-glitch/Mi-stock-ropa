@@ -417,11 +417,13 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
             <input type="text" id="curva-search" placeholder="Modelo, talle, color..." autocomplete="off" oninput="curvaSearchFilter()" onfocus="curvaSearchFilter()" style="position:relative">
             <div class="venta-search-results" id="curva-results"></div>
           </div>
-          <div class="field" style="display:flex;align-items:flex-end">
-            <div style="width:100%">
-              <label>Precio mayorista unitario ($)</label>
-              <input type="number" id="curva-precio-unit" placeholder="Precio por unidad" min="1">
-            </div>
+          <div class="field">
+            <label>Precio mayorista unitario ($)</label>
+            <input type="number" id="curva-precio-unit" placeholder="Precio de venta por unidad" min="1">
+          </div>
+          <div class="field">
+            <label>Costo unitario ($) <span style="color:var(--muted);font-size:.7rem">— para calcular ganancia</span></label>
+            <input type="number" id="curva-costo-unit" placeholder="Costo por unidad" min="0">
           </div>
         </div>
         <div class="curva-items" id="curva-items">
@@ -533,7 +535,7 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
         </div>
         <div class="field">
           <label>Categoría</label>
-          <select id="ga-cat">
+          <select id="ga-cat" onchange="updateGaSubcats()">
             <option value="negocio">🏢 Negocio</option>
             <option value="personal">👤 Personal</option>
           </select>
@@ -546,7 +548,6 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
             <option value="packaging">Packaging</option>
             <option value="plataformas">Plataformas / Apps</option>
             <option value="impuestos">Impuestos / Tasas</option>
-            <option value="retiro">Retiro personal</option>
             <option value="otros">Otros</option>
           </select>
         </div>
@@ -828,6 +829,7 @@ function startListeners() {
   unsubVentas = onSnapshot(query(collection(db,'ventas'),orderBy('fecha','desc'),limit(200)), snap=>{
     ventasData=snap.docs.map(d=>{ const r=d.data(); return{id:d.id,...r,pventa:r.pventa??r.precio??0,cant:r.cant??r.cantidad??1,pcosto:r.pcosto??r.costo??null}; });
     renderVentas();
+    renderComprasKPI(); // Bug #3 fix: KPI "recuperado" depende de ventasData
     if(document.getElementById('tab-ganancias').classList.contains('active')) renderGanancias();
     updateHeader();
   },err=>{ toast('Error ventas: '+err.message,'error'); });
@@ -1093,7 +1095,8 @@ window.registrarVenta=async function(){
   if(!id){toast('Seleccioná un producto.','error');return;}
   if(!pventa||pventa<=0){toast('El precio debe ser mayor a 0.','error');return;}
   if(cant<=0){toast('La cantidad debe ser mayor a 0.','error');return;}
-  if(pcosto&&pcosto>=pventa){toast('⚠️ El costo supera el precio de venta.','error');return;}
+  // Bug #5 fix: costo >= precio es advertencia, no bloqueo (puede ser liquidación/mayorista con pérdida)
+  if(pcosto&&pcosto>=pventa) toast('⚠️ El costo supera el precio de venta. Registrando igual.','error');
   const prod=stockData.find(p=>p.id===id);
   if(!prod){toast('Producto no encontrado.','error');return;}
   if(prod.qty<cant){toast(`Solo hay ${prod.qty} unidades.`,'error');return;}
@@ -1151,49 +1154,73 @@ window.removeCurvaItem=function(idx){
 function renderCurvaItems(){
   const cont=document.getElementById('curva-items');
   const precioUnit=parseFloat(document.getElementById('curva-precio-unit').value)||0;
+  const costoUnit=parseFloat(document.getElementById('curva-costo-unit').value)||0;
   if(!curvaItems.length){
     cont.innerHTML=`<div class="empty" style="padding:20px"><div class="empty-icon">👕</div><p>Buscá y agregá productos a la curva</p></div>`;
     document.getElementById('curva-total').textContent='$0 — 0 prendas'; return;
   }
-  let totalCant=0,totalMonto=0;
+  let totalCant=0,totalMonto=0,totalCosto=0;
   cont.innerHTML=curvaItems.map((item,idx)=>{
     const p=stockData.find(x=>x.id===item.prodId);
     if(!p)return'';
-    totalCant+=item.cant; totalMonto+=item.cant*precioUnit;
+    totalCant+=item.cant; totalMonto+=item.cant*precioUnit; totalCosto+=item.cant*costoUnit;
+    const gan=precioUnit&&costoUnit?(precioUnit-costoUnit)*item.cant:null;
     return`<div class="curva-item">
-      <div class="curva-item-info"><div class="curva-item-title">${p.modelo}${p.color?' ('+p.color+')':''}</div><div class="curva-item-sub">${p.cat} · T.${p.talle} · Disponible: ${p.qty}</div></div>
+      <div class="curva-item-info"><div class="curva-item-title">${p.modelo}${p.color?' ('+p.color+')':''}</div><div class="curva-item-sub">${p.cat} · T.${p.talle} · Disp: ${p.qty}</div></div>
       <input type="number" value="${item.cant}" min="1" max="${p.qty}" style="width:60px;text-align:center" onchange="updateCurvaCant(${idx},this.value)">
-      <div style="font-size:.82rem;color:var(--accent);text-align:right">${precioUnit?'$'+fmt(item.cant*precioUnit):'—'}</div>
+      <div style="font-size:.82rem;text-align:right">
+        ${precioUnit?`<div style="color:var(--accent)">$${fmt(item.cant*precioUnit)}</div>`:'<div style="color:var(--muted)">—</div>'}
+        ${gan!==null?`<div style="color:${gan>=0?'var(--success)':'var(--danger)'};font-size:.72rem">gan: $${fmt(Math.round(gan))}</div>`:''}
+      </div>
       <button class="btn-ghost btn" onclick="removeCurvaItem(${idx})" style="padding:4px 8px">✕</button>
     </div>`;
   }).join('');
-  document.getElementById('curva-total').textContent=`$${fmt(Math.round(totalMonto))} — ${totalCant} prenda${totalCant!==1?'s':''}`;
+  const ganTotal=precioUnit&&costoUnit?totalMonto-totalCosto:null;
+  document.getElementById('curva-total').innerHTML=
+    `$${fmt(Math.round(totalMonto))} — ${totalCant} prenda${totalCant!==1?'s':''}` +
+    (ganTotal!==null?` <span style="font-size:.85rem;color:${ganTotal>=0?'var(--success)':'var(--danger)'}">· gan: $${fmt(Math.round(ganTotal))}</span>`:'');
 }
 document.getElementById('curva-precio-unit').addEventListener('input',renderCurvaItems);
+document.getElementById('curva-costo-unit').addEventListener('input',renderCurvaItems);
 
 window.registrarCurva=async function(){
   if(!curvaItems.length){toast('Agregá al menos un producto a la curva.','error');return;}
   const precioUnit=parseFloat(document.getElementById('curva-precio-unit').value);
+  const costoUnit=parseFloat(document.getElementById('curva-costo-unit').value)||null;
   if(!precioUnit||precioUnit<=0){toast('Ingresá el precio mayorista por unidad.','error');return;}
+  // Bug #7-style check: avisar si no hay costo
+  if(!costoUnit) toast('⚠️ Sin costo unitario — la ganancia no se podrá calcular.','error');
   // Verificar stock suficiente
   for(const item of curvaItems){
     const p=stockData.find(x=>x.id===item.prodId);
     if(!p||p.qty<item.cant){toast(`Stock insuficiente: ${p?.modelo||'?'} T.${p?.talle}`,'error');return;}
   }
   const btn=document.getElementById('btn-registrar-curva'); btn.disabled=true; btn.textContent='Registrando...';
+  // Bug #2 fix: guardar cantidad antes de vaciar el array
+  const totalItems=curvaItems.length;
+  const totalPrendas=curvaItems.reduce((a,i)=>a+i.cant,0);
+  // Bug #6 fix: ID compartido para identificar la curva completa en el historial
+  const curvaId=Date.now().toString();
   try{
     const batch=writeBatch(db);
-    // Registrar una venta por cada item de la curva
     for(const item of curvaItems){
       const p=stockData.find(x=>x.id===item.prodId);
       batch.update(doc(db,'stock',item.prodId),{qty:p.qty-item.cant});
-      batch.set(doc(collection(db,'ventas')),{prodId:item.prodId,cat:p.cat,modelo:p.modelo,color:p.color||'',talle:p.talle,pventa:precioUnit,pcosto:item.pcosto,cant:item.cant,tipo:'curva',fecha:Date.now()});
+      // Bug #1 fix: usar costoUnit del formulario, no el pcosto del producto
+      const pcostoFinal=costoUnit!==null?costoUnit:(item.pcosto||null);
+      batch.set(doc(collection(db,'ventas')),{
+        prodId:item.prodId,cat:p.cat,modelo:p.modelo,color:p.color||'',talle:p.talle,
+        pventa:precioUnit,pcosto:pcostoFinal,cant:item.cant,tipo:'curva',
+        curvaId,fecha:Date.now()
+      });
     }
     await batch.commit();
     curvaItems=[];
     renderCurvaItems();
     document.getElementById('curva-precio-unit').value='';
-    toast(`Curva registrada — ${curvaItems.length||'varios'} productos ✓`,'success');
+    document.getElementById('curva-costo-unit').value='';
+    // Bug #2 fix: usar variables guardadas antes del vaciado
+    toast(`Curva registrada — ${totalItems} productos, ${totalPrendas} prendas ✓`,'success');
   }catch(e){toast('Error: '+e.message,'error');}
   finally{btn.disabled=false;btn.textContent='✓ Confirmar pedido curva';}
 }
@@ -1224,11 +1251,18 @@ window.renderVentas=function(){
   document.getElementById('vk-ticket').textContent='$'+fmt(Math.round(ticket));
   const list=document.getElementById('ventas-list');
   if(!filtered.length){list.innerHTML=`<div class="empty"><div class="empty-icon">🛒</div><p>No hay ventas en este período</p></div>`;return;}
+  // Bug #6 fix: rastrear curvas ya mostradas para botón "eliminar curva completa"
+  const curvasVistas=new Set();
   list.innerHTML=filtered.map(v=>{
     const gan=v.pcosto?(v.pventa-v.pcosto)*v.cant:null;
     const d=new Date(v.fecha);
     const ds=d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
     const tipoBadge=v.tipo==='mayorista'?'<span class="badge b-may" style="margin-left:6px">💼 May</span>':v.tipo==='curva'?'<span class="badge b-cur" style="margin-left:6px">🔄 Curva</span>':'';
+    let btnCurva='';
+    if(v.tipo==='curva'&&v.curvaId&&!curvasVistas.has(v.curvaId)){
+      curvasVistas.add(v.curvaId);
+      btnCurva=`<button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger-dim);font-size:.7rem;margin-bottom:4px" onclick="delCurvaCompleta('${v.curvaId}')">🗑 Toda la curva</button>`;
+    }
     return`<div class="venta-card">
       <div class="venta-info">
         <div class="venta-title">${v.cat} — ${v.modelo}${v.color?' ('+v.color+')':''}${tipoBadge}</div>
@@ -1237,9 +1271,12 @@ window.renderVentas=function(){
       </div>
       <div class="venta-right">
         <div class="venta-precio">$${fmt(v.pventa*v.cant)}</div>
-        ${gan!==null?`<div class="venta-gan" style="color:var(--success)">+$${fmt(gan)}</div>`:''}
+        ${gan!==null?`<div class="venta-gan" style="color:${gan>=0?'var(--success)':'var(--danger)'}">gan: $${fmt(Math.round(gan))}</div>`:''}
       </div>
-      <button class="btn-ghost btn" onclick="delVenta('${v.id}','${v.prodId}',${v.cant})">🗑</button>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+        ${btnCurva}
+        <button class="btn-ghost btn" onclick="delVenta('${v.id}','${v.prodId||''}',${v.cant})">🗑</button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -1254,15 +1291,35 @@ window.delVenta=async function(id,prodId,cant){
   }catch(e){toast('Error: '+e.message,'error');}
 }
 
+// Bug #6 fix: eliminar toda una curva de una vez y reponer stock de cada prenda
+window.delCurvaCompleta=async function(curvaId){
+  const itemsCurva=ventasData.filter(v=>v.curvaId===curvaId);
+  if(!itemsCurva.length){toast('No se encontraron items de esta curva.','error');return;}
+  const totalPrendas=itemsCurva.reduce((a,v)=>a+v.cant,0);
+  const ok=await confirm2(
+    '¿Eliminar curva completa?',
+    `Se eliminarán ${itemsCurva.length} registros y se repondrán ${totalPrendas} prendas al stock.`
+  ); if(!ok)return;
+  try{
+    const batch=writeBatch(db);
+    for(const v of itemsCurva){
+      batch.delete(doc(db,'ventas',v.id));
+      if(v.prodId){const s=await getDoc(doc(db,'stock',v.prodId));if(s.exists())batch.update(doc(db,'stock',v.prodId),{qty:increment(v.cant)});}
+    }
+    await batch.commit(); toast(`Curva eliminada — ${totalPrendas} prendas repuestas ✓`,'success');
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
 // ── COMPRAS ──
 window.compraSearchFilter=function(){
   const q=document.getElementById('cp-search').value.toLowerCase().trim();
   const results=document.getElementById('cp-results');
   if(!q){results.classList.remove('open');return;}
+  // Bug #8 fix: separar con stock vs sin stock visualmente
   const matches=stockData.filter(p=>[p.cat,p.modelo,p.color||'',p.talle].join(' ').toLowerCase().includes(q)).slice(0,8);
   results.innerHTML=matches.length?matches.map(p=>`<div class="vs-item" onmousedown="addToCompra('${p.id}')">
-    <div class="vs-item-title">${p.modelo}${p.color?' — '+p.color:''}</div>
-    <div class="vs-item-sub"><span>${p.cat}</span><span>T.${p.talle}</span><span>Stock actual: ${p.qty}</span>${p.pcosto?`<span>Último costo: $${fmt(p.pcosto)}</span>`:''}</div>
+    <div class="vs-item-title">${p.modelo}${p.color?' — '+p.color:''} ${p.qty===0?'<span style="color:var(--danger);font-size:.7rem">(sin stock)</span>':''}</div>
+    <div class="vs-item-sub"><span>${p.cat}</span><span>T.${p.talle}</span><span style="color:${p.qty===0?'var(--danger)':'var(--text2)'}">Stock: ${p.qty}</span>${p.pcosto?`<span>Último costo: $${fmt(p.pcosto)}</span>`:''}</div>
   </div>`).join(''):`<div class="vs-item"><div class="vs-item-title" style="color:var(--muted)">Sin resultados</div></div>`;
   results.classList.add('open');
 }
@@ -1300,6 +1357,9 @@ function renderCpItems(){
 
 window.guardarCompra=async function(){
   if(!cpItems.length){toast('Agregá al menos un producto.','error');return;}
+  // Bug #7 fix: advertir si hay items sin costo cargado
+  const sinCosto=cpItems.filter(i=>!i.pcosto_unit||i.pcosto_unit<=0);
+  if(sinCosto.length>0) toast(`⚠️ ${sinCosto.length} producto${sinCosto.length>1?'s':''} sin precio de costo — no se actualizará su costo.`,'error');
   const proveedor=document.getElementById('cp-proveedor').value.trim();
   const fechaStr=document.getElementById('cp-fecha').value;
   const notas=document.getElementById('cp-notas').value.trim();
@@ -1385,6 +1445,23 @@ window.delCompra=async function(id){
 }
 
 // ── GASTOS ──
+// Bug #9 fix: subcategorías dinámicas según categoría de gasto
+window.updateGaSubcats=function(){
+  const cat=document.getElementById('ga-cat').value;
+  const sub=document.getElementById('ga-sub');
+  const optsNegocio=[
+    ['publicidad','Publicidad / Ads'],['envios','Envíos / Logística'],
+    ['packaging','Packaging'],['plataformas','Plataformas / Apps'],
+    ['impuestos','Impuestos / Tasas'],['otros','Otros']
+  ];
+  const optsPersonal=[
+    ['retiro','Retiro de ganancias'],['comida','Comida / Salidas'],
+    ['transporte','Transporte'],['otros','Otros']
+  ];
+  const opts=cat==='negocio'?optsNegocio:optsPersonal;
+  sub.innerHTML=opts.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+}
+
 window.guardarGasto=async function(){
   const desc=document.getElementById('ga-desc').value.trim();
   const monto=parseFloat(document.getElementById('ga-monto').value);
@@ -1458,20 +1535,25 @@ window.delGasto=async function(id){
 
 // ── GANANCIAS ──
 window.renderGanancias=function(){
+  // Bug #11 fix: agrupar por producto (sin tipo) para no duplicar filas
+  // El tipo se muestra como desglose dentro de cada fila
   const grupos={};
   let totalIng=0,totalCos=0,margenSum=0,margenCount=0;
   ventasData.forEach(v=>{
     totalIng+=v.pventa*v.cant;
     if(v.pcosto){totalCos+=v.pcosto*v.cant;margenSum+=(v.pventa-v.pcosto)/v.pventa*100;margenCount++;}
-    const k=`${v.cat}||${v.modelo}||${v.color}||${v.talle}||${v.tipo||'minorista'}`;
-    if(!grupos[k])grupos[k]={cat:v.cat,modelo:v.modelo,color:v.color,talle:v.talle,tipo:v.tipo||'minorista',unid:0,ing:0,cos:0};
+    // Clave sin tipo: mismo producto se agrupa siempre
+    const k=`${v.cat}||${v.modelo}||${v.color||''}||${v.talle}`;
+    if(!grupos[k])grupos[k]={cat:v.cat,modelo:v.modelo,color:v.color||'',talle:v.talle,unid:0,ing:0,cos:0,tipos:{}};
     grupos[k].unid+=v.cant; grupos[k].ing+=v.pventa*v.cant;
     if(v.pcosto)grupos[k].cos+=v.pcosto*v.cant;
+    // Contar por tipo para desglose
+    const t=v.tipo||'minorista';
+    if(!grupos[k].tipos[t])grupos[k].tipos[t]={unid:0,ing:0};
+    grupos[k].tipos[t].unid+=v.cant; grupos[k].tipos[t].ing+=v.pventa*v.cant;
   });
-  // Gastos del negocio
   const totalGasNeg=gastosData.filter(g=>g.cat==='negocio').reduce((a,g)=>a+g.monto,0);
-  const ganBruta=totalIng-totalCos;
-  const ganNeta=ganBruta-totalGasNeg;
+  const ganNeta=(totalIng-totalCos)-totalGasNeg;
   const margen=margenCount?margenSum/margenCount:0;
   document.getElementById('g-ing').textContent='$'+fmt(Math.round(totalIng));
   document.getElementById('g-cos').textContent='$'+fmt(Math.round(totalCos));
@@ -1487,14 +1569,19 @@ window.renderGanancias=function(){
     const m=r.cos?Math.round((r.ing-r.cos)/r.ing*100):null;
     const pct=r.ing/maxIng*100;
     const mc=m>30?'var(--success)':m>10?'var(--warning)':'var(--danger)';
-    const tipoBadge=r.tipo==='mayorista'?'<span class="badge b-may" style="margin-left:4px;font-size:.6rem">May</span>':r.tipo==='curva'?'<span class="badge b-cur" style="margin-left:4px;font-size:.6rem">Curva</span>':'';
+    // Desglose de tipos si hay más de uno
+    const tiposKeys=Object.keys(r.tipos);
+    const tiposHTML=tiposKeys.length>1?tiposKeys.map(t=>{
+      const badge=t==='mayorista'?'b-may':t==='curva'?'b-cur':'b-ok';
+      return`<span class="badge ${badge}" style="font-size:.6rem">${t}: ${r.tipos[t].unid}u</span>`;
+    }).join(' '):(tiposKeys[0]==='mayorista'?'<span class="badge b-may" style="font-size:.6rem">Mayorista</span>':tiposKeys[0]==='curva'?'<span class="badge b-cur" style="font-size:.6rem">Curva</span>':'<span class="badge b-ok" style="font-size:.6rem">Minorista</span>');
     return`<tr>
       <td><strong style="font-size:.85rem">${r.cat}</strong><span style="color:var(--muted)"> — ${r.modelo}${r.color?' ('+r.color+')':''} T.${r.talle}</span><div class="g-bar"><div class="g-bar-fill" style="width:${pct}%"></div></div></td>
-      <td>${tipoBadge||'<span class="badge b-ok" style="font-size:.6rem">Min</span>'}</td>
+      <td>${tiposHTML}</td>
       <td>${r.unid}</td>
       <td>$${fmt(Math.round(r.ing))}</td>
       <td>${r.cos?'$'+fmt(Math.round(r.cos)):'<span style="color:var(--muted)">—</span>'}</td>
-      <td style="color:var(--success)">$${fmt(Math.round(gan))}</td>
+      <td style="color:${gan>=0?'var(--success)':'var(--danger)'}">$${fmt(Math.round(gan))}</td>
       <td>${m!==null?`<strong style="color:${mc}">${m}%</strong>`:'<span style="color:var(--muted)">—</span>'}</td>
     </tr>`;
   }).join('');
@@ -1547,7 +1634,10 @@ window.showTab=function(name,btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   if(btn)btn.classList.add('active');
+  // Bug #4 fix: lazy render para todas las tabs, no solo ganancias
   if(name==='ganancias') renderGanancias();
+  if(name==='compras'){ renderComprasKPI(); renderCompras(); }
+  if(name==='gastos'){ renderGastosKPI(); renderGastos(); }
 }
 
 // ── TOAST ──
