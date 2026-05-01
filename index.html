@@ -47,7 +47,10 @@ header{background:linear-gradient(180deg,#0d0d0d,#0a0a0a);border-bottom:1px soli
 /* NAV */
 nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;display:flex;gap:2px;overflow-x:auto}
 nav::-webkit-scrollbar{display:none}
-.tab{padding:13px 22px;cursor:pointer;font-size:0.8rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border:none;border-bottom:2px solid transparent;background:none;font-family:'Outfit',sans-serif;transition:all .2s;white-space:nowrap;font-weight:500}
+.tab{padding:13px 16px;cursor:pointer;font-size:0.75rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted);border:none;border-bottom:2px solid transparent;background:none;font-family:'Outfit',sans-serif;transition:all .2s;white-space:nowrap;font-weight:500}
+@media(max-width:700px){
+  .tab{padding:11px 12px;font-size:0.68rem;letter-spacing:.5px}
+}
 .tab:hover{color:var(--text2)}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 
@@ -117,7 +120,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .cuota-cliente{font-weight:600;font-size:.95rem}
 .cuota-prod{font-size:.78rem;color:var(--muted);margin-top:2px}
 .cuota-progress{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap}
-.cuota-dot{width:28px;height:28px;border-radius:50%;font-size:.7rem;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;border:2px solid transparent;flex-shrink:0}
+.cuota-dot{width:44px;height:44px;border-radius:50%;font-size:.75rem;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;border:2px solid transparent;flex-shrink:0}
 .cuota-dot.pendiente{background:var(--surface3);color:var(--muted);border-color:var(--border2)}
 .cuota-dot.pendiente:hover{border-color:var(--success);color:var(--success)}
 .cuota-dot.pagada{background:var(--success-dim);color:var(--success);border-color:var(--success)}
@@ -158,6 +161,7 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
 .tipo-btn.active-min{background:var(--success-dim);color:var(--success)}
 .tipo-btn.active-may{background:var(--blue-dim);color:var(--blue)}
 .tipo-btn.active-cur{background:var(--teal-dim);color:var(--teal)}
+.tipo-btn.active-cuo{background:var(--orange-dim);color:var(--orange)}
 .mayorista-extra{display:none;grid-column:1/-1;background:var(--surface2);border:1px solid var(--blue-dim);border-radius:var(--radius);padding:14px 16px;margin-top:4px}
 .mayorista-extra.visible{display:block}
 .curva-section{display:none;grid-column:1/-1}
@@ -396,7 +400,7 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
         <button class="tipo-btn active-min" id="tipo-min" onclick="setTipoVenta('minorista')">Minorista</button>
         <button class="tipo-btn" id="tipo-may" onclick="setTipoVenta('mayorista')">Mayorista</button>
         <button class="tipo-btn" id="tipo-cur" onclick="setTipoVenta('curva')">Por curva</button>
-        <button class="tipo-btn" id="tipo-cuo" onclick="setTipoVenta('cuotas')" style="color:var(--orange)">En cuotas</button>
+        <button class="tipo-btn" id="tipo-cuo" onclick="setTipoVenta('cuotas')">En cuotas</button>
       </div>
     </div>
     <div class="panel-body">
@@ -528,11 +532,18 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
   <div class="panel">
     <div class="panel-head">
       <h2>Historial</h2>
-      <div class="date-filters">
-        <button class="date-btn active" onclick="setDateFilter('all',this)">Todo</button>
-        <button class="date-btn" onclick="setDateFilter('today',this)">Hoy</button>
-        <button class="date-btn" onclick="setDateFilter('week',this)">Esta semana</button>
-        <button class="date-btn" onclick="setDateFilter('month',this)">Este mes</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <!-- Bug #18: buscador en historial -->
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="ventas-search" placeholder="Buscar..." oninput="renderVentas()" style="width:140px;padding-left:28px">
+        </div>
+        <div class="date-filters">
+          <button class="date-btn active" onclick="setDateFilter('all',this)">Todo</button>
+          <button class="date-btn" onclick="setDateFilter('today',this)">Hoy</button>
+          <button class="date-btn" onclick="setDateFilter('week',this)">Esta semana</button>
+          <button class="date-btn" onclick="setDateFilter('month',this)">Este mes</button>
+        </div>
       </div>
     </div>
     <div class="panel-body" id="ventas-list"></div>
@@ -692,6 +703,16 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
   </div>
   <div class="panel">
     <div class="panel-head">
+      <h2>Flujo de caja mensual</h2>
+      <select id="g-mes-sel" onchange="renderFlujoCaja()" style="width:auto"></select>
+    </div>
+    <div class="panel-body" id="flujo-caja-body">
+      <div class="empty"><div class="empty-icon">📅</div><p>Seleccioná un mes para ver el detalle</p></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
       <h2>Rentabilidad por producto</h2>
       <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ Exportar CSV</button>
     </div>
@@ -705,6 +726,39 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
 </div>
 
 </main>
+
+<!-- ══ MODAL EDITAR CUOTA ══ -->
+<div class="overlay" id="cuota-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeCuotaModal()">✕</button>
+    <div class="modal-title">Editar plan de cuotas</div>
+    <input type="hidden" id="cm-id">
+    <div class="form-grid">
+      <div class="field" style="grid-column:1/-1">
+        <label>Nombre del cliente</label>
+        <input type="text" id="cm-cliente" placeholder="Nombre del cliente">
+      </div>
+      <div class="field">
+        <label>Precio total ($)</label>
+        <input type="number" id="cm-total" placeholder="0" min="1">
+      </div>
+      <div class="field">
+        <label>Precio costo ($)</label>
+        <input type="number" id="cm-costo" placeholder="0" min="0">
+      </div>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--warning-dim);border-radius:8px;padding:10px 14px;font-size:.78rem;color:var(--warning);margin-top:14px">
+      ⚠️ Editar el precio total no redistribuye las cuotas automáticamente. Solo se actualiza el monto de referencia.
+    </div>
+    <div class="modal-actions">
+      <div></div>
+      <div class="modal-actions-right">
+        <button class="btn btn-outline" onclick="closeCuotaModal()">Cancelar</button>
+        <button class="btn btn-gold" id="cm-save-btn" onclick="saveCuotaEdit()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ══ MODAL PRODUCTO ══ -->
 <div class="overlay" id="prod-modal">
@@ -927,54 +981,66 @@ async function init() {
 function startListeners() {
   if(unsubStock)  unsubStock();
   if(unsubVentas) unsubVentas();
-  if(unsubCompras)unsubCompras();
-  if(unsubGastos) unsubGastos();
+  if(unsubCuotas) unsubCuotas();
 
   unsubStock = onSnapshot(collection(db,'stock'), snap=>{
     stockData=snap.docs.map(d=>({id:d.id,...d.data()}));
     renderStock(); populateCategoryFilter(); fillVentaCats(); updateHeader();
+    // Bug #19 fix: alerta de stock bajo al cargar o cambiar
+    checkStockBajo();
   },err=>{ toast('Error stock: '+err.message,'error'); });
 
   unsubVentas = onSnapshot(query(collection(db,'ventas'),orderBy('fecha','desc'),limit(200)), snap=>{
     ventasData=snap.docs.map(d=>{ const r=d.data(); return{id:d.id,...r,pventa:r.pventa??r.precio??0,cant:r.cant??r.cantidad??1,pcosto:r.pcosto??r.costo??null}; });
-    renderVentas();
-    renderComprasKPI(); // Bug #3 fix: KPI "recuperado" depende de ventasData
+    renderVentas(); renderComprasKPI();
     if(document.getElementById('tab-ganancias').classList.contains('active')) renderGanancias();
     updateHeader();
   },err=>{ toast('Error ventas: '+err.message,'error'); });
 
-  unsubCompras = onSnapshot(query(collection(db,'compras'),orderBy('fecha','desc'),limit(100)), snap=>{
-    comprasData=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderCompras(); renderComprasKPI();
-    if(document.getElementById('tab-ganancias').classList.contains('active')) renderGanancias();
-  },err=>{ toast('Error compras: '+err.message,'error'); });
-
-  unsubGastos = onSnapshot(query(collection(db,'gastos'),orderBy('fecha','desc'),limit(200)), snap=>{
-    gastosData=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderGastos(); renderGastosKPI();
-    if(document.getElementById('tab-ganancias').classList.contains('active')) renderGanancias();
-  },err=>{ toast('Error gastos: '+err.message,'error'); });
-
-  if(unsubCuotas) unsubCuotas();
   unsubCuotas = onSnapshot(query(collection(db,'cuotas'),orderBy('createdAt','desc'),limit(100)), snap=>{
     cuotasData=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderCobros(); renderCobrosKPI();
+    renderCobros(); renderCobrosKPI(); updateHeader();
     if(document.getElementById('tab-ganancias').classList.contains('active')) renderGanancias();
   },err=>{ toast('Error cuotas: '+err.message,'error'); });
 
-  // Fix curva listeners: registrar aquí después de que el DOM está listo
+  // Bug #12 fix: compras y gastos se cargan una vez (no tiempo real — ahorra lecturas Firestore)
+  loadCompras(); loadGastos();
+
+  // Fix curva listeners
   document.getElementById('curva-precio-unit').addEventListener('input', renderCurvaItems);
   document.getElementById('curva-costo-unit').addEventListener('input', renderCurvaItems);
 
   document.getElementById('loader').style.display='none';
 }
 
+// Bug #12: funciones de carga única para compras y gastos
+async function loadCompras(){
+  try{
+    const snap=await getDocs(query(collection(db,'compras'),orderBy('fecha','desc'),limit(100)));
+    comprasData=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderComprasKPI();
+    if(document.getElementById('tab-compras').classList.contains('active')) renderCompras();
+  }catch(e){ console.error('Error cargando compras:',e); }
+}
+async function loadGastos(){
+  try{
+    const snap=await getDocs(query(collection(db,'gastos'),orderBy('fecha','desc'),limit(200)));
+    gastosData=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderGastosKPI();
+    if(document.getElementById('tab-gastos').classList.contains('active')) renderGastos();
+  }catch(e){ console.error('Error cargando gastos:',e); }
+}
+
 // ── HEADER ──
 window.updateHeader = function() {
   const unid = stockData.reduce((a,p)=>a+p.qty,0);
-  const gan  = ventasData.filter(v=>v.pcosto).reduce((a,v)=>a+(v.pventa-v.pcosto)*v.cant,0);
+  // Bug #8 + #10 fix: incluir cuotas cobradas en ganancia y contador de ventas
+  const ganVentas = ventasData.filter(v=>v.pcosto).reduce((a,v)=>a+(v.pventa-v.pcosto)*v.cant,0);
+  const ganCuotas = cuotasData.filter(c=>c.pcosto&&c.estado==='cobrado').reduce((a,c)=>a+(c.totalVenta-c.pcosto),0);
+  const gan = ganVentas + ganCuotas;
+  const totalVentas = ventasData.length + cuotasData.length;
   document.getElementById('h-unidades').textContent = unid;
-  document.getElementById('h-ventas').textContent   = ventasData.length;
+  document.getElementById('h-ventas').textContent   = totalVentas;
   document.getElementById('h-gan').textContent      = gan?'$'+fmt(Math.round(gan)):'—';
 }
 
@@ -990,6 +1056,7 @@ function populateCategoryFilter() {
 }
 
 // ── STOCK ──
+let lastStockRenderKey = '';
 window.renderStock = function() {
   const q    = (document.getElementById('s-search')?.value||'').toLowerCase();
   const cat  = document.getElementById('s-cat')?.value||'';
@@ -1001,6 +1068,11 @@ window.renderStock = function() {
     if(sort==='precio-asc') return(a.pventa||0)-(b.pventa||0); if(sort==='precio-desc') return(b.pventa||0)-(a.pventa||0);
     return 0;
   });
+  // Bug #11 fix: omitir re-render si nada cambió (evita perder foco en mobile)
+  const renderKey = filtered.map(p=>`${p.id}:${p.qty}`).join('|')+'|'+q+'|'+cat+'|'+sort;
+  const forceKPI = true; // KPIs siempre se actualizan
+  if(renderKey === lastStockRenderKey && !forceKPI) return;
+  lastStockRenderKey = renderKey;
   const total=stockData.reduce((a,p)=>a+p.qty,0);
   document.getElementById('k-total').textContent=total;
   document.getElementById('k-prods').textContent=stockData.length;
@@ -1115,12 +1187,11 @@ window.delProductFromModal=async function(){
 // ── TIPO VENTA TOGGLE ──
 window.setTipoVenta=function(tipo){
   tipoVenta=tipo;
+  // Bug #4 fix: className limpio para cada botón del toggle
   document.getElementById('tipo-min').className='tipo-btn'+(tipo==='minorista'?' active-min':'');
   document.getElementById('tipo-may').className='tipo-btn'+(tipo==='mayorista'?' active-may':'');
   document.getElementById('tipo-cur').className='tipo-btn'+(tipo==='curva'?' active-cur':'');
-  document.getElementById('tipo-cuo').className='tipo-btn'+(tipo==='cuotas'?'':'')+' '+(tipo==='cuotas'?'active-min':'');
-  if(tipo==='cuotas') document.getElementById('tipo-cuo').style.cssText='background:var(--orange-dim);color:var(--orange)';
-  else document.getElementById('tipo-cuo').style.cssText='color:var(--orange)';
+  document.getElementById('tipo-cuo').className='tipo-btn'+(tipo==='cuotas'?' active-cuo':'');
   document.getElementById('form-single').style.display=(tipo==='curva'||tipo==='cuotas')?'none':'grid';
   document.getElementById('form-curva').style.display=tipo==='curva'?'block':'none';
   document.getElementById('form-cuotas').style.display=tipo==='cuotas'?'block':'none';
@@ -1363,19 +1434,62 @@ window.renderVentas=function(){
     if(dateFilter==='month') return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
     return true;
   });
-  const totalMonto=filtered.reduce((a,v)=>a+v.pventa*v.cant,0);
+  // Bug #7 fix: incluir cuotas en el historial de ventas
+  const filteredCuotas=cuotasData.filter(c=>{
+    const d=new Date(c.createdAt);
+    if(dateFilter==='today') return d.toDateString()===now.toDateString();
+    if(dateFilter==='week'){const s=new Date(now);s.setDate(now.getDate()-now.getDay());return d>=s;}
+    if(dateFilter==='month') return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+    return true;
+  });
+  const totalMonto=filtered.reduce((a,v)=>a+v.pventa*v.cant,0)
+    +filteredCuotas.reduce((a,c)=>a+c.totalVenta,0);
   const mayoristas=filtered.filter(v=>v.tipo==='mayorista'||v.tipo==='curva').length;
-  const hoy=ventasData.filter(v=>new Date(v.fecha).toDateString()===now.toDateString()).length;
-  const ticket=filtered.length?totalMonto/filtered.length:0;
-  document.getElementById('vk-total').textContent=filtered.length;
+  const hoyV=ventasData.filter(v=>new Date(v.fecha).toDateString()===now.toDateString()).length;
+  const hoyC=cuotasData.filter(c=>new Date(c.createdAt).toDateString()===now.toDateString()).length;
+  const totalItems=filtered.length+filteredCuotas.length;
+  const ticket=totalItems?totalMonto/totalItems:0;
+  document.getElementById('vk-total').textContent=totalItems;
   document.getElementById('vk-monto').textContent='$'+fmt(Math.round(totalMonto));
   document.getElementById('vk-may').textContent=mayoristas;
   document.getElementById('vk-ticket').textContent='$'+fmt(Math.round(ticket));
   const list=document.getElementById('ventas-list');
-  if(!filtered.length){list.innerHTML=`<div class="empty"><div class="empty-icon">🛒</div><p>No hay ventas en este período</p></div>`;return;}
-  // Bug #6 fix: rastrear curvas ya mostradas para botón "eliminar curva completa"
+  if(!filtered.length&&!filteredCuotas.length){list.innerHTML=`<div class="empty"><div class="empty-icon">🛒</div><p>No hay ventas en este período</p></div>`;return;}
+  const busq=(document.getElementById('ventas-search')?.value||'').toLowerCase().trim();
+  // Bug #18 fix: filtrar por texto libre en historial
+  const todas=[
+    ...filtered.map(v=>({...v,_tipo:'venta'})),
+    ...filteredCuotas.map(c=>({...c,_tipo:'cuota',fecha:c.createdAt}))
+  ].sort((a,b)=>b.fecha-a.fecha)
+  .filter(item=>{
+    if(!busq)return true;
+    if(item._tipo==='cuota') return [item.cat,item.modelo,item.color||'',item.talle,item.cliente||''].join(' ').toLowerCase().includes(busq);
+    return [item.cat,item.modelo,item.color||'',item.talle].join(' ').toLowerCase().includes(busq);
+  });
   const curvasVistas=new Set();
-  list.innerHTML=filtered.map(v=>{
+  list.innerHTML=todas.map(item=>{
+    if(item._tipo==='cuota'){
+      const c=item;
+      const pagadas=c.cuotas.filter(q=>q.pagada).length;
+      const d=new Date(c.createdAt);
+      const ds=d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+      const montoCobrado=c.cuotas.filter(q=>q.pagada).reduce((a,q)=>a+q.monto,0);
+      const ganProyectada=c.pcosto?c.totalVenta-c.pcosto:null;
+      return`<div class="venta-card">
+        <div class="venta-info">
+          <div class="venta-title">${c.cat} — ${c.modelo}${c.color?' ('+c.color+')':''} <span class="badge b-cuota" style="margin-left:6px">💳 Cuotas</span></div>
+          <div class="venta-sub">👤 ${c.cliente} · T.${c.talle} · ${pagadas}/${c.cuotas.length} cuotas cobradas</div>
+          <div class="venta-date">${ds}</div>
+        </div>
+        <div class="venta-right">
+          <div class="venta-precio">$${fmt(c.totalVenta)}</div>
+          ${ganProyectada!==null?`<div class="venta-gan" style="color:var(--muted)">gan proyec: $${fmt(Math.round(ganProyectada))}</div>`:''}
+          <div style="font-size:.7rem;color:${montoCobrado>0?'var(--success)':'var(--muted)'}">cobrado $${fmt(Math.round(montoCobrado))}</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="showTab('cobros',null)" style="flex-shrink:0">ver →</button>
+      </div>`;
+    }
+    const v=item;
     const gan=v.pcosto?(v.pventa-v.pcosto)*v.cant:null;
     const d=new Date(v.fecha);
     const ds=d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
@@ -1488,10 +1602,16 @@ window.calcCuotas=function(){
   const costo=parseFloat(document.getElementById('cuo-costo').value)||0;
   const calc=document.getElementById('cuo-calc');
   if(!total){calc.style.display='none';return;}
-  const porCuota=Math.ceil(total/n);
+  // Bug #1 fix: última cuota absorbe el redondeo para que el total sea exacto
+  const montoCuota=Math.ceil(total/n);
+  const ultimaCuota=total-(montoCuota*(n-1));
   const ganProyectada=costo?total-costo:null;
   calc.style.display='block';
-  calc.innerHTML=`💳 <strong>${n} cuotas de $${fmt(porCuota)}</strong> = $${fmt(n*porCuota)} total`+
+  // Mostrar total real (no n*montoCuota que puede estar inflado)
+  const desglose=ultimaCuota!==montoCuota
+    ? `${n-1} × $${fmt(montoCuota)} + 1 × $${fmt(Math.max(0,ultimaCuota))}`
+    : `${n} × $${fmt(montoCuota)}`;
+  calc.innerHTML=`💳 <strong>${desglose}</strong> = $${fmt(total)} total`+
     (ganProyectada!==null?` · Ganancia proyectada: <strong style="color:${ganProyectada>=0?'var(--success)':'var(--danger)'}">$${fmt(Math.round(ganProyectada))}</strong>`:'');
 }
 window.registrarCuota=async function(){
@@ -1504,6 +1624,8 @@ window.registrarCuota=async function(){
   if(!prodId){toast('Seleccioná un producto.','error');return;}
   if(!cliente){toast('Ingresá el nombre del cliente.','error');return;}
   if(!total||total<=0){toast('El precio total debe ser mayor a 0.','error');return;}
+  // Bug #6 fix: evitar cuota negativa si el monto es menor que la cantidad de cuotas
+  if(total < n){toast(`El monto $${fmt(total)} es menor que ${n} cuotas. Reducí las cuotas o aumentá el monto.`,'error');return;}
   if(!fecha1Str){toast('Ingresá la fecha de la primera cuota.','error');return;}
   const prod=stockData.find(p=>p.id===prodId);
   if(!prod||prod.qty<1){toast('Sin stock disponible.','error');return;}
@@ -1587,13 +1709,19 @@ window.renderCobros=function(){
     const pagadas=c.cuotas.filter(q=>q.pagada).length;
     const totalCuotas=c.cuotas.length;
     const montoPagado=c.cuotas.filter(q=>q.pagada).reduce((a,q)=>a+q.monto,0);
-    // Dots de cuotas
+    // Bug #15 fix: dots más grandes (44px) para tap preciso en mobile
+    // Bug #20 fix: no poner datos sensibles en title (no funciona en mobile táctil)
     const dots=c.cuotas.map((q,idx)=>{
       const cls=q.pagada?'pagada':q.vencimiento<now?'vencida-dot':'pendiente';
-      const title=q.pagada?`Cuota ${q.nro} pagada el ${new Date(q.fechaPago).toLocaleDateString('es-AR')}`:`Cuota ${q.nro} — $${fmt(q.monto)} — vence ${new Date(q.vencimiento).toLocaleDateString('es-AR')}`;
+      const label=q.pagada?'✓':q.vencimiento<now?'!':q.nro;
       const onclick=q.pagada?`desmarcarCuota('${c.id}',${idx})`:`marcarCuota('${c.id}',${idx})`;
-      return`<div class="cuota-dot ${cls}" title="${title}" onclick="${onclick}">${q.nro}</div>`;
+      return`<div class="cuota-dot ${cls}" onclick="${onclick}">${label}</div>`;
     }).join('');
+    // Bug #16 fix: mostrar próxima cuota pendiente de forma visible
+    const proxima=c.cuotas.find(q=>!q.pagada);
+    const proximaHTML=proxima&&c.estado!=='cobrado'
+      ? `<div style="font-size:.75rem;color:var(--text2);margin-bottom:8px">📅 Próxima: <strong>$${fmt(proxima.monto)}</strong> · ${new Date(proxima.vencimiento).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})}</div>`
+      : '';
     return`<div class="cuota-card ${cardClass}">
       <div class="cuota-head">
         <div>
@@ -1606,9 +1734,13 @@ window.renderCobros=function(){
         </div>
       </div>
       <div class="cuota-progress">${dots}</div>
+      ${proximaHTML}
       <div class="cuota-footer">
-        <div style="font-size:.75rem;color:var(--muted)">Tocá una cuota para marcarla como cobrada</div>
-        <button class="btn-ghost btn" onclick="delCuota('${c.id}','${c.prodId}',${c.estado!=='cobrado'})" style="font-size:.72rem">🗑 Eliminar</button>
+        <div style="font-size:.75rem;color:var(--muted)">Tocá un círculo para marcar cuota cobrada</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" onclick="openCuotaModal('${c.id}')" style="font-size:.7rem">✏️ Editar</button>
+          <button class="btn-ghost btn" onclick="delCuota('${c.id}','${c.prodId}',${c.estado!=='cobrado'})" style="font-size:.72rem">🗑</button>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -1637,13 +1769,47 @@ window.desmarcarCuota=async function(cuotaId,idx){
     toast('Cuota desmarcada','success');
   }catch(e){toast('Error: '+e.message,'error');}
 }
+window.openCuotaModal=function(id){
+  const c=cuotasData.find(x=>x.id===id); if(!c)return;
+  document.getElementById('cm-id').value=id;
+  document.getElementById('cm-cliente').value=c.cliente||'';
+  document.getElementById('cm-total').value=c.totalVenta||'';
+  document.getElementById('cm-costo').value=c.pcosto||'';
+  document.getElementById('cuota-modal').classList.add('open');
+}
+window.closeCuotaModal=function(){
+  document.getElementById('cuota-modal').classList.remove('open');
+}
+window.saveCuotaEdit=async function(){
+  const id=document.getElementById('cm-id').value;
+  const cliente=document.getElementById('cm-cliente').value.trim();
+  const total=parseFloat(document.getElementById('cm-total').value)||null;
+  const costo=parseFloat(document.getElementById('cm-costo').value)||null;
+  if(!cliente){toast('Ingresá el nombre del cliente.','error');return;}
+  const btn=document.getElementById('cm-save-btn'); btn.disabled=true; btn.textContent='Guardando...';
+  try{
+    const updates={cliente};
+    if(total) updates.totalVenta=total;
+    if(costo!==null) updates.pcosto=costo;
+    await updateDoc(doc(db,'cuotas',id),updates);
+    toast('Plan actualizado ✓','success');
+    closeCuotaModal();
+  }catch(e){toast('Error: '+e.message,'error');}
+  finally{btn.disabled=false;btn.textContent='Guardar';}
+}
+document.getElementById('cuota-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeCuotaModal();});
+
 window.delCuota=async function(id,prodId,reponerStock){
   const msg=reponerStock?'Se repone 1 unidad al stock.':'El plan ya estaba cobrado, no se repone stock.';
   const ok=await confirm2('¿Eliminar plan de cuotas?',msg); if(!ok)return;
   try{
     const batch=writeBatch(db);
     batch.delete(doc(db,'cuotas',id));
-    if(reponerStock&&prodId){const s=await getDoc(doc(db,'stock',prodId));if(s.exists())batch.update(doc(db,'stock',prodId),{qty:increment(1)});}
+    // Bug #2 fix: validar que prodId sea un string válido, no "undefined"
+    if(reponerStock && prodId && prodId !== 'undefined' && prodId !== ''){
+      const s=await getDoc(doc(db,'stock',prodId));
+      if(s.exists()) batch.update(doc(db,'stock',prodId),{qty:increment(1)});
+    }
     await batch.commit(); toast('Plan eliminado y stock repuesto ✓','success');
   }catch(e){toast('Error: '+e.message,'error');}
 }
@@ -1695,9 +1861,9 @@ function renderCpItems(){
 
 window.guardarCompra=async function(){
   if(!cpItems.length){toast('Agregá al menos un producto.','error');return;}
-  // Bug #7 fix: advertir si hay items sin costo cargado
   const sinCosto=cpItems.filter(i=>!i.pcosto_unit||i.pcosto_unit<=0);
-  if(sinCosto.length>0) toast(`⚠️ ${sinCosto.length} producto${sinCosto.length>1?'s':''} sin precio de costo — no se actualizará su costo.`,'error');
+  // Bug #9 fix: usar tipo '' (neutro) no 'error' para no confundir al usuario
+  if(sinCosto.length>0) toast(`⚠️ ${sinCosto.length} producto${sinCosto.length>1?'s':''} sin precio de costo — se guardará igual.`,'');
   const proveedor=document.getElementById('cp-proveedor').value.trim();
   const fechaStr=document.getElementById('cp-fecha').value;
   const notas=document.getElementById('cp-notas').value.trim();
@@ -1727,6 +1893,7 @@ window.guardarCompra=async function(){
     document.getElementById('cp-notas').value='';
     document.getElementById('cp-fecha').value=new Date().toISOString().slice(0,10);
     toast(`Compra registrada — stock actualizado ✓`,'success');
+    await loadCompras();
   }catch(e){toast('Error: '+e.message,'error');}
   finally{btn.disabled=false;btn.textContent='📥 Registrar compra';}
 }
@@ -1779,7 +1946,7 @@ window.renderCompras=function(){
 
 window.delCompra=async function(id){
   const ok=await confirm2('¿Eliminar compra?','El stock NO se revierte automáticamente.'); if(!ok)return;
-  try{await deleteDoc(doc(db,'compras',id));toast('Compra eliminada');}catch(e){toast('Error: '+e.message,'error');}
+  try{await deleteDoc(doc(db,'compras',id));toast('Compra eliminada');await loadCompras();}catch(e){toast('Error: '+e.message,'error');}
 }
 
 // ── GASTOS ──
@@ -1817,6 +1984,7 @@ window.guardarGasto=async function(){
     document.getElementById('ga-monto').value='';
     document.getElementById('ga-fecha').value=new Date().toISOString().slice(0,10);
     toast('Gasto registrado ✓','success');
+    await loadGastos();
   }catch(e){toast('Error: '+e.message,'error');}
   finally{btn.disabled=false;btn.textContent='+ Registrar gasto';}
 }
@@ -1868,10 +2036,66 @@ window.renderGastos=function(){
 
 window.delGasto=async function(id){
   const ok=await confirm2('¿Eliminar gasto?','Esta acción no se puede deshacer.'); if(!ok)return;
-  try{await deleteDoc(doc(db,'gastos',id));toast('Gasto eliminado');}catch(e){toast('Error: '+e.message,'error');}
+  try{await deleteDoc(doc(db,'gastos',id));toast('Gasto eliminado');await loadGastos();}catch(e){toast('Error: '+e.message,'error');}
 }
 
 // ── GANANCIAS ──
+// Bug #17: Flujo de caja mensual
+function buildMesOptions(){
+  const sel=document.getElementById('g-mes-sel'); if(!sel)return;
+  const meses=new Set();
+  [...ventasData,...cuotasData,...comprasData,...gastosData].forEach(item=>{
+    const d=new Date(item.fecha||item.createdAt||0);
+    meses.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  });
+  const sorted=[...meses].sort().reverse();
+  const cur=sel.value||sorted[0]||'';
+  sel.innerHTML=sorted.map(m=>{
+    const [y,mo]=m.split('-');
+    const nombre=new Date(parseInt(y),parseInt(mo)-1,1).toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+    return`<option value="${m}" ${m===cur?'selected':''}>${nombre}</option>`;
+  }).join('');
+  if(!sel.value&&sorted[0]) sel.value=sorted[0];
+}
+window.renderFlujoCaja=function(){
+  const sel=document.getElementById('g-mes-sel');
+  if(!sel||!sel.value){return;}
+  const [y,mo]=sel.value.split('-').map(Number);
+  const desde=new Date(y,mo-1,1).getTime();
+  const hasta=new Date(y,mo,1).getTime();
+  const enPeriodo=ts=>ts>=desde&&ts<hasta;
+  const ingVentas=ventasData.filter(v=>enPeriodo(v.fecha)).reduce((a,v)=>a+v.pventa*v.cant,0);
+  const ingCuotas=cuotasData.filter(c=>enPeriodo(c.createdAt)).reduce((a,c)=>a+c.totalVenta,0);
+  const egrCompras=comprasData.filter(c=>enPeriodo(c.fecha)).reduce((a,c)=>a+(c.total||0),0);
+  const egrGastos=gastosData.filter(g=>enPeriodo(g.fecha)).reduce((a,g)=>a+g.monto,0);
+  const totalIng=ingVentas+ingCuotas;
+  const totalEgr=egrCompras+egrGastos;
+  const saldo=totalIng-totalEgr;
+  const body=document.getElementById('flujo-caja-body');
+  body.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+      <div style="background:var(--success-dim);border-radius:var(--radius);padding:16px">
+        <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Ingresos</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;color:var(--success)">$${fmt(Math.round(totalIng))}</div>
+        <div style="font-size:.75rem;color:var(--muted);margin-top:6px">
+          Ventas: $${fmt(Math.round(ingVentas))} · Cuotas: $${fmt(Math.round(ingCuotas))}
+        </div>
+      </div>
+      <div style="background:var(--danger-dim);border-radius:var(--radius);padding:16px">
+        <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Egresos</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;color:var(--danger)">$${fmt(Math.round(totalEgr))}</div>
+        <div style="font-size:.75rem;color:var(--muted);margin-top:6px">
+          Compras: $${fmt(Math.round(egrCompras))} · Gastos: $${fmt(Math.round(egrGastos))}
+        </div>
+      </div>
+    </div>
+    <div style="background:var(--surface2);border-radius:var(--radius);padding:16px;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Saldo neto del mes</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:1.8rem;color:${saldo>=0?'var(--success)':'var(--danger)'}">
+        ${saldo>=0?'+':''}$${fmt(Math.round(saldo))}
+      </div>
+    </div>`;
+}
 window.renderGanancias=function(){
   // Bug #11 fix: agrupar por producto (sin tipo) para no duplicar filas
   // El tipo se muestra como desglose dentro de cada fila
@@ -1888,16 +2112,23 @@ window.renderGanancias=function(){
     if(!grupos[k].tipos[t])grupos[k].tipos[t]={unid:0,ing:0};
     grupos[k].tipos[t].unid+=v.cant; grupos[k].tipos[t].ing+=v.pventa*v.cant;
   });
-  // Incluir cuotas cobradas en ingresos
+  // Incluir cuotas cobradas en ingresos — Bug #3 fix: prorratear el costo según lo cobrado
   cuotasData.forEach(c=>{
     const ingCobrado=c.cuotas.filter(q=>q.pagada).reduce((a,q)=>a+q.monto,0);
     if(!ingCobrado)return;
-    if(c.pcosto){totalCos+=c.pcosto;margenSum+=(c.totalVenta-c.pcosto)/c.totalVenta*100;margenCount++;}
+    // Prorratear el costo según la proporción cobrada del total
+    const proporcion = c.totalVenta > 0 ? ingCobrado / c.totalVenta : 0;
+    const costoProporcionado = c.pcosto ? c.pcosto * proporcion : 0;
+    if(costoProporcionado>0){
+      totalCos+=costoProporcionado;
+      // Solo contar margen si el plan está cobrado completamente (para evitar distorsión)
+      if(c.estado==='cobrado'&&c.pcosto){margenSum+=(c.totalVenta-c.pcosto)/c.totalVenta*100;margenCount++;}
+    }
     totalIng+=ingCobrado;
     const k=`${c.cat}||${c.modelo}||${c.color||''}||${c.talle}`;
     if(!grupos[k])grupos[k]={cat:c.cat,modelo:c.modelo,color:c.color||'',talle:c.talle,unid:0,ing:0,cos:0,tipos:{}};
     grupos[k].unid+=1; grupos[k].ing+=ingCobrado;
-    if(c.pcosto)grupos[k].cos+=c.pcosto;
+    if(costoProporcionado>0)grupos[k].cos+=costoProporcionado;
     if(!grupos[k].tipos['cuotas'])grupos[k].tipos['cuotas']={unid:0,ing:0};
     grupos[k].tipos['cuotas'].unid+=1; grupos[k].tipos['cuotas'].ing+=ingCobrado;
   });
@@ -1957,6 +2188,21 @@ window.exportCSV=function(){
   URL.revokeObjectURL(url); toast('CSV exportado ✓','success');
 }
 
+// Bug #19: Alerta proactiva de stock bajo
+let stockBajoAlertado = false;
+function checkStockBajo(){
+  if(stockBajoAlertado) return; // solo una vez por sesión
+  const sinStock=stockData.filter(p=>p.qty===0).length;
+  const ultimaUnidad=stockData.filter(p=>p.qty===1).length;
+  if(sinStock>0||ultimaUnidad>0){
+    stockBajoAlertado=true;
+    const msgs=[];
+    if(sinStock>0) msgs.push(`${sinStock} producto${sinStock>1?'s':''} sin stock`);
+    if(ultimaUnidad>0) msgs.push(`${ultimaUnidad} con última unidad`);
+    toast(`⚠️ Stock bajo: ${msgs.join(' · ')}. Revisá la tab Stock.`,'error');
+  }
+}
+
 // ── AUTOCOMPLETE ──
 window.acFilter=function(inputId,listId){
   const val=document.getElementById(inputId).value.toLowerCase();
@@ -1973,7 +2219,8 @@ window.acSelectFromEl=function(el){
 }
 document.addEventListener('click',e=>{
   if(!e.target.closest('.autocomplete-wrap')) document.querySelectorAll('.autocomplete-list').forEach(l=>l.classList.remove('open'));
-  if(!e.target.closest('.venta-search-wrap')&&!e.target.closest('#curva-search')&&!e.target.closest('#cp-search')&&!e.target.closest('#vs-search'))
+  // Bug #5 fix: agregar #cuo-search a la lista de excepciones
+  if(!e.target.closest('.venta-search-wrap')&&!e.target.closest('#curva-search')&&!e.target.closest('#cp-search')&&!e.target.closest('#vs-search')&&!e.target.closest('#cuo-search'))
     document.querySelectorAll('.venta-search-results').forEach(r=>r.classList.remove('open'));
 });
 
@@ -1984,7 +2231,7 @@ window.showTab=function(name,btn){
   document.getElementById('tab-'+name).classList.add('active');
   if(btn)btn.classList.add('active');
   // Bug #4 fix: lazy render para todas las tabs, no solo ganancias
-  if(name==='ganancias') renderGanancias();
+  if(name==='ganancias'){ buildMesOptions(); renderFlujoCaja(); renderGanancias(); }
   if(name==='compras'){ renderComprasKPI(); renderCompras(); }
   if(name==='gastos'){ renderGastosKPI(); renderGastos(); }
   if(name==='cobros'){ renderCobrosKPI(); renderCobros(); }
