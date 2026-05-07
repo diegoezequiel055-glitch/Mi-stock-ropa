@@ -162,6 +162,7 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
 .tipo-btn.active-may{background:var(--blue-dim);color:var(--blue)}
 .tipo-btn.active-cur{background:var(--teal-dim);color:var(--teal)}
 .tipo-btn.active-cuo{background:var(--orange-dim);color:var(--orange)}
+.tipo-btn.active-blue{background:var(--blue-dim);color:var(--blue)}
 .mayorista-extra{display:none;grid-column:1/-1;background:var(--surface2);border:1px solid var(--blue-dim);border-radius:var(--radius);padding:14px 16px;margin-top:4px}
 .mayorista-extra.visible{display:block}
 .curva-section{display:none;grid-column:1/-1}
@@ -347,11 +348,17 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
 
 <!-- ══ STOCK ══ -->
 <div id="tab-stock" class="section active">
+  <!-- F#1: Dashboard diario -->
+  <div id="dashboard-diario" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 22px;margin-bottom:20px">
+    <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">📋 Resumen de hoy</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px" id="dashboard-grid"></div>
+  </div>
   <div class="kpi-grid">
     <div class="kpi gold"><div class="v" id="k-total">—</div><div class="l">Unidades en stock</div></div>
     <div class="kpi green"><div class="v" id="k-prods">—</div><div class="l">Referencias</div></div>
     <div class="kpi red"><div class="v" id="k-sinprecio">—</div><div class="l">Sin precio</div></div>
     <div class="kpi purple"><div class="v" id="k-liq">—</div><div class="l">Liquidación</div></div>
+    <div class="kpi teal"><div class="v" id="k-valor">—</div><div class="l">Valor inventario</div></div>
   </div>
   <div class="panel">
     <div class="panel-head">
@@ -371,6 +378,7 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
           <option value="precio-desc">Precio ↓</option>
         </select>
         <button class="btn btn-gold" onclick="openProductModal()">+ Agregar</button>
+        <button class="btn btn-outline btn-sm" id="btn-inventario" onclick="inventarioMode?confirmarInventario():toggleInventarioMode()" style="font-size:.72rem">📋 Toma de inventario</button>
       </div>
     </div>
     <div class="table-wrap-desktop table-scroll">
@@ -388,7 +396,7 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
   <div class="kpi-grid">
     <div class="kpi gold"><div class="v" id="vk-total">—</div><div class="l">Ventas totales</div></div>
     <div class="kpi green"><div class="v" id="vk-monto">$0</div><div class="l">Ingresos</div></div>
-    <div class="kpi blue"><div class="v" id="vk-may">0</div><div class="l">Mayoristas</div></div>
+    <div class="kpi blue"><div class="v" id="vk-may">0</div><div class="l">Ventas hoy</div></div>
     <div class="kpi purple"><div class="v" id="vk-ticket">$0</div><div class="l">Ticket promedio</div></div>
   </div>
 
@@ -504,7 +512,7 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
           </div>
           <div class="field">
             <label>Precio costo ($)</label>
-            <input type="number" id="cuo-costo" placeholder="Autocompleta si cargaste" min="0">
+            <input type="number" id="cuo-costo" placeholder="Autocompleta si cargaste" min="0" oninput="calcCuotas()">
           </div>
           <div class="field">
             <label>Cantidad de cuotas</label>
@@ -536,7 +544,8 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
         <!-- Bug #18: buscador en historial -->
         <div class="search-wrap">
           <span class="search-icon">🔍</span>
-          <input type="text" id="ventas-search" placeholder="Buscar..." oninput="renderVentas()" style="width:140px;padding-left:28px">
+          <input type="text" id="ventas-search" placeholder="Buscar..." oninput="renderVentas()" style="width:140px;padding-left:28px;padding-right:26px">
+          <button class="search-clear" id="ventas-search-clear" onclick="clearVentasSearch()" title="Limpiar">✕</button>
         </div>
         <div class="date-filters">
           <button class="date-btn active" onclick="setDateFilter('all',this)">Todo</button>
@@ -606,12 +615,23 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
       <div class="compra-prod-list" id="cp-items">
         <div class="empty" style="padding:16px"><div class="empty-icon">📦</div><p>Buscá productos del stock para agregarlos</p></div>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap;gap:12px">
         <div>
           <div style="font-size:0.75rem;color:var(--muted)">Total pedido</div>
           <div style="font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--blue)" id="cp-total">$0 — 0 unidades</div>
         </div>
-        <button class="btn btn-blue" id="btn-guardar-compra" onclick="guardarCompra()" style="padding:10px 24px">📥 Registrar compra</button>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">
+          <!-- Toggle: actualizar stock o solo historial -->
+          <div style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 14px">
+            <span style="font-size:0.78rem;color:var(--text2)">¿Actualizar stock?</span>
+            <div class="tipo-toggle" style="border:none">
+              <button class="tipo-btn active-blue" id="cp-stock-si" onclick="setCpStockMode(true)" style="font-size:0.72rem;padding:5px 12px">✓ Sí, sumar al stock</button>
+              <button class="tipo-btn" id="cp-stock-no" onclick="setCpStockMode(false)" style="font-size:0.72rem;padding:5px 12px">Solo historial y costo</button>
+            </div>
+          </div>
+          <div id="cp-stock-aviso" style="font-size:0.72rem;color:var(--success);text-align:right">Las unidades se sumarán automáticamente al stock</div>
+          <button class="btn btn-blue" id="btn-guardar-compra" onclick="guardarCompra()" style="padding:10px 24px">📥 Registrar compra</button>
+        </div>
       </div>
     </div>
   </div>
@@ -801,6 +821,11 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
       <div class="field" style="grid-column:1/-1">
         <label>Precio de costo ($) <span style="color:var(--muted);font-size:0.7rem">— para calcular ganancias</span></label>
         <input type="number" id="pm-pcosto" placeholder="0" min="0">
+        <div id="pm-hist-costo" style="margin-top:6px;font-size:.72rem;color:var(--muted)"></div>
+      </div>
+      <div class="field" style="grid-column:1/-1">
+        <label>Notas <span style="color:var(--muted);font-size:0.7rem">— opcional, uso interno</span></label>
+        <textarea id="pm-notas" placeholder="Ej: defecto en costura, reservado para cliente, revisar..." style="height:60px;resize:vertical"></textarea>
       </div>
     </div>
     <div class="modal-actions">
@@ -858,6 +883,7 @@ let cobrosFilter   = 'activos';
 let tipoVenta      = 'minorista';
 let curvaItems     = [];
 let cpItems        = [];
+let cpActualizaStock = true; // toggle: si la compra suma al stock o solo guarda historial
 let confirmCb      = null;
 let unsubStock = null, unsubVentas = null, unsubCompras = null, unsubGastos = null, unsubCuotas = null;
 let cuotasData  = [];
@@ -992,14 +1018,14 @@ function startListeners() {
 
   unsubVentas = onSnapshot(query(collection(db,'ventas'),orderBy('fecha','desc'),limit(200)), snap=>{
     ventasData=snap.docs.map(d=>{ const r=d.data(); return{id:d.id,...r,pventa:r.pventa??r.precio??0,cant:r.cant??r.cantidad??1,pcosto:r.pcosto??r.costo??null}; });
-    renderVentas(); renderComprasKPI();
+    renderVentas(); renderComprasKPI(); renderDashboard();
     if(document.getElementById('tab-ganancias').classList.contains('active')) renderGanancias();
     updateHeader();
   },err=>{ toast('Error ventas: '+err.message,'error'); });
 
   unsubCuotas = onSnapshot(query(collection(db,'cuotas'),orderBy('createdAt','desc'),limit(100)), snap=>{
     cuotasData=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderCobros(); renderCobrosKPI(); updateHeader();
+    renderCobros(); renderCobrosKPI(); updateHeader(); renderDashboard(); updateCobrosTabBadge();
     if(document.getElementById('tab-ganancias').classList.contains('active')) renderGanancias();
   },err=>{ toast('Error cuotas: '+err.message,'error'); });
 
@@ -1057,6 +1083,17 @@ function populateCategoryFilter() {
 
 // ── STOCK ──
 let lastStockRenderKey = '';
+function updateStockKPIs(){
+  const total=stockData.reduce((a,p)=>a+p.qty,0);
+  const valorInv=stockData.filter(p=>p.pcosto&&p.qty>0).reduce((a,p)=>a+p.pcosto*p.qty,0);
+  document.getElementById('k-total').textContent=total;
+  document.getElementById('k-prods').textContent=stockData.length;
+  document.getElementById('k-sinprecio').textContent=stockData.filter(p=>!p.pventa).length;
+  document.getElementById('k-liq').textContent=stockData.filter(p=>p.modelo.toLowerCase().includes('liquidación')).reduce((a,p)=>a+p.qty,0);
+  // F#1: valor del inventario
+  const kVal=document.getElementById('k-valor');
+  if(kVal) kVal.textContent=valorInv?'$'+fmt(Math.round(valorInv)):'—';
+}
 window.renderStock = function() {
   const q    = (document.getElementById('s-search')?.value||'').toLowerCase();
   const cat  = document.getElementById('s-cat')?.value||'';
@@ -1068,52 +1105,60 @@ window.renderStock = function() {
     if(sort==='precio-asc') return(a.pventa||0)-(b.pventa||0); if(sort==='precio-desc') return(b.pventa||0)-(a.pventa||0);
     return 0;
   });
-  // Bug #11 fix: omitir re-render si nada cambió (evita perder foco en mobile)
-  const renderKey = filtered.map(p=>`${p.id}:${p.qty}`).join('|')+'|'+q+'|'+cat+'|'+sort;
-  const forceKPI = true; // KPIs siempre se actualizan
-  if(renderKey === lastStockRenderKey && !forceKPI) return;
+  // Bug #3 fix: KPIs siempre se actualizan, tabla solo si algo cambió
+  updateStockKPIs();
+  const renderKey = filtered.map(p=>`${p.id}:${p.qty}:${p.pventa}:${p.pcosto}`).join('|')+'|'+q+'|'+cat+'|'+sort;
+  if(renderKey === lastStockRenderKey) return;
   lastStockRenderKey = renderKey;
-  const total=stockData.reduce((a,p)=>a+p.qty,0);
-  document.getElementById('k-total').textContent=total;
-  document.getElementById('k-prods').textContent=stockData.length;
-  document.getElementById('k-sinprecio').textContent=stockData.filter(p=>!p.pventa).length;
-  document.getElementById('k-liq').textContent=stockData.filter(p=>p.modelo.toLowerCase().includes('liquidación')).reduce((a,p)=>a+p.qty,0);
 
   const tbody=document.getElementById('stock-tbody');
+  // F#5: en modo inventario la cache no aplica — siempre re-renderizar
+  if(!inventarioMode && renderKey === lastStockRenderKey) { lastStockRenderKey=renderKey; return; }
+  lastStockRenderKey=renderKey;
+
   tbody.innerHTML=filtered.length?filtered.map(p=>{
     const {badge,label}=getBadge(p);
+    const qtyCell=inventarioMode
+      ? `<td><input type="number" value="${inventarioCounts[p.id]??p.qty}" min="0" onchange="setInventarioCant('${p.id}',this.value)" style="width:70px;text-align:center;${(inventarioCounts[p.id]!==undefined&&inventarioCounts[p.id]!==p.qty)?'background:rgba(212,168,67,.15);border-color:var(--accent)':''}"></td>`
+      : `<td><div class="qty-ctrl"><button class="qty-btn" onclick="adjustQty('${p.id}',-1)">−</button><span class="qty-val" style="color:${p.qty===0?'var(--danger)':p.qty<=1?'var(--warning)':'var(--text)'}">${p.qty}</span><button class="qty-btn" onclick="adjustQty('${p.id}',1)">+</button></div></td>`;
     return`<tr>
       <td><span style="font-size:.75rem;color:var(--muted)">${p.cat}</span></td>
-      <td><strong style="font-size:.86rem">${p.modelo}</strong></td>
+      <td><strong style="font-size:.86rem">${p.modelo}</strong>${p.notas?`<div style="font-size:.68rem;color:var(--warning);margin-top:2px">📝 ${p.notas}</div>`:''}</td>
       <td>${p.color||'<span style="color:var(--muted)">—</span>'}</td>
       <td><strong>${p.talle}</strong></td>
-      <td><div class="qty-ctrl"><button class="qty-btn" onclick="adjustQty('${p.id}',${p.qty},-1)">−</button><span class="qty-val" style="color:${p.qty===0?'var(--danger)':p.qty<=1?'var(--warning)':'var(--text)'}">${p.qty}</span><button class="qty-btn" onclick="adjustQty('${p.id}',${p.qty},1)">+</button></div></td>
+      ${qtyCell}
       <td>${p.pventa?'$'+fmt(p.pventa):'<span style="color:var(--muted)">—</span>'}</td>
       <td>${p.pmayorista?'<span style="color:var(--blue)">$'+fmt(p.pmayorista)+'</span>':'<span style="color:var(--muted)">—</span>'}</td>
       <td>${p.pcosto?'$'+fmt(p.pcosto):'<span style="color:var(--muted)">—</span>'}</td>
       <td><span class="badge ${badge}">${label}</span></td>
-      <td><button class="btn btn-outline btn-sm" onclick="openProductModal('${p.id}')">✏️ Editar</button></td>
+      <td>${inventarioMode?`<span style="font-size:.72rem;color:${inventarioCounts[p.id]!==undefined&&inventarioCounts[p.id]!==p.qty?'var(--accent)':'var(--muted)'}">${inventarioCounts[p.id]!==undefined&&inventarioCounts[p.id]!==p.qty?`era ${p.qty}`:''}</span>`:`<button class="btn btn-outline btn-sm" onclick="openProductModal('${p.id}')">✏️ Editar</button>`}</td>
     </tr>`; }).join(''):`<tr><td colspan="10"><div class="empty"><div class="empty-icon">📦</div><p>No hay productos</p></div></td></tr>`;
 
   const cards=document.getElementById('stock-cards');
   cards.innerHTML=filtered.length?filtered.map(p=>{
     const {badge,label}=getBadge(p);
+    const qtyMobile=inventarioMode
+      ? `<input type="number" value="${inventarioCounts[p.id]??p.qty}" min="0" onchange="setInventarioCant('${p.id}',this.value)" style="width:60px;text-align:center">`
+      : `<div class="qty-ctrl"><button class="qty-btn" onclick="adjustQty('${p.id}',-1)">−</button><span class="qty-val" style="color:${p.qty===0?'var(--danger)':p.qty<=1?'var(--warning)':'var(--text)'}">${p.qty}</span><button class="qty-btn" onclick="adjustQty('${p.id}',1)">+</button></div>`;
     return`<div class="stock-card">
-      <div class="stock-card-head"><div><div class="stock-card-title">${p.modelo}</div><div class="stock-card-sub">${p.cat}${p.color?' · '+p.color:''} · T.${p.talle}</div></div><span class="badge ${badge}">${label}</span></div>
+      <div class="stock-card-head"><div><div class="stock-card-title">${p.modelo}</div><div class="stock-card-sub">${p.cat}${p.color?' · '+p.color:''} · T.${p.talle}${p.notas?' · 📝 '+p.notas:''}</div></div><span class="badge ${badge}">${label}</span></div>
       <div class="stock-card-row">
         <div style="display:flex;gap:14px;align-items:center">
-          <div class="qty-ctrl"><button class="qty-btn" onclick="adjustQty('${p.id}',${p.qty},-1)">−</button><span class="qty-val" style="color:${p.qty===0?'var(--danger)':p.qty<=1?'var(--warning)':'var(--text)'}">${p.qty}</span><button class="qty-btn" onclick="adjustQty('${p.id}',${p.qty},1)">+</button></div>
+          ${qtyMobile}
           ${p.pventa?`<span style="font-size:.78rem;color:var(--muted)">$<strong style="color:var(--accent)">${fmt(p.pventa)}</strong></span>`:''}
           ${p.pmayorista?`<span style="font-size:.78rem;color:var(--muted)">May <strong style="color:var(--blue)">$${fmt(p.pmayorista)}</strong></span>`:''}
         </div>
-        <button class="btn btn-outline btn-sm" onclick="openProductModal('${p.id}')">✏️ Editar</button>
+        ${inventarioMode?'':`<button class="btn btn-outline btn-sm" onclick="openProductModal('${p.id}')">✏️ Editar</button>`}
       </div>
     </div>`; }).join(''):`<div class="empty"><div class="empty-icon">📦</div><p>No hay productos</p></div>`;
 }
 
-window.adjustQty = async function(id,currentQty,delta) {
-  const n=currentQty+delta;
-  if(n<0){toast('El stock no puede ser negativo.','error');return;}
+// Bug #4 fix: no usar qty hardcodeado del HTML — leerlo desde stockData al ejecutar
+window.adjustQty = async function(id, delta) {
+  const prod = stockData.find(p=>p.id===id);
+  if(!prod){ toast('Producto no encontrado.','error'); return; }
+  const n = prod.qty + delta;
+  if(n<0){ toast('El stock no puede ser negativo.','error'); return; }
   try{ await updateDoc(doc(db,'stock',id),{qty:n}); }catch(e){toast('Error al actualizar.','error');}
 }
 function getBadge(p){
@@ -1148,6 +1193,13 @@ window.openProductModal=function(id){
   document.getElementById('pm-pventa').value=p?.pventa||'';
   document.getElementById('pm-pmayorista').value=p?.pmayorista||'';
   document.getElementById('pm-pcosto').value=p?.pcosto||'';
+  document.getElementById('pm-notas').value=p?.notas||''; // F#3
+  // F#4: mostrar historial de precio de costo
+  const histEl=document.getElementById('pm-hist-costo');
+  if(p?.historialCosto?.length){
+    const entries=p.historialCosto.slice(-5).reverse();
+    histEl.innerHTML='Historial: '+entries.map(h=>`$${fmt(h.precio)} (${new Date(h.fecha).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})})`).join(' → ');
+  } else { histEl.textContent=''; }
   document.getElementById('pm-del-btn').style.display=p?'inline-flex':'none';
   document.getElementById('prod-modal').classList.add('open');
 }
@@ -1166,7 +1218,11 @@ window.saveProduct=async function(){
   const pmayorista=parseFloat(document.getElementById('pm-pmayorista').value)||null;
   if(pventa&&pventa<0){toast('El precio no puede ser negativo.','error');return;}
   if(pcosto&&pventa&&pcosto>=pventa) toast('⚠️ El costo supera el precio de venta.','error');
-  const data={cat,modelo,color:document.getElementById('pm-color').value.trim(),talle,qty:parseInt(document.getElementById('pm-qty').value)||0,pventa,pcosto,pmayorista};
+  const data={cat,modelo,color:document.getElementById('pm-color').value.trim(),talle,
+    qty:parseInt(document.getElementById('pm-qty').value)||0,
+    pventa,pcosto,pmayorista,
+    notas:document.getElementById('pm-notas').value.trim()||null // F#3
+  };
   const btn=document.getElementById('pm-save-btn'); btn.disabled=true; btn.textContent='Guardando...';
   try{
     const id=document.getElementById('pm-id').value;
@@ -1445,17 +1501,21 @@ window.renderVentas=function(){
   const totalMonto=filtered.reduce((a,v)=>a+v.pventa*v.cant,0)
     +filteredCuotas.reduce((a,c)=>a+c.totalVenta,0);
   const mayoristas=filtered.filter(v=>v.tipo==='mayorista'||v.tipo==='curva').length;
-  const hoyV=ventasData.filter(v=>new Date(v.fecha).toDateString()===now.toDateString()).length;
-  const hoyC=cuotasData.filter(c=>new Date(c.createdAt).toDateString()===now.toDateString()).length;
+  // Bug #7 fix: mostrar ventas de hoy correctamente
+  const hoy=new Date().toDateString();
+  const ventasHoy=ventasData.filter(v=>new Date(v.fecha).toDateString()===hoy).length
+    +cuotasData.filter(c=>new Date(c.createdAt).toDateString()===hoy).length;
   const totalItems=filtered.length+filteredCuotas.length;
   const ticket=totalItems?totalMonto/totalItems:0;
   document.getElementById('vk-total').textContent=totalItems;
   document.getElementById('vk-monto').textContent='$'+fmt(Math.round(totalMonto));
-  document.getElementById('vk-may').textContent=mayoristas;
+  document.getElementById('vk-may').textContent=ventasHoy; // mostrar hoy en lugar de mayoristas
   document.getElementById('vk-ticket').textContent='$'+fmt(Math.round(ticket));
   const list=document.getElementById('ventas-list');
   if(!filtered.length&&!filteredCuotas.length){list.innerHTML=`<div class="empty"><div class="empty-icon">🛒</div><p>No hay ventas en este período</p></div>`;return;}
   const busq=(document.getElementById('ventas-search')?.value||'').toLowerCase().trim();
+  const clearBtn=document.getElementById('ventas-search-clear');
+  if(clearBtn) clearBtn.classList.toggle('visible',busq.length>0);
   // Bug #18 fix: filtrar por texto libre en historial
   const todas=[
     ...filtered.map(v=>({...v,_tipo:'venta'})),
@@ -1694,10 +1754,11 @@ window.renderCobros=function(){
   const en7dias=new Date(hoy); en7dias.setDate(en7dias.getDate()+7);
   let filtered=cuotasData;
   if(cobrosFilter==='activos') filtered=cuotasData.filter(c=>c.estado!=='cobrado');
-  else if(cobrosFilter==='vencidos') filtered=cuotasData.filter(c=>c.cuotas.some(q=>!q.pagada&&q.vencimiento<now));
+  else if(cobrosFilter==='vencidos') filtered=cuotasData.filter(c=>Array.isArray(c.cuotas)&&c.cuotas.some(q=>!q.pagada&&q.vencimiento<now));
   const list=document.getElementById('cobros-list');
   if(!filtered.length){list.innerHTML=`<div class="empty"><div class="empty-icon">💳</div><p>${cobrosFilter==='activos'?'No hay planes de cuotas activos':'No hay resultados'}</p></div>`;return;}
   list.innerHTML=filtered.map(c=>{
+    if(!Array.isArray(c.cuotas)||!c.cuotas.length) return ''; // protección contra datos corruptos
     const pendientes=c.cuotas.filter(q=>!q.pagada);
     const tieneVencidas=pendientes.some(q=>q.vencimiento<now);
     const tieneProximas=pendientes.some(q=>q.vencimiento>=now&&q.vencimiento<en7dias.getTime());
@@ -1859,6 +1920,20 @@ function renderCpItems(){
   document.getElementById('cp-total').textContent=`$${fmt(Math.round(totalM))} — ${totalU} unidad${totalU!==1?'es':''}`;
 }
 
+window.setCpStockMode=function(actualizar){
+  cpActualizaStock=actualizar;
+  document.getElementById('cp-stock-si').className='tipo-btn'+(actualizar?' active-blue':'');
+  document.getElementById('cp-stock-no').className='tipo-btn'+(!actualizar?' active-blue':'');
+  const aviso=document.getElementById('cp-stock-aviso');
+  if(actualizar){
+    aviso.style.color='var(--success)';
+    aviso.textContent='Las unidades se sumarán automáticamente al stock';
+  } else {
+    aviso.style.color='var(--warning)';
+    aviso.textContent='⚠️ Solo se guarda el historial y el costo. El stock NO se modifica.';
+  }
+}
+
 window.guardarCompra=async function(){
   if(!cpItems.length){toast('Agregá al menos un producto.','error');return;}
   const sinCosto=cpItems.filter(i=>!i.pcosto_unit||i.pcosto_unit<=0);
@@ -1873,15 +1948,24 @@ window.guardarCompra=async function(){
   const btn=document.getElementById('btn-guardar-compra'); btn.disabled=true; btn.textContent='Guardando...';
   try{
     const batch=writeBatch(db);
-    // Actualizar stock y precio de costo de cada producto
     for(const item of cpItems){
-      const updates={qty:increment(item.cant)};
-      if(item.pcosto_unit>0) updates.pcosto=item.pcosto_unit; // actualiza costo al más reciente
-      batch.update(doc(db,'stock',item.prodId),updates);
+      const updates={};
+      if(cpActualizaStock) updates.qty=increment(item.cant);
+      if(item.pcosto_unit>0){
+        updates.pcosto=item.pcosto_unit;
+        // F#4: guardar historial de precios de costo
+        const prod=stockData.find(x=>x.id===item.prodId);
+        const histEntry={precio:item.pcosto_unit,fecha:fecha};
+        if(prod?.historialCosto) updates.historialCosto=[...prod.historialCosto,histEntry].slice(-12); // máx 12 entradas
+        else updates.historialCosto=[histEntry];
+      }
+      if(Object.keys(updates).length>0)
+        batch.update(doc(db,'stock',item.prodId),updates);
     }
     // Guardar el pedido completo
     batch.set(doc(collection(db,'compras')),{
       proveedor:proveedor||'Sin especificar', fecha, notas,
+      actualizaStock:cpActualizaStock,
       items:cpItems.map(i=>{const p=stockData.find(x=>x.id===i.prodId);return{prodId:i.prodId,cat:p?.cat||'',modelo:p?.modelo||'',color:p?.color||'',talle:p?.talle||'',cant:i.cant,pcosto_unit:i.pcosto_unit};}),
       total:totalMonto, createdAt:Date.now()
     });
@@ -1892,7 +1976,10 @@ window.guardarCompra=async function(){
     document.getElementById('cp-proveedor').value='';
     document.getElementById('cp-notas').value='';
     document.getElementById('cp-fecha').value=new Date().toISOString().slice(0,10);
-    toast(`Compra registrada — stock actualizado ✓`,'success');
+    toast(cpActualizaStock
+      ? `Compra registrada — stock actualizado ✓`
+      : `Compra registrada — historial y costos guardados (stock sin cambios) ✓`
+    ,'success');
     await loadCompras();
   }catch(e){toast('Error: '+e.message,'error');}
   finally{btn.disabled=false;btn.textContent='📥 Registrar compra';}
@@ -1933,7 +2020,7 @@ window.renderCompras=function(){
     const items=(c.items||[]).map(i=>`<div class="compra-item-row"><span>${i.cat} — ${i.modelo}${i.color?' ('+i.color+')':''} T.${i.talle}</span><span>x${i.cant} · $${fmt(i.pcosto_unit)} c/u</span></div>`).join('');
     return`<div class="compra-card">
       <div class="compra-head">
-        <div><div class="compra-title">📥 ${c.proveedor}</div><div class="compra-sub">${ds}${c.notas?' · '+c.notas:''}</div></div>
+        <div><div class="compra-title">📥 ${c.proveedor}</div><div class="compra-sub">${ds}${c.notas?' · '+c.notas:''} · <span style="color:${c.actualizaStock===false?'var(--warning)':'var(--success)'}">stock ${c.actualizaStock===false?'sin cambios':'actualizado'}</span></div></div>
         <div style="text-align:right">
           <div class="compra-monto">$${fmt(Math.round(c.total||0))}</div>
           <button class="btn-ghost btn" onclick="delCompra('${c.id}')" style="font-size:.7rem;margin-top:4px">🗑 Eliminar</button>
@@ -2049,13 +2136,16 @@ function buildMesOptions(){
     meses.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
   });
   const sorted=[...meses].sort().reverse();
-  const cur=sel.value||sorted[0]||'';
+  // Bug #5 fix: preservar la selección actual del usuario
+  const prevVal=sel.value;
   sel.innerHTML=sorted.map(m=>{
     const [y,mo]=m.split('-');
     const nombre=new Date(parseInt(y),parseInt(mo)-1,1).toLocaleDateString('es-AR',{month:'long',year:'numeric'});
-    return`<option value="${m}" ${m===cur?'selected':''}>${nombre}</option>`;
+    return`<option value="${m}">${nombre}</option>`;
   }).join('');
-  if(!sel.value&&sorted[0]) sel.value=sorted[0];
+  // Restaurar valor anterior si sigue siendo válido, si no usar el más reciente
+  if(prevVal&&sorted.includes(prevVal)) sel.value=prevVal;
+  else if(sorted[0]) sel.value=sorted[0];
 }
 window.renderFlujoCaja=function(){
   const sel=document.getElementById('g-mes-sel');
@@ -2065,7 +2155,10 @@ window.renderFlujoCaja=function(){
   const hasta=new Date(y,mo,1).getTime();
   const enPeriodo=ts=>ts>=desde&&ts<hasta;
   const ingVentas=ventasData.filter(v=>enPeriodo(v.fecha)).reduce((a,v)=>a+v.pventa*v.cant,0);
-  const ingCuotas=cuotasData.filter(c=>enPeriodo(c.createdAt)).reduce((a,c)=>a+c.totalVenta,0);
+  // Bug #1 fix: usar fechaPago de cada cuota individual, no createdAt del plan completo
+  const ingCuotas=cuotasData.flatMap(c=>Array.isArray(c.cuotas)?c.cuotas:[])
+    .filter(q=>q.pagada&&enPeriodo(q.fechaPago))
+    .reduce((a,q)=>a+q.monto,0);
   const egrCompras=comprasData.filter(c=>enPeriodo(c.fecha)).reduce((a,c)=>a+(c.total||0),0);
   const egrGastos=gastosData.filter(g=>enPeriodo(g.fecha)).reduce((a,g)=>a+g.monto,0);
   const totalIng=ingVentas+ingCuotas;
@@ -2171,11 +2264,20 @@ window.renderGanancias=function(){
 window.exportCSV=function(){
   const rows=[['Categoría','Modelo','Color','Talle','Tipo','Unidades','Ingresos','Costos','Ganancia','Margen%']];
   const grupos={};
+  // Ventas normales
   ventasData.forEach(v=>{
-    const k=`${v.cat}||${v.modelo}||${v.color}||${v.talle}||${v.tipo||'minorista'}`;
+    const k=`${v.cat}||${v.modelo}||${v.color||''}||${v.talle}||${v.tipo||'minorista'}`;
     if(!grupos[k])grupos[k]={cat:v.cat,modelo:v.modelo,color:v.color||'',talle:v.talle,tipo:v.tipo||'minorista',unid:0,ing:0,cos:0};
     grupos[k].unid+=v.cant; grupos[k].ing+=v.pventa*v.cant;
     if(v.pcosto)grupos[k].cos+=v.pcosto*v.cant;
+  });
+  // Bug #2 fix: incluir cuotas en el CSV
+  cuotasData.forEach(c=>{
+    const ingCobrado=Array.isArray(c.cuotas)?c.cuotas.filter(q=>q.pagada).reduce((a,q)=>a+q.monto,0):0;
+    const k=`${c.cat}||${c.modelo}||${c.color||''}||${c.talle}||cuotas`;
+    if(!grupos[k])grupos[k]={cat:c.cat,modelo:c.modelo,color:c.color||'',talle:c.talle,tipo:'cuotas',unid:0,ing:0,cos:0};
+    grupos[k].unid+=1; grupos[k].ing+=ingCobrado;
+    if(c.pcosto)grupos[k].cos+=c.pcosto;
   });
   Object.values(grupos).sort((a,b)=>b.ing-a.ing).forEach(r=>{
     const gan=r.ing-r.cos; const m=r.cos?Math.round((r.ing-r.cos)/r.ing*100):'';
@@ -2186,6 +2288,91 @@ window.exportCSV=function(){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a'); a.href=url; a.download=`stockmgr-${new Date().toISOString().slice(0,10)}.csv`; a.click();
   URL.revokeObjectURL(url); toast('CSV exportado ✓','success');
+}
+
+// F#1: Dashboard diario — se actualiza cada vez que cambian ventas o stock
+function renderDashboard(){
+  const now=new Date();
+  const hoy=now.toDateString();
+  const ventasHoy=ventasData.filter(v=>new Date(v.fecha).toDateString()===hoy);
+  const cuotasHoy=cuotasData.filter(c=>new Date(c.createdAt).toDateString()===hoy);
+  const ingHoy=ventasHoy.reduce((a,v)=>a+v.pventa*v.cant,0)+cuotasHoy.reduce((a,c)=>a+c.totalVenta,0);
+  const ganHoy=ventasHoy.filter(v=>v.pcosto).reduce((a,v)=>a+(v.pventa-v.pcosto)*v.cant,0);
+  // Cuotas que vencen hoy o mañana
+  const manana=new Date(now); manana.setDate(manana.getDate()+1);
+  const vencenProx=cuotasData.filter(c=>Array.isArray(c.cuotas)&&c.cuotas.some(q=>!q.pagada&&new Date(q.vencimiento).toDateString()===hoy||new Date(q.vencimiento).toDateString()===manana.toDateString())).length;
+  const vencidas=cuotasData.filter(c=>Array.isArray(c.cuotas)&&c.cuotas.some(q=>!q.pagada&&q.vencimiento<now.getTime())).length;
+  const grid=document.getElementById('dashboard-grid');
+  const dash=document.getElementById('dashboard-diario');
+  if(!ventasHoy.length&&!cuotasHoy.length&&!vencidas&&!vencenProx){ dash.style.display='none'; return; }
+  dash.style.display='block';
+  grid.innerHTML=`
+    ${ventasHoy.length||cuotasHoy.length?`<div style="background:var(--success-dim);border-radius:8px;padding:12px"><div style="font-size:1.3rem;font-family:'Cormorant Garamond',serif;color:var(--success)">$${fmt(Math.round(ingHoy))}</div><div style="font-size:.7rem;color:var(--muted);margin-top:2px">${ventasHoy.length+cuotasHoy.length} venta${ventasHoy.length+cuotasHoy.length!==1?'s':''} hoy</div></div>`:''}
+    ${ganHoy?`<div style="background:var(--accent-dim);border-radius:8px;padding:12px"><div style="font-size:1.3rem;font-family:'Cormorant Garamond',serif;color:var(--accent)">$${fmt(Math.round(ganHoy))}</div><div style="font-size:.7rem;color:var(--muted);margin-top:2px">Ganancia hoy</div></div>`:''}
+    ${vencidas?`<div style="background:var(--danger-dim);border-radius:8px;padding:12px;cursor:pointer" onclick="showTab('cobros',null)"><div style="font-size:1.3rem;font-family:'Cormorant Garamond',serif;color:var(--danger)">${vencidas}</div><div style="font-size:.7rem;color:var(--muted);margin-top:2px">Cuota${vencidas!==1?'s':''} vencida${vencidas!==1?'s':''} ⚠️</div></div>`:''}
+    ${vencenProx&&!vencidas?`<div style="background:var(--warning-dim);border-radius:8px;padding:12px;cursor:pointer" onclick="showTab('cobros',null)"><div style="font-size:1.3rem;font-family:'Cormorant Garamond',serif;color:var(--warning)">${vencenProx}</div><div style="font-size:.7rem;color:var(--muted);margin-top:2px">Cuota${vencenProx!==1?'s':''} próxima${vencenProx!==1?'s':''}</div></div>`:''}
+  `;
+  // UX#2: actualizar badge en tab Cobros
+  updateCobrosTabBadge();
+}
+function updateCobrosTabBadge(){
+  const vencidas=cuotasData.filter(c=>Array.isArray(c.cuotas)&&c.cuotas.some(q=>!q.pagada&&q.vencimiento<Date.now())).length;
+  const tabs=document.querySelectorAll('.tab');
+  tabs.forEach(t=>{
+    if(t.textContent.includes('Cobros')||t.getAttribute('onclick')?.includes('cobros')){
+      t.innerHTML=vencidas?`💳 Cobros <span style="background:var(--danger);color:#fff;border-radius:10px;padding:1px 6px;font-size:.65rem;margin-left:2px">${vencidas}</span>`:'💳 Cobros';
+    }
+  });
+}
+
+// UX#3: limpiar búsqueda historial ventas
+window.clearVentasSearch=function(){
+  const inp=document.getElementById('ventas-search');
+  if(inp){ inp.value=''; }
+  const cl=document.getElementById('ventas-search-clear');
+  if(cl) cl.classList.remove('visible');
+  renderVentas();
+}
+
+// F#5: Modo toma de inventario
+let inventarioMode=false;
+let inventarioCounts={};
+window.toggleInventarioMode=function(){
+  inventarioMode=!inventarioMode;
+  inventarioCounts={};
+  const btn=document.getElementById('btn-inventario');
+  if(inventarioMode){
+    btn.textContent='✓ Confirmar conteo';
+    btn.style.background='var(--success)';
+    btn.style.color='#fff';
+    toast('Modo inventario activado — ingresá la cantidad real de cada producto','');
+  } else {
+    btn.textContent='📋 Toma de inventario';
+    btn.style.background='';
+    btn.style.color='';
+  }
+  renderStock();
+}
+window.setInventarioCant=function(id,val){
+  inventarioCounts[id]=parseInt(val)||0;
+}
+window.confirmarInventario=async function(){
+  const diffs=Object.entries(inventarioCounts).filter(([id,cant])=>{
+    const p=stockData.find(x=>x.id===id);
+    return p&&p.qty!==cant;
+  });
+  if(!diffs.length){ toast('Sin diferencias — el conteo coincide con el sistema ✓','success'); toggleInventarioMode(); return; }
+  const ok=await confirm2(`Aplicar ${diffs.length} correcciones`,`Se ajustarán ${diffs.length} producto${diffs.length!==1?'s':''} según el conteo físico.`,'Aplicar','var(--success)');
+  if(!ok) return;
+  try{
+    const batch=writeBatch(db);
+    diffs.forEach(([id,cant])=>batch.update(doc(db,'stock',id),{qty:cant}));
+    await batch.commit();
+    toast(`${diffs.length} producto${diffs.length!==1?'s':''} ajustado${diffs.length!==1?'s':''}  ✓`,'success');
+    inventarioMode=false; inventarioCounts={};
+    document.getElementById('btn-inventario').textContent='📋 Toma de inventario';
+    document.getElementById('btn-inventario').style.background='';
+  }catch(e){ toast('Error: '+e.message,'error'); }
 }
 
 // Bug #19: Alerta proactiva de stock bajo
@@ -2232,7 +2419,7 @@ window.showTab=function(name,btn){
   if(btn)btn.classList.add('active');
   // Bug #4 fix: lazy render para todas las tabs, no solo ganancias
   if(name==='ganancias'){ buildMesOptions(); renderFlujoCaja(); renderGanancias(); }
-  if(name==='compras'){ renderComprasKPI(); renderCompras(); }
+  if(name==='compras'){ renderComprasKPI(); renderCompras(); setCpStockMode(cpActualizaStock); }
   if(name==='gastos'){ renderGastosKPI(); renderGastos(); }
   if(name==='cobros'){ renderCobrosKPI(); renderCobros(); }
 }
