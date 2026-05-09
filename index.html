@@ -1105,17 +1105,12 @@ window.renderStock = function() {
     if(sort==='precio-asc') return(a.pventa||0)-(b.pventa||0); if(sort==='precio-desc') return(b.pventa||0)-(a.pventa||0);
     return 0;
   });
-  // Bug #3 fix: KPIs siempre se actualizan, tabla solo si algo cambió
   updateStockKPIs();
   const renderKey = filtered.map(p=>`${p.id}:${p.qty}:${p.pventa}:${p.pcosto}`).join('|')+'|'+q+'|'+cat+'|'+sort;
-  if(renderKey === lastStockRenderKey) return;
+  if(!inventarioMode && renderKey === lastStockRenderKey) return;
   lastStockRenderKey = renderKey;
 
   const tbody=document.getElementById('stock-tbody');
-  // F#5: en modo inventario la cache no aplica — siempre re-renderizar
-  if(!inventarioMode && renderKey === lastStockRenderKey) { lastStockRenderKey=renderKey; return; }
-  lastStockRenderKey=renderKey;
-
   tbody.innerHTML=filtered.length?filtered.map(p=>{
     const {badge,label}=getBadge(p);
     const qtyCell=inventarioMode
