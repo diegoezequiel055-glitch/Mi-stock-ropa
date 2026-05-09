@@ -292,6 +292,18 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
 .vs-item:hover{background:var(--surface3)}
 .vs-item-title{font-size:0.85rem;font-weight:500}
 .vs-item-sub{font-size:0.73rem;color:var(--muted);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap}
+/* TALLE CHIPS — carga masiva */
+.talle-grid{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.talle-chip{padding:8px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;font-size:0.8rem;font-family:'Outfit',sans-serif;font-weight:500;transition:all .18s;user-select:none}
+.talle-chip:hover{border-color:var(--accent);color:var(--accent)}
+.talle-chip.selected{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.talle-chip-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:6px}
+.talle-chip-row.active{border-color:var(--accent)}
+
+/* MULTI VENTA */
+.mventa-item{display:grid;grid-template-columns:1fr 90px 100px auto;gap:8px;align-items:center;background:var(--surface2);border-radius:8px;padding:8px 12px;border:1px solid var(--border);margin-bottom:6px}
+.mventa-item input{padding:6px 10px;font-size:0.8rem}
+
 .divider{border:none;border-top:1px solid var(--border);margin:16px 0}
 
 @media(max-width:700px){
@@ -378,7 +390,8 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
           <option value="precio-desc">Precio ↓</option>
         </select>
         <button class="btn btn-gold" onclick="openProductModal()">+ Agregar</button>
-        <button class="btn btn-outline btn-sm" id="btn-inventario" onclick="inventarioMode?confirmarInventario():toggleInventarioMode()" style="font-size:.72rem">📋 Toma de inventario</button>
+        <button class="btn btn-outline btn-sm" onclick="openCargaMasivaModal()" style="font-size:.72rem">📋 Por talles</button>
+        <button class="btn btn-outline btn-sm" id="btn-inventario" onclick="inventarioMode?confirmarInventario():toggleInventarioMode()" style="font-size:.72rem">🔢 Inventario</button>
       </div>
     </div>
     <div class="table-wrap-desktop table-scroll">
@@ -409,6 +422,7 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
         <button class="tipo-btn" id="tipo-may" onclick="setTipoVenta('mayorista')">Mayorista</button>
         <button class="tipo-btn" id="tipo-cur" onclick="setTipoVenta('curva')">Por curva</button>
         <button class="tipo-btn" id="tipo-cuo" onclick="setTipoVenta('cuotas')">En cuotas</button>
+        <button class="tipo-btn" id="tipo-multi" onclick="setTipoVenta('multiple')">Múltiple</button>
       </div>
     </div>
     <div class="panel-body">
@@ -534,6 +548,23 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
           </div>
         </div>
       </div>
+      <!-- VENTA MÚLTIPLE -->
+      <div id="form-multiple" style="display:none">
+        <div style="margin-bottom:12px">
+          <input type="text" id="multi-search" placeholder="🔍 Buscá un producto para agregar..." autocomplete="off" oninput="multiSearchFilter()" onfocus="multiSearchFilter()">
+          <div class="venta-search-results" id="multi-results"></div>
+        </div>
+        <div id="multi-items">
+          <div class="empty" style="padding:20px"><div class="empty-icon">🛒</div><p>Buscá productos para agregar a la venta</p></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <div>
+            <div style="font-size:.75rem;color:var(--muted)">Total venta múltiple</div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--success)" id="multi-total">$0 — 0 productos</div>
+          </div>
+          <button class="btn btn-gold" id="btn-registrar-multi" style="padding:10px 24px" onclick="registrarMultiple()">✓ Registrar todo</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -541,7 +572,6 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
     <div class="panel-head">
       <h2>Historial</h2>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <!-- Bug #18: buscador en historial -->
         <div class="search-wrap">
           <span class="search-icon">🔍</span>
           <input type="text" id="ventas-search" placeholder="Buscar..." oninput="renderVentas()" style="width:140px;padding-left:28px;padding-right:26px">
@@ -775,6 +805,192 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
       <div class="modal-actions-right">
         <button class="btn btn-outline" onclick="closeCuotaModal()">Cancelar</button>
         <button class="btn btn-gold" id="cm-save-btn" onclick="saveCuotaEdit()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL CARGA MASIVA POR TALLES ══ -->
+<div class="overlay" id="carga-masiva-modal">
+  <div class="modal modal-wide">
+    <button class="modal-close" onclick="closeCargaMasivaModal()">✕</button>
+    <div class="modal-title">📋 Agregar por talles</div>
+    <div class="form-grid">
+      <div class="field" style="grid-column:1/-1">
+        <label>Categoría</label>
+        <div class="autocomplete-wrap">
+          <input type="text" id="cm2-cat" placeholder="Ej: Camiseta, Short..." autocomplete="off" oninput="acFilter('cm2-cat','ac-cm2-cat')" onfocus="acFilter('cm2-cat','ac-cm2-cat')">
+          <div class="autocomplete-list" id="ac-cm2-cat"></div>
+        </div>
+      </div>
+      <div class="field" style="grid-column:1/-1">
+        <label>Modelo / Tipo</label>
+        <input type="text" id="cm2-modelo" placeholder="Ej: Argentina 2026 Titular...">
+      </div>
+      <div class="field">
+        <label>Color (opcional)</label>
+        <input type="text" id="cm2-color" placeholder="Ej: Negro, Azul...">
+      </div>
+      <div class="field">
+        <label>Precio de venta ($)</label>
+        <input type="number" id="cm2-pventa" placeholder="0" min="0">
+      </div>
+      <div class="field">
+        <label>Precio mayorista ($)</label>
+        <input type="number" id="cm2-pmayorista" placeholder="0" min="0">
+      </div>
+      <div class="field">
+        <label>Precio de costo ($)</label>
+        <input type="number" id="cm2-pcosto" placeholder="0" min="0">
+      </div>
+    </div>
+    <hr class="divider">
+    <label style="margin-bottom:10px;display:block">Talles de ropa</label>
+    <div class="talle-grid" id="talle-ropa-grid">
+      <div class="talle-chip" data-talle="XS" onclick="toggleTalle(this)">XS</div>
+      <div class="talle-chip" data-talle="S" onclick="toggleTalle(this)">S</div>
+      <div class="talle-chip" data-talle="M" onclick="toggleTalle(this)">M</div>
+      <div class="talle-chip" data-talle="L" onclick="toggleTalle(this)">L</div>
+      <div class="talle-chip" data-talle="XL" onclick="toggleTalle(this)">XL</div>
+      <div class="talle-chip" data-talle="XXL" onclick="toggleTalle(this)">XXL</div>
+      <div class="talle-chip" data-talle="XXXL" onclick="toggleTalle(this)">XXXL</div>
+    </div>
+    <label style="margin:10px 0 10px;display:block">Talles numéricos</label>
+    <div class="talle-grid">
+      <div class="talle-chip" data-talle="36" onclick="toggleTalle(this)">36</div>
+      <div class="talle-chip" data-talle="38" onclick="toggleTalle(this)">38</div>
+      <div class="talle-chip" data-talle="40" onclick="toggleTalle(this)">40</div>
+      <div class="talle-chip" data-talle="42" onclick="toggleTalle(this)">42</div>
+      <div class="talle-chip" data-talle="44" onclick="toggleTalle(this)">44</div>
+      <div class="talle-chip" data-talle="46" onclick="toggleTalle(this)">46</div>
+      <div class="talle-chip" data-talle="48" onclick="toggleTalle(this)">48</div>
+      <div class="talle-chip" data-talle="50" onclick="toggleTalle(this)">50</div>
+    </div>
+    <hr class="divider">
+    <div id="cm2-talles-config" style="display:none">
+      <label style="margin-bottom:8px;display:block">Cantidad por talle seleccionado</label>
+      <div id="cm2-talles-rows"></div>
+    </div>
+    <div class="modal-actions">
+      <div style="font-size:.78rem;color:var(--muted)" id="cm2-resumen">Seleccioná al menos un talle</div>
+      <div class="modal-actions-right">
+        <button class="btn btn-outline" onclick="closeCargaMasivaModal()">Cancelar</button>
+        <button class="btn btn-gold" id="cm2-save-btn" onclick="saveCargaMasiva()">Guardar todos</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL EDITAR VENTA ══ -->
+<div class="overlay" id="edit-venta-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeEditVentaModal()">✕</button>
+    <div class="modal-title">✏️ Editar venta</div>
+    <input type="hidden" id="ev-id">
+    <div class="form-grid">
+      <div class="field" style="grid-column:1/-1">
+        <label>Producto</label>
+        <div id="ev-prod-info" style="font-size:.85rem;color:var(--text2);padding:8px 0"></div>
+      </div>
+      <div class="field">
+        <label>Precio de venta ($)</label>
+        <input type="number" id="ev-precio" placeholder="0" min="0">
+      </div>
+      <div class="field">
+        <label>Precio de costo ($)</label>
+        <input type="number" id="ev-costo" placeholder="0" min="0">
+      </div>
+      <div class="field">
+        <label>Cantidad</label>
+        <input type="number" id="ev-cant" placeholder="1" min="1">
+      </div>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--warning-dim);border-radius:8px;padding:10px 14px;font-size:.78rem;color:var(--warning);margin-top:14px">
+      ⚠️ Editar una venta no modifica el stock. Solo corrige el registro financiero.
+    </div>
+    <div class="modal-actions">
+      <div></div>
+      <div class="modal-actions-right">
+        <button class="btn btn-outline" onclick="closeEditVentaModal()">Cancelar</button>
+        <button class="btn btn-gold" id="ev-save-btn" onclick="saveEditVenta()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL EDITAR GASTO ══ -->
+<div class="overlay" id="edit-gasto-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeEditGastoModal()">✕</button>
+    <div class="modal-title">✏️ Editar gasto</div>
+    <input type="hidden" id="eg-id">
+    <div class="form-grid">
+      <div class="field" style="grid-column:1/-1">
+        <label>Descripción</label>
+        <input type="text" id="eg-desc" placeholder="Descripción del gasto">
+      </div>
+      <div class="field">
+        <label>Monto ($)</label>
+        <input type="number" id="eg-monto" placeholder="0" min="0">
+      </div>
+      <div class="field">
+        <label>Categoría</label>
+        <select id="eg-cat" onchange="updateEgSubcats()">
+          <option value="negocio">🏢 Negocio</option>
+          <option value="personal">👤 Personal</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Subcategoría</label>
+        <select id="eg-sub">
+          <option value="publicidad">Publicidad / Ads</option>
+          <option value="envios">Envíos / Logística</option>
+          <option value="packaging">Packaging</option>
+          <option value="plataformas">Plataformas / Apps</option>
+          <option value="impuestos">Impuestos / Tasas</option>
+          <option value="otros">Otros</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Fecha</label>
+        <input type="date" id="eg-fecha">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <div></div>
+      <div class="modal-actions-right">
+        <button class="btn btn-outline" onclick="closeEditGastoModal()">Cancelar</button>
+        <button class="btn btn-gold" id="eg-save-btn" onclick="saveEditGasto()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL EDITAR COMPRA ══ -->
+<div class="overlay" id="edit-compra-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeEditCompraModal()">✕</button>
+    <div class="modal-title">✏️ Editar compra</div>
+    <input type="hidden" id="ec-id">
+    <div class="form-grid">
+      <div class="field" style="grid-column:1/-1">
+        <label>Proveedor / Origen</label>
+        <input type="text" id="ec-proveedor" placeholder="Proveedor...">
+      </div>
+      <div class="field">
+        <label>Fecha</label>
+        <input type="date" id="ec-fecha">
+      </div>
+      <div class="field">
+        <label>Notas</label>
+        <input type="text" id="ec-notas" placeholder="Observaciones...">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <div></div>
+      <div class="modal-actions-right">
+        <button class="btn btn-outline" onclick="closeEditCompraModal()">Cancelar</button>
+        <button class="btn btn-gold" id="ec-save-btn" onclick="saveEditCompra()">Guardar</button>
       </div>
     </div>
   </div>
@@ -1238,21 +1454,22 @@ window.delProductFromModal=async function(){
 // ── TIPO VENTA TOGGLE ──
 window.setTipoVenta=function(tipo){
   tipoVenta=tipo;
-  // Bug #4 fix: className limpio para cada botón del toggle
   document.getElementById('tipo-min').className='tipo-btn'+(tipo==='minorista'?' active-min':'');
   document.getElementById('tipo-may').className='tipo-btn'+(tipo==='mayorista'?' active-may':'');
   document.getElementById('tipo-cur').className='tipo-btn'+(tipo==='curva'?' active-cur':'');
   document.getElementById('tipo-cuo').className='tipo-btn'+(tipo==='cuotas'?' active-cuo':'');
-  document.getElementById('form-single').style.display=(tipo==='curva'||tipo==='cuotas')?'none':'grid';
+  document.getElementById('tipo-multi').className='tipo-btn'+(tipo==='multiple'?' active-min':'');
+  document.getElementById('form-single').style.display=(tipo==='curva'||tipo==='cuotas'||tipo==='multiple')?'none':'grid';
   document.getElementById('form-curva').style.display=tipo==='curva'?'block':'none';
   document.getElementById('form-cuotas').style.display=tipo==='cuotas'?'block':'none';
+  document.getElementById('form-multiple').style.display=tipo==='multiple'?'block':'none';
   const mayExtra=document.getElementById('mayorista-extra');
   mayExtra.classList.toggle('visible',tipo==='mayorista');
   if(tipo==='mayorista'){
     document.getElementById('lbl-precio-venta').textContent='Precio mayorista ($)';
     const id=document.getElementById('v-prod').value;
     if(id){ const p=stockData.find(x=>x.id===id); if(p?.pmayorista) document.getElementById('v-precio').value=p.pmayorista; }
-  } else if(tipo!=='cuotas'&&tipo!=='curva') {
+  } else if(tipo!=='cuotas'&&tipo!=='curva'&&tipo!=='multiple') {
     document.getElementById('lbl-precio-venta').textContent='Precio venta ($)';
     const id=document.getElementById('v-prod').value;
     if(id){ const p=stockData.find(x=>x.id===id); if(p?.pventa) document.getElementById('v-precio').value=p.pventa; }
@@ -1548,7 +1765,7 @@ window.renderVentas=function(){
     const gan=v.pcosto?(v.pventa-v.pcosto)*v.cant:null;
     const d=new Date(v.fecha);
     const ds=d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
-    const tipoBadge=v.tipo==='mayorista'?'<span class="badge b-may" style="margin-left:6px">💼 May</span>':v.tipo==='curva'?'<span class="badge b-cur" style="margin-left:6px">🔄 Curva</span>':'';
+    const tipoBadge=v.tipo==='mayorista'?'<span class="badge b-may" style="margin-left:6px">💼 May</span>':v.tipo==='curva'?'<span class="badge b-cur" style="margin-left:6px">🔄 Curva</span>':v.tipo==='multiple'?'<span class="badge b-ok" style="margin-left:6px">📦 Lote</span>':'';
     let btnCurva='';
     if(v.tipo==='curva'&&v.curvaId&&!curvasVistas.has(v.curvaId)){
       curvasVistas.add(v.curvaId);
@@ -1566,6 +1783,7 @@ window.renderVentas=function(){
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
         ${btnCurva}
+        <button class="btn btn-outline btn-sm" onclick="openEditVentaModal('${v.id}')" style="font-size:.7rem">✏️</button>
         <button class="btn-ghost btn" onclick="delVenta('${v.id}','${v.prodId||''}',${v.cant})">🗑</button>
       </div>
     </div>`;
@@ -2018,6 +2236,7 @@ window.renderCompras=function(){
         <div><div class="compra-title">📥 ${c.proveedor}</div><div class="compra-sub">${ds}${c.notas?' · '+c.notas:''} · <span style="color:${c.actualizaStock===false?'var(--warning)':'var(--success)'}">stock ${c.actualizaStock===false?'sin cambios':'actualizado'}</span></div></div>
         <div style="text-align:right">
           <div class="compra-monto">$${fmt(Math.round(c.total||0))}</div>
+          <button class="btn btn-outline btn-sm" onclick="openEditCompraModal('${c.id}')" style="font-size:.7rem;margin-right:4px">✏️</button>
           <button class="btn-ghost btn" onclick="delCompra('${c.id}')" style="font-size:.7rem;margin-top:4px">🗑 Eliminar</button>
         </div>
       </div>
@@ -2111,6 +2330,7 @@ window.renderGastos=function(){
         <div class="gasto-meta"><span class="badge ${g.cat==='negocio'?'cat-neg':'cat-per'}" style="padding:2px 6px;font-size:.65rem">${g.cat==='negocio'?'Negocio':'Personal'}</span> · ${subLabels[g.sub]||g.sub} · ${ds}</div>
       </div>
       <div class="gasto-monto">$${fmt(g.monto)}</div>
+      <button class="btn btn-outline btn-sm" onclick="openEditGastoModal('${g.id}')" style="font-size:.7rem">✏️</button>
       <button class="btn-ghost btn" onclick="delGasto('${g.id}')">🗑</button>
     </div>`;
   }).join('');
@@ -2385,6 +2605,275 @@ function checkStockBajo(){
   }
 }
 
+// ══════════════════════════════════════════
+// CARGA MASIVA POR TALLES
+// ══════════════════════════════════════════
+let tallesSeleccionados = {}; // {talle: qty}
+
+window.openCargaMasivaModal=function(){
+  // Limpiar estado
+  tallesSeleccionados={};
+  document.getElementById('cm2-cat').value='';
+  document.getElementById('cm2-modelo').value='';
+  document.getElementById('cm2-color').value='';
+  document.getElementById('cm2-pventa').value='';
+  document.getElementById('cm2-pmayorista').value='';
+  document.getElementById('cm2-pcosto').value='';
+  document.querySelectorAll('.talle-chip').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('cm2-talles-config').style.display='none';
+  document.getElementById('cm2-resumen').textContent='Seleccioná al menos un talle';
+  document.getElementById('carga-masiva-modal').classList.add('open');
+}
+window.closeCargaMasivaModal=function(){
+  document.getElementById('carga-masiva-modal').classList.remove('open');
+}
+window.toggleTalle=function(chip){
+  const talle=chip.dataset.talle;
+  if(chip.classList.contains('selected')){
+    chip.classList.remove('selected');
+    delete tallesSeleccionados[talle];
+  } else {
+    chip.classList.add('selected');
+    tallesSeleccionados[talle]=1;
+  }
+  renderTallesRows();
+}
+function renderTallesRows(){
+  const keys=Object.keys(tallesSeleccionados);
+  const config=document.getElementById('cm2-talles-config');
+  const rows=document.getElementById('cm2-talles-rows');
+  if(!keys.length){ config.style.display='none'; document.getElementById('cm2-resumen').textContent='Seleccioná al menos un talle'; return; }
+  config.style.display='block';
+  const tallesOrder=['XS','S','M','L','XL','XXL','XXXL','36','38','40','42','44','46','48','50'];
+  const sorted=keys.sort((a,b)=>tallesOrder.indexOf(a)-tallesOrder.indexOf(b));
+  rows.innerHTML=sorted.map(t=>`
+    <div class="talle-chip-row active">
+      <span style="font-weight:600;font-size:.9rem">Talle ${t}</span>
+      <input type="number" value="${tallesSeleccionados[t]||1}" min="1" style="width:60px;text-align:center" onchange="tallesSeleccionados['${t}']=parseInt(this.value)||1;updateCm2Resumen()">
+      <span style="font-size:.78rem;color:var(--muted)">unid.</span>
+    </div>`).join('');
+  updateCm2Resumen();
+}
+function updateCm2Resumen(){
+  const total=Object.values(tallesSeleccionados).reduce((a,b)=>a+b,0);
+  const n=Object.keys(tallesSeleccionados).length;
+  document.getElementById('cm2-resumen').textContent=`${n} talle${n!==1?'s':''} · ${total} unidad${total!==1?'es':''}`;
+}
+window.saveCargaMasiva=async function(){
+  const cat=document.getElementById('cm2-cat').value.trim();
+  const modelo=document.getElementById('cm2-modelo').value.trim();
+  const color=document.getElementById('cm2-color').value.trim();
+  const pventa=parseFloat(document.getElementById('cm2-pventa').value)||null;
+  const pmayorista=parseFloat(document.getElementById('cm2-pmayorista').value)||null;
+  const pcosto=parseFloat(document.getElementById('cm2-pcosto').value)||null;
+  if(!cat||!modelo){ toast('Completá categoría y modelo.','error'); return; }
+  const keys=Object.keys(tallesSeleccionados);
+  if(!keys.length){ toast('Seleccioná al menos un talle.','error'); return; }
+  const btn=document.getElementById('cm2-save-btn'); btn.disabled=true; btn.textContent='Guardando...';
+  try{
+    const batch=writeBatch(db);
+    for(const talle of keys){
+      const qty=tallesSeleccionados[talle]||1;
+      // Verificar si ya existe ese talle en stock para sumar en lugar de duplicar
+      const existe=stockData.find(p=>p.cat===cat&&p.modelo===modelo&&(p.color||'')===(color||'')&&p.talle===talle);
+      if(existe){
+        const upd={qty:existe.qty+qty};
+        if(pventa) upd.pventa=pventa;
+        if(pmayorista) upd.pmayorista=pmayorista;
+        if(pcosto) upd.pcosto=pcosto;
+        batch.update(doc(db,'stock',existe.id),upd);
+      } else {
+        const ref=doc(collection(db,'stock'));
+        batch.set(ref,{cat,modelo,color,talle,qty,pventa,pmayorista,pcosto,notas:null,createdAt:Date.now()});
+      }
+    }
+    await batch.commit();
+    const total=Object.values(tallesSeleccionados).reduce((a,b)=>a+b,0);
+    toast(`${keys.length} talles guardados — ${total} unidades ✓`,'success');
+    closeCargaMasivaModal();
+  }catch(e){ toast('Error: '+e.message,'error'); }
+  finally{ btn.disabled=false; btn.textContent='Guardar todos'; }
+}
+
+// ══════════════════════════════════════════
+// VENTA MÚLTIPLE
+// ══════════════════════════════════════════
+let multiItems=[]; // [{prodId, cant, pventa, pcosto}]
+
+window.multiSearchFilter=function(){
+  const q=document.getElementById('multi-search').value.toLowerCase().trim();
+  const results=document.getElementById('multi-results');
+  if(!q){results.classList.remove('open');return;}
+  const matches=stockData.filter(p=>p.qty>0).filter(p=>[p.cat,p.modelo,p.color||'',p.talle].join(' ').toLowerCase().includes(q)).slice(0,8);
+  results.innerHTML=matches.length?matches.map(p=>`<div class="vs-item" onmousedown="addToMulti('${p.id}')">
+    <div class="vs-item-title">${p.modelo}${p.color?' — '+p.color:''}</div>
+    <div class="vs-item-sub"><span>${p.cat}</span><span>T.${p.talle}</span><span style="color:${p.qty<=1?'var(--warning)':'var(--success)'}">x${p.qty}</span>${p.pventa?`<span style="color:var(--accent)">$${fmt(p.pventa)}</span>`:''}</div>
+  </div>`).join(''):`<div class="vs-item"><div class="vs-item-title" style="color:var(--muted)">Sin resultados</div></div>`;
+  results.classList.add('open');
+}
+window.addToMulti=function(id){
+  const p=stockData.find(x=>x.id===id); if(!p)return;
+  if(multiItems.find(x=>x.prodId===id)){toast('Ya está en la lista. Cambiá la cantidad.','error');return;}
+  multiItems.push({prodId:id,cant:1,pventa:p.pventa||0,pcosto:p.pcosto||0});
+  document.getElementById('multi-search').value='';
+  document.getElementById('multi-results').classList.remove('open');
+  renderMultiItems();
+}
+window.updateMultiItem=function(idx,field,val){
+  multiItems[idx][field]=parseFloat(val)||0;
+  if(field==='cant') multiItems[idx].cant=Math.max(1,parseInt(val)||1);
+  renderMultiItems();
+}
+window.removeMultiItem=function(idx){ multiItems.splice(idx,1); renderMultiItems(); }
+function renderMultiItems(){
+  const cont=document.getElementById('multi-items');
+  if(!multiItems.length){
+    cont.innerHTML=`<div class="empty" style="padding:20px"><div class="empty-icon">🛒</div><p>Buscá productos para agregar a la venta</p></div>`;
+    document.getElementById('multi-total').textContent='$0 — 0 productos'; return;
+  }
+  let totalMonto=0, totalItems=0;
+  cont.innerHTML=multiItems.map((item,idx)=>{
+    const p=stockData.find(x=>x.id===item.prodId); if(!p)return'';
+    const subtotal=item.pventa*item.cant;
+    totalMonto+=subtotal; totalItems+=item.cant;
+    const gan=item.pcosto?(item.pventa-item.pcosto)*item.cant:null;
+    return`<div class="mventa-item">
+      <div><div style="font-size:.85rem;font-weight:500">${p.modelo}${p.color?' ('+p.color+')':''}</div><div style="font-size:.72rem;color:var(--muted)">${p.cat} · T.${p.talle} · Stock: ${p.qty}</div></div>
+      <input type="number" value="${item.cant}" min="1" max="${p.qty}" onchange="updateMultiItem(${idx},'cant',this.value)" style="text-align:center">
+      <input type="number" value="${item.pventa}" min="0" placeholder="Precio" onchange="updateMultiItem(${idx},'pventa',this.value)">
+      <div style="text-align:right">
+        <div style="font-size:.82rem;color:var(--accent)">$${fmt(Math.round(subtotal))}</div>
+        ${gan!==null?`<div style="font-size:.7rem;color:${gan>=0?'var(--success)':'var(--danger)'}">$${fmt(Math.round(gan))}</div>`:''}
+      </div>
+      <button class="btn-ghost btn" onclick="removeMultiItem(${idx})" style="padding:4px 8px">✕</button>
+    </div>`;
+  }).join('');
+  document.getElementById('multi-total').textContent=`$${fmt(Math.round(totalMonto))} — ${totalItems} producto${totalItems!==1?'s':''}`;
+}
+window.registrarMultiple=async function(){
+  if(!multiItems.length){toast('Agregá al menos un producto.','error');return;}
+  for(const item of multiItems){
+    const p=stockData.find(x=>x.id===item.prodId);
+    if(!p||p.qty<item.cant){toast(`Stock insuficiente: ${p?.modelo||'?'} T.${p?.talle}`,'error');return;}
+    if(!item.pventa||item.pventa<=0){toast('Todos los productos deben tener precio.','error');return;}
+  }
+  const btn=document.getElementById('btn-registrar-multi'); btn.disabled=true; btn.textContent='Registrando...';
+  const total=multiItems.length; const fecha=Date.now(); const loteId=fecha.toString();
+  try{
+    const batch=writeBatch(db);
+    for(const item of multiItems){
+      const p=stockData.find(x=>x.id===item.prodId);
+      batch.update(doc(db,'stock',item.prodId),{qty:p.qty-item.cant});
+      batch.set(doc(collection(db,'ventas')),{
+        prodId:item.prodId,cat:p.cat,modelo:p.modelo,color:p.color||'',talle:p.talle,
+        pventa:item.pventa,pcosto:item.pcosto||null,cant:item.cant,
+        tipo:'multiple',loteId,fecha
+      });
+    }
+    await batch.commit();
+    multiItems=[];
+    renderMultiItems();
+    toast(`${total} producto${total!==1?'s':''} vendidos en lote ✓`,'success');
+  }catch(e){toast('Error: '+e.message,'error');}
+  finally{btn.disabled=false;btn.textContent='✓ Registrar todo';}
+}
+
+// ══════════════════════════════════════════
+// EDITAR VENTA
+// ══════════════════════════════════════════
+window.openEditVentaModal=function(id){
+  const v=ventasData.find(x=>x.id===id); if(!v)return;
+  document.getElementById('ev-id').value=id;
+  document.getElementById('ev-prod-info').textContent=`${v.cat} — ${v.modelo}${v.color?' ('+v.color+')':''} · T.${v.talle}`;
+  document.getElementById('ev-precio').value=v.pventa||'';
+  document.getElementById('ev-costo').value=v.pcosto||'';
+  document.getElementById('ev-cant').value=v.cant||1;
+  document.getElementById('edit-venta-modal').classList.add('open');
+}
+window.closeEditVentaModal=function(){ document.getElementById('edit-venta-modal').classList.remove('open'); }
+window.saveEditVenta=async function(){
+  const id=document.getElementById('ev-id').value;
+  const pventa=parseFloat(document.getElementById('ev-precio').value);
+  const pcosto=parseFloat(document.getElementById('ev-costo').value)||null;
+  const cant=parseInt(document.getElementById('ev-cant').value)||1;
+  if(!pventa||pventa<=0){toast('El precio debe ser mayor a 0.','error');return;}
+  const btn=document.getElementById('ev-save-btn'); btn.disabled=true; btn.textContent='Guardando...';
+  try{
+    await updateDoc(doc(db,'ventas',id),{pventa,pcosto,cant});
+    toast('Venta actualizada ✓','success');
+    closeEditVentaModal();
+  }catch(e){toast('Error: '+e.message,'error');}
+  finally{btn.disabled=false;btn.textContent='Guardar';}
+}
+
+// ══════════════════════════════════════════
+// EDITAR GASTO
+// ══════════════════════════════════════════
+window.updateEgSubcats=function(){
+  const cat=document.getElementById('eg-cat').value;
+  const sub=document.getElementById('eg-sub');
+  const optsNegocio=[['publicidad','Publicidad / Ads'],['envios','Envíos / Logística'],['packaging','Packaging'],['plataformas','Plataformas / Apps'],['impuestos','Impuestos / Tasas'],['otros','Otros']];
+  const optsPersonal=[['retiro','Retiro de ganancias'],['comida','Comida / Salidas'],['transporte','Transporte'],['otros','Otros']];
+  sub.innerHTML=(cat==='negocio'?optsNegocio:optsPersonal).map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+}
+window.openEditGastoModal=function(id){
+  const g=gastosData.find(x=>x.id===id); if(!g)return;
+  document.getElementById('eg-id').value=id;
+  document.getElementById('eg-desc').value=g.desc||'';
+  document.getElementById('eg-monto').value=g.monto||'';
+  document.getElementById('eg-cat').value=g.cat||'negocio';
+  updateEgSubcats();
+  document.getElementById('eg-sub').value=g.sub||'otros';
+  document.getElementById('eg-fecha').value=new Date(g.fecha).toISOString().slice(0,10);
+  document.getElementById('edit-gasto-modal').classList.add('open');
+}
+window.closeEditGastoModal=function(){ document.getElementById('edit-gasto-modal').classList.remove('open'); }
+window.saveEditGasto=async function(){
+  const id=document.getElementById('eg-id').value;
+  const desc=document.getElementById('eg-desc').value.trim();
+  const monto=parseFloat(document.getElementById('eg-monto').value);
+  const cat=document.getElementById('eg-cat').value;
+  const sub=document.getElementById('eg-sub').value;
+  const fechaStr=document.getElementById('eg-fecha').value;
+  if(!desc||!monto||!fechaStr){toast('Completá todos los campos.','error');return;}
+  const btn=document.getElementById('eg-save-btn'); btn.disabled=true; btn.textContent='Guardando...';
+  try{
+    await updateDoc(doc(db,'gastos',id),{desc,monto,cat,sub,fecha:new Date(fechaStr+'T12:00:00').getTime()});
+    toast('Gasto actualizado ✓','success');
+    await loadGastos();
+    closeEditGastoModal();
+  }catch(e){toast('Error: '+e.message,'error');}
+  finally{btn.disabled=false;btn.textContent='Guardar';}
+}
+
+// ══════════════════════════════════════════
+// EDITAR COMPRA
+// ══════════════════════════════════════════
+window.openEditCompraModal=function(id){
+  const c=comprasData.find(x=>x.id===id); if(!c)return;
+  document.getElementById('ec-id').value=id;
+  document.getElementById('ec-proveedor').value=c.proveedor||'';
+  document.getElementById('ec-notas').value=c.notas||'';
+  document.getElementById('ec-fecha').value=new Date(c.fecha).toISOString().slice(0,10);
+  document.getElementById('edit-compra-modal').classList.add('open');
+}
+window.closeEditCompraModal=function(){ document.getElementById('edit-compra-modal').classList.remove('open'); }
+window.saveEditCompra=async function(){
+  const id=document.getElementById('ec-id').value;
+  const proveedor=document.getElementById('ec-proveedor').value.trim();
+  const notas=document.getElementById('ec-notas').value.trim();
+  const fechaStr=document.getElementById('ec-fecha').value;
+  if(!fechaStr){toast('Ingresá la fecha.','error');return;}
+  const btn=document.getElementById('ec-save-btn'); btn.disabled=true; btn.textContent='Guardando...';
+  try{
+    await updateDoc(doc(db,'compras',id),{proveedor:proveedor||'Sin especificar',notas,fecha:new Date(fechaStr+'T12:00:00').getTime()});
+    toast('Compra actualizada ✓','success');
+    await loadCompras();
+    closeEditCompraModal();
+  }catch(e){toast('Error: '+e.message,'error');}
+  finally{btn.disabled=false;btn.textContent='Guardar';}
+}
+
 // ── AUTOCOMPLETE ──
 window.acFilter=function(inputId,listId){
   const val=document.getElementById(inputId).value.toLowerCase();
@@ -2402,7 +2891,7 @@ window.acSelectFromEl=function(el){
 document.addEventListener('click',e=>{
   if(!e.target.closest('.autocomplete-wrap')) document.querySelectorAll('.autocomplete-list').forEach(l=>l.classList.remove('open'));
   // Bug #5 fix: agregar #cuo-search a la lista de excepciones
-  if(!e.target.closest('.venta-search-wrap')&&!e.target.closest('#curva-search')&&!e.target.closest('#cp-search')&&!e.target.closest('#vs-search')&&!e.target.closest('#cuo-search'))
+  if(!e.target.closest('.venta-search-wrap')&&!e.target.closest('#curva-search')&&!e.target.closest('#cp-search')&&!e.target.closest('#vs-search')&&!e.target.closest('#cuo-search')&&!e.target.closest('#multi-search'))
     document.querySelectorAll('.venta-search-results').forEach(r=>r.classList.remove('open'));
 });
 
@@ -2444,6 +2933,10 @@ window.confirmResolve=function(val){
 
 function fmt(n){return Number(n).toLocaleString('es-AR');}
 document.getElementById('prod-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeProdModal();});
+document.getElementById('carga-masiva-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeCargaMasivaModal();});
+document.getElementById('edit-venta-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeEditVentaModal();});
+document.getElementById('edit-gasto-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeEditGastoModal();});
+document.getElementById('edit-compra-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeEditCompraModal();});
 
 await init();
 </script>
