@@ -72,6 +72,7 @@ main{padding:28px;max-width:1440px;margin:0 auto}
 .kpi.blue::after{background:linear-gradient(90deg,var(--blue),transparent)}
 .kpi.teal::after{background:linear-gradient(90deg,var(--teal),transparent)}
 .kpi.orange::after{background:linear-gradient(90deg,var(--orange),transparent)}
+.kpi.warning::after{background:linear-gradient(90deg,var(--warning),transparent)}
 .kpi .v{font-family:'Cormorant Garamond',serif;font-size:2rem;line-height:1;margin-bottom:4px}
 .kpi.gold .v{color:var(--accent)}
 .kpi.green .v{color:var(--success)}
@@ -80,6 +81,7 @@ main{padding:28px;max-width:1440px;margin:0 auto}
 .kpi.blue .v{color:var(--blue)}
 .kpi.teal .v{color:var(--teal)}
 .kpi.orange .v{color:var(--orange)}
+.kpi.warning .v{color:var(--warning)}
 .kpi .l{font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
 
 /* PANEL */
@@ -292,7 +294,16 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
 .vs-item:hover{background:var(--surface3)}
 .vs-item-title{font-size:0.85rem;font-weight:500}
 .vs-item-sub{font-size:0.73rem;color:var(--muted);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap}
-/* TALLE CHIPS — carga masiva */
+/* RESERVAS */
+.reserva-card{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--purple);border-radius:var(--radius);padding:14px 18px;margin-bottom:8px;display:flex;align-items:center;gap:14px;transition:border-color .2s}
+.reserva-card:hover{border-color:var(--border2)}
+.reserva-card.vencida{border-left-color:var(--danger)}
+.reserva-card.proxima{border-left-color:var(--warning)}
+.reserva-info{flex:1;min-width:0}
+.reserva-cliente{font-weight:600;font-size:.9rem}
+.reserva-prod{font-size:.78rem;color:var(--muted);margin-top:2px}
+.reserva-fecha{font-size:.72rem;margin-top:4px}
+.b-reservado{background:var(--purple-dim);color:var(--purple)}
 .talle-grid{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 .talle-chip{padding:8px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);cursor:pointer;font-size:0.8rem;font-family:'Outfit',sans-serif;font-weight:500;transition:all .18s;user-select:none}
 .talle-chip:hover{border-color:var(--accent);color:var(--accent)}
@@ -303,6 +314,12 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
 /* MULTI VENTA */
 .mventa-item{display:grid;grid-template-columns:1fr 90px 100px auto;gap:8px;align-items:center;background:var(--surface2);border-radius:8px;padding:8px 12px;border:1px solid var(--border);margin-bottom:6px}
 .mventa-item input{padding:6px 10px;font-size:0.8rem}
+
+/* RESERVAS */
+.reserva-badge{background:rgba(240,131,74,.15);color:var(--orange);border:1px solid rgba(240,131,74,.3);padding:2px 7px;border-radius:12px;font-size:.68rem;font-weight:600}
+.reserva-card{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;transition:border-color .2s}
+.reserva-card.vencida{border-left-color:var(--danger);opacity:.7}
+.reserva-card.entregada{border-left-color:var(--success);opacity:.6}
 
 .divider{border:none;border-top:1px solid var(--border);margin:16px 0}
 
@@ -351,6 +368,7 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
   <button class="tab active" onclick="showTab('stock',this)">📦 Stock</button>
   <button class="tab" onclick="showTab('ventas',this)">🛒 Ventas</button>
   <button class="tab" onclick="showTab('cobros',this)">💳 Cobros</button>
+  <button class="tab" onclick="showTab('reservas',this)">🔖 Reservas</button>
   <button class="tab" onclick="showTab('compras',this)">📥 Compras</button>
   <button class="tab" onclick="showTab('gastos',this)">💸 Gastos</button>
   <button class="tab" onclick="showTab('ganancias',this)">📊 Ganancias</button>
@@ -589,6 +607,73 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
   </div>
 </div>
 
+<!-- ══ RESERVAS ══ -->
+<div id="tab-reservas" class="section">
+  <div class="kpi-grid">
+    <div class="kpi orange"><div class="v" id="rk-activas">0</div><div class="l">Reservas activas</div></div>
+    <div class="kpi red"><div class="v" id="rk-vencidas">0</div><div class="l">Vencidas</div></div>
+    <div class="kpi green"><div class="v" id="rk-entregadas">0</div><div class="l">Entregadas</div></div>
+    <div class="kpi gold"><div class="v" id="rk-valor">$0</div><div class="l">Valor reservado</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>Nueva reserva</h2></div>
+    <div class="panel-body">
+      <div class="venta-form-grid">
+        <div class="field venta-search-wrap" style="grid-column:1/-1">
+          <label>🔍 Buscar producto</label>
+          <span class="search-icon" style="top:calc(50% + 10px)">🔍</span>
+          <input type="text" id="res-search" placeholder="Modelo, talle, color..." autocomplete="off" oninput="reservaSearchFilter()" onfocus="reservaSearchFilter()">
+          <div class="venta-search-results" id="res-results"></div>
+        </div>
+        <div class="field">
+          <label>— o por Categoría</label>
+          <select id="res-cat" onchange="fillReservaProductos()" style="width:100%"><option value="">Seleccionar...</option></select>
+        </div>
+        <div class="field">
+          <label>Producto</label>
+          <select id="res-prod" style="width:100%"><option value="">Primero elegí categoría</option></select>
+        </div>
+        <div class="prod-preview" id="res-preview">
+          <div class="prod-preview-title">Producto a reservar</div>
+          <div class="prod-preview-data" id="res-preview-data"></div>
+        </div>
+        <div class="field">
+          <label>Nombre del cliente</label>
+          <input type="text" id="res-cliente" placeholder="Ej: Juan García...">
+        </div>
+        <div class="field">
+          <label>Cantidad a reservar</label>
+          <input type="number" id="res-cant" value="1" min="1">
+        </div>
+        <div class="field">
+          <label>Válida hasta</label>
+          <input type="date" id="res-fecha">
+        </div>
+        <div class="field">
+          <label>Notas <span style="color:var(--muted);font-size:.7rem">(opcional)</span></label>
+          <input type="text" id="res-notas" placeholder="Ej: viene el viernes, pagó seña...">
+        </div>
+        <div class="field" style="display:flex;align-items:flex-end;grid-column:1/-1">
+          <button class="btn" id="btn-guardar-reserva" style="width:100%;padding:10px;background:var(--orange);color:#080808;font-weight:600" onclick="guardarReserva()">🔖 Reservar producto</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Reservas activas</h2>
+      <div class="date-filters">
+        <button class="date-btn active" onclick="setReservaFilter('activas',this)">Activas</button>
+        <button class="date-btn" onclick="setReservaFilter('vencidas',this)">Vencidas</button>
+        <button class="date-btn" onclick="setReservaFilter('todas',this)">Todas</button>
+      </div>
+    </div>
+    <div class="panel-body" id="reservas-list"></div>
+  </div>
+</div>
+
 <!-- ══ COBROS ══ -->
 <div id="tab-cobros" class="section">
   <div class="kpi-grid">
@@ -607,6 +692,25 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
       </div>
     </div>
     <div class="panel-body" id="cobros-list"></div>
+  </div>
+</div>
+
+<!-- ══ RESERVAS ══ -->
+<div id="tab-reservas" class="section">
+  <div class="kpi-grid">
+    <div class="kpi purple"><div class="v" id="rk-activas">0</div><div class="l">Reservas activas</div></div>
+    <div class="kpi red"><div class="v" id="rk-vencidas">0</div><div class="l">Vencidas</div></div>
+    <div class="kpi warning"><div class="v" id="rk-hoy">0</div><div class="l">Vencen hoy</div></div>
+    <div class="kpi gold"><div class="v" id="rk-unidades">0</div><div class="l">Unidades reservadas</div></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Reservas activas</h2>
+      <button class="btn btn-gold btn-sm" onclick="openReservaModal()">+ Nueva reserva</button>
+    </div>
+    <div class="panel-body" id="reservas-list">
+      <div class="empty"><div class="empty-icon">🔖</div><p>No hay reservas activas</p></div>
+    </div>
   </div>
 </div>
 
@@ -805,6 +909,58 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
       <div class="modal-actions-right">
         <button class="btn btn-outline" onclick="closeCuotaModal()">Cancelar</button>
         <button class="btn btn-gold" id="cm-save-btn" onclick="saveCuotaEdit()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL RESERVA ══ -->
+<div class="overlay" id="reserva-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeReservaModal()">✕</button>
+    <div class="modal-title" id="reserva-modal-title">🔖 Nueva reserva</div>
+    <input type="hidden" id="rm-id">
+    <div class="form-grid">
+      <div class="field venta-search-wrap" style="grid-column:1/-1">
+        <label>Producto a reservar</label>
+        <span class="search-icon">🔍</span>
+        <input type="text" id="rm-search" placeholder="Buscá modelo, talle, color..." autocomplete="off" oninput="reservaSearchFilter()" onfocus="reservaSearchFilter()" style="padding-left:32px">
+        <div class="venta-search-results" id="rm-results"></div>
+      </div>
+      <div class="prod-preview" id="rm-preview" style="grid-column:1/-1">
+        <div class="prod-preview-title">Producto seleccionado</div>
+        <div class="prod-preview-data" id="rm-preview-data"></div>
+      </div>
+      <input type="hidden" id="rm-prod-id">
+      <div class="field" style="grid-column:1/-1">
+        <label>Nombre del cliente</label>
+        <input type="text" id="rm-cliente" placeholder="Ej: Juan García...">
+      </div>
+      <div class="field">
+        <label>Cantidad a reservar</label>
+        <input type="number" id="rm-cant" value="1" min="1">
+      </div>
+      <div class="field">
+        <label>Fecha de vencimiento de la reserva</label>
+        <input type="date" id="rm-vencimiento">
+      </div>
+      <div class="field" style="grid-column:1/-1">
+        <label>Seña / Anticipo ($) <span style="color:var(--muted);font-size:.7rem">— opcional</span></label>
+        <input type="number" id="rm-sena" placeholder="0" min="0">
+      </div>
+      <div class="field" style="grid-column:1/-1">
+        <label>Notas <span style="color:var(--muted);font-size:.7rem">— opcional</span></label>
+        <input type="text" id="rm-notas" placeholder="Ej: llama el viernes, precio acordado...">
+      </div>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--purple-dim);border-radius:8px;padding:10px 14px;font-size:.78rem;color:var(--purple);margin-top:14px">
+      🔖 La reserva marca las unidades como reservadas. El stock sigue visible pero con alerta. Al confirmar la venta, eliminá la reserva y registrá la venta normalmente.
+    </div>
+    <div class="modal-actions">
+      <div><button class="btn btn-ghost" id="rm-del-btn" onclick="delReservaFromModal()" style="color:var(--danger);border-color:var(--danger-dim);display:none">🗑 Eliminar</button></div>
+      <div class="modal-actions-right">
+        <button class="btn btn-outline" onclick="closeReservaModal()">Cancelar</button>
+        <button class="btn" id="rm-save-btn" onclick="saveReserva()" style="background:var(--purple);color:#fff">Guardar reserva</button>
       </div>
     </div>
   </div>
@@ -1101,8 +1257,11 @@ let curvaItems     = [];
 let cpItems        = [];
 let cpActualizaStock = true; // toggle: si la compra suma al stock o solo guarda historial
 let confirmCb      = null;
-let unsubStock = null, unsubVentas = null, unsubCompras = null, unsubGastos = null, unsubCuotas = null;
+let unsubStock = null, unsubVentas = null, unsubCompras = null, unsubGastos = null, unsubCuotas = null, unsubReservas = null;
 let cuotasData  = [];
+let reservasData = [];
+let reservasData = [];
+let reservaFilter = 'activas';
 let lastCatList = '';
 let currentEditId = null;
 
@@ -1207,6 +1366,9 @@ async function init() {
     document.getElementById('cp-fecha').value = hoy;
     document.getElementById('ga-fecha').value = hoy;
     document.getElementById('cuo-fecha1').value = hoy;
+    // Fecha default reserva: 7 días desde hoy
+    const en7 = new Date(); en7.setDate(en7.getDate()+7);
+    document.getElementById('res-fecha').value = en7.toISOString().slice(0,10);
     startListeners();
   } catch(err) {
     console.error(err);
@@ -1244,6 +1406,15 @@ function startListeners() {
     renderCobros(); renderCobrosKPI(); updateHeader(); renderDashboard(); updateCobrosTabBadge();
     if(document.getElementById('tab-ganancias').classList.contains('active')) renderGanancias();
   },err=>{ toast('Error cuotas: '+err.message,'error'); });
+
+  if(unsubReservas) unsubReservas();
+  unsubReservas = onSnapshot(query(collection(db,'reservas'),orderBy('createdAt','desc'),limit(100)), snap=>{
+    reservasData=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderReservasKPI(); updateReservasTabBadge();
+    if(document.getElementById('tab-reservas').classList.contains('active')) renderReservas();
+    // Actualizar stock con cantidades reservadas
+    renderStock();
+  },err=>{ toast('Error reservas: '+err.message,'error'); });
 
   // Bug #12 fix: compras y gastos se cargan una vez (no tiempo real — ahorra lecturas Firestore)
   loadCompras(); loadGastos();
@@ -1374,8 +1545,11 @@ window.adjustQty = async function(id, delta) {
 }
 function getBadge(p){
   const isLiq=p.modelo.toLowerCase().includes('liquidación');
+  // Calcular unidades reservadas para este producto
+  const reservadas=reservasData.filter(r=>r.prodId===p.id&&r.estado!=='cancelada').reduce((a,r)=>a+(r.cant||1),0);
   if(p.qty===0) return{badge:'b-out',label:'Sin stock'};
   if(isLiq)     return{badge:'b-liq',label:'Liquidación'};
+  if(reservadas>0) return{badge:'b-reservado',label:`🔖 ${reservadas} reservada${reservadas!==1?'s':''}`};
   if(p.qty<=1)  return{badge:'b-low',label:'Última unidad'};
   return{badge:'b-ok',label:'En stock'};
 }
@@ -1718,11 +1892,12 @@ window.renderVentas=function(){
   const ventasHoy=ventasData.filter(v=>new Date(v.fecha).toDateString()===hoy).length
     +cuotasData.filter(c=>new Date(c.createdAt).toDateString()===hoy).length;
   const totalItems=filtered.length+filteredCuotas.length;
-  const ticket=totalItems?totalMonto/totalItems:0;
+  // Bug #3 fix: ticket promedio solo sobre ventas individuales — las cuotas inflan el monto
+  const ticketBase=filtered.length?filtered.reduce((a,v)=>a+v.pventa*v.cant,0)/filtered.length:0;
   document.getElementById('vk-total').textContent=totalItems;
   document.getElementById('vk-monto').textContent='$'+fmt(Math.round(totalMonto));
-  document.getElementById('vk-may').textContent=ventasHoy; // mostrar hoy en lugar de mayoristas
-  document.getElementById('vk-ticket').textContent='$'+fmt(Math.round(ticket));
+  document.getElementById('vk-may').textContent=ventasHoy;
+  document.getElementById('vk-ticket').textContent='$'+fmt(Math.round(ticketBase));
   const list=document.getElementById('ventas-list');
   if(!filtered.length&&!filteredCuotas.length){list.innerHTML=`<div class="empty"><div class="empty-icon">🛒</div><p>No hay ventas en este período</p></div>`;return;}
   const busq=(document.getElementById('ventas-search')?.value||'').toLowerCase().trim();
@@ -1949,6 +2124,7 @@ function renderCobrosKPI(){
   const now=Date.now();
   let pendiente=0,cobrado=0,vencido=0,activos=0;
   cuotasData.forEach(c=>{
+    if(!Array.isArray(c.cuotas)) return;
     const cobradas=c.cuotas.filter(q=>q.pagada);
     const pendientes=c.cuotas.filter(q=>!q.pagada);
     cobrado+=cobradas.reduce((a,q)=>a+q.monto,0);
@@ -2515,7 +2691,7 @@ function renderDashboard(){
   const ganHoy=ventasHoy.filter(v=>v.pcosto).reduce((a,v)=>a+(v.pventa-v.pcosto)*v.cant,0);
   // Cuotas que vencen hoy o mañana
   const manana=new Date(now); manana.setDate(manana.getDate()+1);
-  const vencenProx=cuotasData.filter(c=>Array.isArray(c.cuotas)&&c.cuotas.some(q=>!q.pagada&&new Date(q.vencimiento).toDateString()===hoy||new Date(q.vencimiento).toDateString()===manana.toDateString())).length;
+  const vencenProx=cuotasData.filter(c=>Array.isArray(c.cuotas)&&c.cuotas.some(q=>!q.pagada&&(new Date(q.vencimiento).toDateString()===hoy||new Date(q.vencimiento).toDateString()===manana.toDateString()))).length;
   const vencidas=cuotasData.filter(c=>Array.isArray(c.cuotas)&&c.cuotas.some(q=>!q.pagada&&q.vencimiento<now.getTime())).length;
   const grid=document.getElementById('dashboard-grid');
   const dash=document.getElementById('dashboard-diario');
@@ -2606,7 +2782,191 @@ function checkStockBajo(){
 }
 
 // ══════════════════════════════════════════
-// CARGA MASIVA POR TALLES
+// RESERVAS
+// ══════════════════════════════════════════
+function renderReservasKPI(){
+  const now=Date.now();
+  const hoy=new Date().toDateString();
+  const activas=reservasData.filter(r=>r.estado!=='cancelada');
+  const vencidas=activas.filter(r=>r.vencimiento<now).length;
+  const hoyCount=activas.filter(r=>new Date(r.vencimiento).toDateString()===hoy).length;
+  const unidades=activas.reduce((a,r)=>a+(r.cant||1),0);
+  document.getElementById('rk-activas').textContent=activas.length;
+  document.getElementById('rk-vencidas').textContent=vencidas;
+  document.getElementById('rk-hoy').textContent=hoyCount;
+  document.getElementById('rk-unidades').textContent=unidades;
+}
+window.renderReservas=function(){
+  const now=Date.now();
+  const list=document.getElementById('reservas-list');
+  const activas=reservasData.filter(r=>r.estado!=='cancelada')
+    .sort((a,b)=>a.vencimiento-b.vencimiento);
+  if(!activas.length){
+    list.innerHTML=`<div class="empty"><div class="empty-icon">🔖</div><p>No hay reservas activas. Tocá "+ Nueva reserva" para crear una.</p></div>`;
+    return;
+  }
+  const hoy=new Date().toDateString();
+  const en3dias=Date.now()+3*24*60*60*1000;
+  list.innerHTML=activas.map(r=>{
+    const venc=new Date(r.vencimiento);
+    const vencStr=venc.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const isVencida=r.vencimiento<now;
+    const isHoy=venc.toDateString()===hoy;
+    const isProxima=!isVencida&&r.vencimiento<=en3dias;
+    const cardClass=isVencida?'vencida':isHoy||isProxima?'proxima':'';
+    const estadoBadge=isVencida
+      ?'<span class="badge b-vencido">⚠ Vencida</span>'
+      :isHoy?'<span class="badge b-proximo">⏰ Vence hoy</span>'
+      :isProxima?'<span class="badge b-proximo">⏰ Próxima</span>'
+      :'<span class="badge b-reservado">🔖 Activa</span>';
+    return`<div class="reserva-card ${cardClass}">
+      <div class="reserva-info">
+        <div class="reserva-cliente">👤 ${r.cliente} ${estadoBadge}</div>
+        <div class="reserva-prod">${r.cat} — ${r.modelo}${r.color?' ('+r.color+')':''} · T.${r.talle} · ${r.cant} unidad${r.cant!==1?'es':''}</div>
+        <div class="reserva-fecha" style="color:${isVencida?'var(--danger)':isProxima?'var(--warning)':'var(--muted)'}">
+          Vence: ${vencStr}${r.sena?` · Seña: $${fmt(r.sena)}`:''}${r.notas?' · '+r.notas:''}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+        <button class="btn btn-gold btn-sm" onclick="confirmarVentaReserva('${r.id}')" style="font-size:.72rem;white-space:nowrap">✓ Vender</button>
+        <button class="btn btn-outline btn-sm" onclick="openReservaModal('${r.id}')" style="font-size:.72rem">✏️</button>
+        <button class="btn-ghost btn" onclick="cancelarReserva('${r.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function updateReservasTabBadge(){
+  const now=Date.now();
+  const vencidas=reservasData.filter(r=>r.estado!=='cancelada'&&r.vencimiento<now).length;
+  const proximas=reservasData.filter(r=>r.estado!=='cancelada'&&r.vencimiento>=now&&r.vencimiento<=now+3*24*60*60*1000).length;
+  const count=vencidas+proximas;
+  document.querySelectorAll('.tab').forEach(t=>{
+    if(t.getAttribute('onclick')?.includes('reservas')){
+      t.innerHTML=count
+        ?`🔖 Reservas <span style="background:${vencidas?'var(--danger)':'var(--warning)'};color:#fff;border-radius:10px;padding:1px 6px;font-size:.65rem;margin-left:2px">${count}</span>`
+        :'🔖 Reservas';
+    }
+  });
+}
+window.openReservaModal=function(id){
+  const r=id?reservasData.find(x=>x.id===id):null;
+  document.getElementById('reserva-modal-title').textContent=r?'✏️ Editar reserva':'🔖 Nueva reserva';
+  document.getElementById('rm-id').value=id||'';
+  document.getElementById('rm-prod-id').value=r?.prodId||'';
+  document.getElementById('rm-cliente').value=r?.cliente||'';
+  document.getElementById('rm-cant').value=r?.cant||1;
+  document.getElementById('rm-sena').value=r?.sena||'';
+  document.getElementById('rm-notas').value=r?.notas||'';
+  document.getElementById('rm-del-btn').style.display=r?'inline-flex':'none';
+  // Set vencimiento default: 7 días desde hoy
+  const def=r?new Date(r.vencimiento):new Date(Date.now()+7*24*60*60*1000);
+  document.getElementById('rm-vencimiento').value=def.toISOString().slice(0,10);
+  // Si es edición, mostrar el producto
+  const preview=document.getElementById('rm-preview');
+  if(r){
+    document.getElementById('rm-preview-data').innerHTML=`
+      <div class="prod-preview-item"><span>Producto:</span> ${r.cat} — ${r.modelo}${r.color?' ('+r.color+')':''} T.${r.talle}</div>`;
+    preview.classList.add('visible');
+  } else {
+    preview.classList.remove('visible');
+    document.getElementById('rm-search').value='';
+  }
+  document.getElementById('reserva-modal').classList.add('open');
+}
+window.closeReservaModal=function(){
+  document.getElementById('reserva-modal').classList.remove('open');
+  document.getElementById('rm-results').classList.remove('open');
+}
+window.reservaSearchFilter=function(){
+  const q=document.getElementById('rm-search').value.toLowerCase().trim();
+  const results=document.getElementById('rm-results');
+  if(!q){results.classList.remove('open');return;}
+  const matches=stockData.filter(p=>p.qty>0)
+    .filter(p=>[p.cat,p.modelo,p.color||'',p.talle].join(' ').toLowerCase().includes(q))
+    .slice(0,8);
+  results.innerHTML=matches.length?matches.map(p=>`<div class="vs-item" onmousedown="selectReservaProd('${p.id}')">
+    <div class="vs-item-title">${p.modelo}${p.color?' — '+p.color:''}</div>
+    <div class="vs-item-sub"><span>${p.cat}</span><span>T.${p.talle}</span><span style="color:${p.qty<=1?'var(--warning)':'var(--success)'}">x${p.qty} disp.</span></div>
+  </div>`).join(''):`<div class="vs-item"><div class="vs-item-title" style="color:var(--muted)">Sin resultados</div></div>`;
+  results.classList.add('open');
+}
+window.selectReservaProd=function(id){
+  const p=stockData.find(x=>x.id===id); if(!p)return;
+  document.getElementById('rm-prod-id').value=id;
+  document.getElementById('rm-search').value='';
+  document.getElementById('rm-results').classList.remove('open');
+  document.getElementById('rm-preview-data').innerHTML=`
+    <div class="prod-preview-item"><span>Categoría:</span> ${p.cat}</div>
+    <div class="prod-preview-item"><span>Talle:</span> ${p.talle}</div>
+    <div class="prod-preview-item"><span>Stock disponible:</span> <strong style="color:${p.qty<=1?'var(--warning)':'var(--success)'}">${p.qty} ud.</strong></div>
+    ${p.pventa?`<div class="prod-preview-item"><span>Precio:</span> $${fmt(p.pventa)}</div>`:''}`;
+  document.getElementById('rm-preview').classList.add('visible');
+  document.getElementById('rm-cant').max=p.qty;
+}
+window.saveReserva=async function(){
+  const id=document.getElementById('rm-id').value;
+  const prodId=document.getElementById('rm-prod-id').value;
+  const cliente=document.getElementById('rm-cliente').value.trim();
+  const cant=parseInt(document.getElementById('rm-cant').value)||1;
+  const vencStr=document.getElementById('rm-vencimiento').value;
+  const sena=parseFloat(document.getElementById('rm-sena').value)||null;
+  const notas=document.getElementById('rm-notas').value.trim();
+  if(!prodId){toast('Seleccioná un producto.','error');return;}
+  if(!cliente){toast('Ingresá el nombre del cliente.','error');return;}
+  if(!vencStr){toast('Ingresá la fecha de vencimiento.','error');return;}
+  const prod=stockData.find(p=>p.id===prodId);
+  if(!prod){toast('Producto no encontrado.','error');return;}
+  if(cant>prod.qty){toast(`Solo hay ${prod.qty} unidades disponibles.`,'error');return;}
+  const btn=document.getElementById('rm-save-btn'); btn.disabled=true; btn.textContent='Guardando...';
+  try{
+    const data={
+      prodId,cat:prod.cat,modelo:prod.modelo,color:prod.color||'',talle:prod.talle,
+      cliente,cant,sena,notas,
+      vencimiento:new Date(vencStr+'T23:59:59').getTime(),
+      estado:'activa',createdAt:id?undefined:Date.now()
+    };
+    if(id) await updateDoc(doc(db,'reservas',id),data);
+    else await addDoc(collection(db,'reservas'),{...data,createdAt:Date.now()});
+    toast(id?'Reserva actualizada ✓':'Reserva creada ✓','success');
+    closeReservaModal();
+  }catch(e){toast('Error: '+e.message,'error');}
+  finally{btn.disabled=false;btn.textContent='Guardar reserva';}
+}
+window.delReservaFromModal=async function(){
+  const id=document.getElementById('rm-id').value; if(!id)return;
+  const ok=await confirm2('¿Eliminar reserva?','El stock no se modifica.'); if(!ok)return;
+  try{
+    await deleteDoc(doc(db,'reservas',id));
+    toast('Reserva eliminada');
+    closeReservaModal();
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+window.cancelarReserva=async function(id){
+  const ok=await confirm2('¿Cancelar reserva?','Se liberarán las unidades reservadas.'); if(!ok)return;
+  try{ await deleteDoc(doc(db,'reservas',id)); toast('Reserva cancelada'); }
+  catch(e){ toast('Error: '+e.message,'error'); }
+}
+// Confirmar venta desde reserva: abre tab ventas con el producto pre-seleccionado
+window.confirmarVentaReserva=async function(id){
+  const r=reservasData.find(x=>x.id===id); if(!r)return;
+  // Eliminar la reserva y llevar al usuario a registrar la venta
+  await deleteDoc(doc(db,'reservas',id));
+  showTab('ventas', document.querySelector('[onclick*="ventas"]'));
+  setTipoVenta('minorista');
+  // Pre-seleccionar el producto
+  setTimeout(()=>{
+    const catSel=document.getElementById('v-cat');
+    if(catSel){ catSel.value=r.cat; fillProductosByCat(); }
+    setTimeout(()=>{
+      const prodSel=document.getElementById('v-prod');
+      if(prodSel){ prodSel.value=r.prodId; fillVentaPrecio(); }
+      document.getElementById('v-cant').value=r.cant;
+    },100);
+  },200);
+  toast(`Reserva de ${r.cliente} liberada — completá la venta ✓`,'success');
+}
+
+// ══════════════════════════════════════════
 // ══════════════════════════════════════════
 let tallesSeleccionados = {}; // {talle: qty}
 
@@ -2874,6 +3234,223 @@ window.saveEditCompra=async function(){
   finally{btn.disabled=false;btn.textContent='Guardar';}
 }
 
+// ══════════════════════════════════════════
+// RESERVAS
+// ══════════════════════════════════════════
+function renderReservasKPI(){
+  const now=Date.now();
+  const activas=reservasData.filter(r=>r.estado==='activa').length;
+  const vencidas=reservasData.filter(r=>r.estado==='activa'&&r.fechaVencimiento<now).length;
+  const entregadas=reservasData.filter(r=>r.estado==='entregada').length;
+  const valor=reservasData.filter(r=>r.estado==='activa').reduce((a,r)=>{
+    const p=stockData.find(x=>x.id===r.prodId);
+    return a+(p?.pventa||0)*(r.cant||1);
+  },0);
+  document.getElementById('rk-activas').textContent=activas;
+  document.getElementById('rk-vencidas').textContent=vencidas;
+  document.getElementById('rk-entregadas').textContent=entregadas;
+  document.getElementById('rk-valor').textContent='$'+fmt(Math.round(valor));
+}
+
+function updateReservasTabBadge(){
+  const now=Date.now();
+  const alertas=reservasData.filter(r=>r.estado==='activa'&&r.fechaVencimiento<now+(24*60*60*1000)*2).length;
+  document.querySelectorAll('.tab').forEach(t=>{
+    if(t.getAttribute('onclick')?.includes('reservas')){
+      t.innerHTML=alertas?`🔖 Reservas <span style="background:var(--orange);color:#fff;border-radius:10px;padding:1px 6px;font-size:.65rem;margin-left:2px">${alertas}</span>`:'🔖 Reservas';
+    }
+  });
+}
+
+window.setReservaFilter=function(f,btn){
+  reservaFilter=f;
+  document.querySelectorAll('#tab-reservas .date-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderReservas();
+}
+
+window.reservaSearchFilter=function(){
+  const q=document.getElementById('res-search').value.toLowerCase().trim();
+  const results=document.getElementById('res-results');
+  if(!q){results.classList.remove('open');return;}
+  const matches=stockData.filter(p=>p.qty>0).filter(p=>[p.cat,p.modelo,p.color||'',p.talle].join(' ').toLowerCase().includes(q)).slice(0,8);
+  results.innerHTML=matches.length?matches.map(p=>`<div class="vs-item" onmousedown="selectReservaProduct('${p.id}')">
+    <div class="vs-item-title">${p.modelo}${p.color?' — '+p.color:''}</div>
+    <div class="vs-item-sub"><span>${p.cat}</span><span>T.${p.talle}</span><span style="color:${p.qty<=1?'var(--warning)':'var(--success)'}">x${p.qty} en stock</span>${p.pventa?`<span style="color:var(--accent)">$${fmt(p.pventa)}</span>`:''}</div>
+  </div>`).join(''):`<div class="vs-item"><div class="vs-item-title" style="color:var(--muted)">Sin resultados</div></div>`;
+  results.classList.add('open');
+}
+
+window.fillReservaProductos=function(){
+  const cat=document.getElementById('res-cat').value;
+  const sel=document.getElementById('res-prod');
+  sel.innerHTML='<option value="">Seleccionar producto...</option>';
+  if(!cat)return;
+  stockData.filter(p=>p.cat===cat&&p.qty>0).forEach(p=>{
+    const o=document.createElement('option'); o.value=p.id;
+    o.textContent=`${p.modelo}${p.color?' ('+p.color+')':''} — T.${p.talle} [x${p.qty}]`;
+    sel.appendChild(o);
+  });
+  sel.onchange=()=>selectReservaProduct(sel.value);
+}
+
+window.selectReservaProduct=function(id){
+  const p=stockData.find(x=>x.id===id); if(!p)return;
+  // Si viene de cat selector, actualizar también
+  document.getElementById('res-cat').value=p.cat;
+  fillReservaProductos();
+  document.getElementById('res-prod').value=p.id;
+  // Calcular unidades ya reservadas de este producto
+  const reservadas=reservasData.filter(r=>r.prodId===id&&r.estado==='activa').reduce((a,r)=>a+(r.cant||1),0);
+  const disponibles=p.qty-reservadas;
+  const data=document.getElementById('res-preview-data');
+  data.innerHTML=`
+    <div class="prod-preview-item"><span>Categoría:</span> ${p.cat}</div>
+    <div class="prod-preview-item"><span>Talle:</span> ${p.talle}</div>
+    <div class="prod-preview-item"><span>Stock total:</span> <strong>${p.qty} ud.</strong></div>
+    <div class="prod-preview-item"><span>Ya reservadas:</span> <strong style="color:${reservadas>0?'var(--warning)':'var(--muted)'}">${reservadas} ud.</strong></div>
+    <div class="prod-preview-item"><span>Disponibles:</span> <strong style="color:${disponibles<=0?'var(--danger)':disponibles===1?'var(--warning)':'var(--success)'}">${disponibles} ud.</strong></div>
+    ${p.pventa?`<div class="prod-preview-item"><span>Precio:</span> <strong>$${fmt(p.pventa)}</strong></div>`:''}
+  `;
+  document.getElementById('res-preview').classList.add('visible');
+  document.getElementById('res-search').value='';
+  document.getElementById('res-results').classList.remove('open');
+  document.getElementById('res-cliente').focus();
+}
+
+window.guardarReserva=async function(){
+  const prodId=document.getElementById('res-prod').value;
+  const cliente=document.getElementById('res-cliente').value.trim();
+  const cant=parseInt(document.getElementById('res-cant').value)||1;
+  const fechaStr=document.getElementById('res-fecha').value;
+  const notas=document.getElementById('res-notas').value.trim();
+  if(!prodId){toast('Seleccioná un producto.','error');return;}
+  if(!cliente){toast('Ingresá el nombre del cliente.','error');return;}
+  if(!fechaStr){toast('Ingresá la fecha de vencimiento.','error');return;}
+  const prod=stockData.find(p=>p.id===prodId);
+  if(!prod){toast('Producto no encontrado.','error');return;}
+  // Verificar stock disponible descontando otras reservas activas
+  const reservadas=reservasData.filter(r=>r.prodId===prodId&&r.estado==='activa').reduce((a,r)=>a+(r.cant||1),0);
+  if(reservadas+cant>prod.qty){
+    toast(`Solo hay ${prod.qty-reservadas} unidad${prod.qty-reservadas!==1?'es':''} disponibles para reservar.`,'error'); return;
+  }
+  const btn=document.getElementById('btn-guardar-reserva'); btn.disabled=true; btn.textContent='Reservando...';
+  try{
+    await addDoc(collection(db,'reservas'),{
+      prodId, cat:prod.cat, modelo:prod.modelo, color:prod.color||'', talle:prod.talle,
+      cliente, cant, notas:notas||null,
+      fechaVencimiento:new Date(fechaStr+'T23:59:59').getTime(),
+      estado:'activa', // activa | entregada | cancelada
+      createdAt:Date.now()
+    });
+    // Limpiar form
+    document.getElementById('res-cat').value='';
+    document.getElementById('res-prod').innerHTML='<option value="">Primero elegí categoría</option>';
+    document.getElementById('res-search').value='';
+    document.getElementById('res-cliente').value='';
+    document.getElementById('res-cant').value=1;
+    document.getElementById('res-notas').value='';
+    document.getElementById('res-preview').classList.remove('visible');
+    const en7=new Date(); en7.setDate(en7.getDate()+7);
+    document.getElementById('res-fecha').value=en7.toISOString().slice(0,10);
+    toast(`Producto reservado para ${cliente} ✓`,'success');
+  }catch(e){toast('Error: '+e.message,'error');}
+  finally{btn.disabled=false;btn.textContent='🔖 Reservar producto';}
+}
+
+window.renderReservas=function(){
+  const now=Date.now();
+  let filtered=reservasData;
+  if(reservaFilter==='activas') filtered=reservasData.filter(r=>r.estado==='activa');
+  else if(reservaFilter==='vencidas') filtered=reservasData.filter(r=>r.estado==='activa'&&r.fechaVencimiento<now);
+  const list=document.getElementById('reservas-list');
+  if(!filtered.length){
+    list.innerHTML=`<div class="empty"><div class="empty-icon">🔖</div><p>${reservaFilter==='activas'?'No hay reservas activas':'No hay resultados'}</p></div>`;return;
+  }
+  list.innerHTML=filtered.map(r=>{
+    const vencida=r.estado==='activa'&&r.fechaVencimiento<now;
+    const entregada=r.estado==='entregada';
+    const cancelada=r.estado==='cancelada';
+    const cardClass=entregada?'entregada':vencida?'vencida':'';
+    const fechaVenc=new Date(r.fechaVencimiento).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const fechaCreacion=new Date(r.createdAt).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const diasRestantes=Math.ceil((r.fechaVencimiento-now)/(1000*60*60*24));
+    const prod=stockData.find(x=>x.id===r.prodId);
+    const estadoLabel=entregada?'<span class="badge b-cobrado">✓ Entregada</span>':
+      cancelada?'<span class="badge b-out">✕ Cancelada</span>':
+      vencida?'<span class="badge b-vencido">⚠ Vencida</span>':
+      diasRestantes<=2?`<span class="badge b-proximo">⏰ Vence en ${diasRestantes}d</span>`:
+      '<span class="reserva-badge">🔖 Activa</span>';
+    const whatsappMsg=encodeURIComponent(`Hola ${r.cliente}! Te recuerdo que tenés reservado: ${r.cat} ${r.modelo}${r.color?' '+r.color:''} T.${r.talle}${r.cant>1?' x'+r.cant:''}. La reserva vence el ${fechaVenc}. 📦`);
+    return`<div class="reserva-card ${cardClass}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
+        <div>
+          <div style="font-weight:600;font-size:.92rem">👤 ${r.cliente} ${estadoLabel}</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:2px">${r.cat} — ${r.modelo}${r.color?' ('+r.color+')':''} · T.${r.talle}${r.cant>1?` · x${r.cant}`:''}</div>
+          ${r.notas?`<div style="font-size:.74rem;color:var(--text2);margin-top:3px">📝 ${r.notas}</div>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          ${prod?.pventa?`<div style="font-family:'Cormorant Garamond',serif;font-size:1.05rem;color:var(--accent)">$${fmt(prod.pventa*(r.cant||1))}</div>`:''}
+          <div style="font-size:.7rem;color:${vencida?'var(--danger)':diasRestantes<=2?'var(--warning)':'var(--muted)'}">
+            ${entregada||cancelada?'':'Vence: '+fechaVenc}
+          </div>
+        </div>
+      </div>
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:10px">Reservada el ${fechaCreacion} · Stock disponible: ${prod?prod.qty:'-'} uds.</div>
+      ${r.estado==='activa'?`
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-gold btn-sm" onclick="entregarReserva('${r.id}','${r.prodId}',${r.cant||1},'${r.cliente}')">✓ Marcar entregada</button>
+        <a href="https://wa.me/?text=${whatsappMsg}" target="_blank" class="btn btn-outline btn-sm" style="text-decoration:none">💬 WhatsApp</a>
+        <button class="btn btn-outline btn-sm" onclick="openEditReservaModal('${r.id}')">✏️</button>
+        <button class="btn-ghost btn btn-sm" onclick="cancelarReserva('${r.id}','${r.cliente}')">✕ Cancelar</button>
+      </div>`:`<div style="font-size:.72rem;color:var(--muted)">${entregada?'Entregada':'Cancelada'}</div>`}
+    </div>`;
+  }).join('');
+}
+
+window.entregarReserva=async function(id,prodId,cant,cliente){
+  const ok=await confirm2(`¿Marcar como entregada?`,`Se descontará ${cant} unidad${cant>1?'es':''} del stock de ${cliente}.`,'Entregar','var(--success)');
+  if(!ok)return;
+  const prod=stockData.find(x=>x.id===prodId);
+  if(!prod){toast('Producto no encontrado.','error');return;}
+  if(prod.qty<cant){toast(`Stock insuficiente: solo hay ${prod.qty} unidades.`,'error');return;}
+  try{
+    const batch=writeBatch(db);
+    batch.update(doc(db,'reservas',id),{estado:'entregada',fechaEntrega:Date.now()});
+    batch.update(doc(db,'stock',prodId),{qty:prod.qty-cant});
+    // Registrar como venta
+    batch.set(doc(collection(db,'ventas')),{
+      prodId,cat:prod.cat,modelo:prod.modelo,color:prod.color||'',talle:prod.talle,
+      pventa:prod.pventa||0,pcosto:prod.pcosto||null,cant,tipo:'reserva',fecha:Date.now()
+    });
+    await batch.commit();
+    toast(`Reserva de ${cliente} entregada — stock y venta actualizados ✓`,'success');
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+window.cancelarReserva=async function(id,cliente){
+  const ok=await confirm2(`¿Cancelar reserva?`,`Se liberará el producto reservado para ${cliente}. No se descuenta stock.`,'Cancelar reserva','var(--warning)');
+  if(!ok)return;
+  try{
+    await updateDoc(doc(db,'reservas',id),{estado:'cancelada',fechaCancelacion:Date.now()});
+    toast('Reserva cancelada','success');
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+window.openEditReservaModal=function(id){
+  const r=reservasData.find(x=>x.id===id); if(!r)return;
+  // Reutilizar confirm2 como input simple — en una versión futura podría tener modal propio
+  // Por ahora solo permitimos editar la fecha de vencimiento y notas via prompt nativo
+  const nuevaFecha=prompt(`Nueva fecha de vencimiento (actual: ${new Date(r.fechaVencimiento).toLocaleDateString('es-AR')}).\nFormato: DD/MM/AAAA`);
+  if(!nuevaFecha)return;
+  const partes=nuevaFecha.split('/');
+  if(partes.length!==3){toast('Formato incorrecto. Usá DD/MM/AAAA','error');return;}
+  const fecha=new Date(parseInt(partes[2]),parseInt(partes[1])-1,parseInt(partes[0]),23,59,59);
+  if(isNaN(fecha.getTime())){toast('Fecha inválida','error');return;}
+  updateDoc(doc(db,'reservas',id),{fechaVencimiento:fecha.getTime()})
+    .then(()=>toast('Fecha actualizada ✓','success'))
+    .catch(e=>toast('Error: '+e.message,'error'));
+}
+
 // ── AUTOCOMPLETE ──
 window.acFilter=function(inputId,listId){
   const val=document.getElementById(inputId).value.toLowerCase();
@@ -2891,7 +3468,7 @@ window.acSelectFromEl=function(el){
 document.addEventListener('click',e=>{
   if(!e.target.closest('.autocomplete-wrap')) document.querySelectorAll('.autocomplete-list').forEach(l=>l.classList.remove('open'));
   // Bug #5 fix: agregar #cuo-search a la lista de excepciones
-  if(!e.target.closest('.venta-search-wrap')&&!e.target.closest('#curva-search')&&!e.target.closest('#cp-search')&&!e.target.closest('#vs-search')&&!e.target.closest('#cuo-search')&&!e.target.closest('#multi-search'))
+  if(!e.target.closest('.venta-search-wrap')&&!e.target.closest('#curva-search')&&!e.target.closest('#cp-search')&&!e.target.closest('#vs-search')&&!e.target.closest('#cuo-search')&&!e.target.closest('#multi-search')&&!e.target.closest('#rm-search'))
     document.querySelectorAll('.venta-search-results').forEach(r=>r.classList.remove('open'));
 });
 
@@ -2906,6 +3483,7 @@ window.showTab=function(name,btn){
   if(name==='compras'){ renderComprasKPI(); renderCompras(); setCpStockMode(cpActualizaStock); }
   if(name==='gastos'){ renderGastosKPI(); renderGastos(); }
   if(name==='cobros'){ renderCobrosKPI(); renderCobros(); }
+  if(name==='reservas'){ renderReservasKPI(); renderReservas(); }
 }
 
 // ── TOAST ──
@@ -2933,6 +3511,7 @@ window.confirmResolve=function(val){
 
 function fmt(n){return Number(n).toLocaleString('es-AR');}
 document.getElementById('prod-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeProdModal();});
+document.getElementById('reserva-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeReservaModal();});
 document.getElementById('carga-masiva-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeCargaMasivaModal();});
 document.getElementById('edit-venta-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeEditVentaModal();});
 document.getElementById('edit-gasto-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeEditGastoModal();});
