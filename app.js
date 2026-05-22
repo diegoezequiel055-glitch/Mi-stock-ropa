@@ -2072,4 +2072,6 @@ document.getElementById('reserva-modal').addEventListener('click',e=>{if(e.targe
 document.getElementById('carga-masiva-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeCargaMasivaModal();});
 document.getElementById('edit-venta-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeEditVentaModal();});
 document.getElementById('edit-gasto-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeEditGastoModal();});
-document.getElementById('edit-compra-modal').addEventListener('click',e=>{if(e.target===e.currentTarg
+document.getElementById('edit-compra-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeEditCompraModal();});
+
+await init();
