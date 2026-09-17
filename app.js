@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
   onSnapshot, query, orderBy, getDocs, writeBatch, increment, getDoc, limit
@@ -118,11 +118,54 @@ const INITIAL = [
   {cat:"Short",modelo:"NBA Importado Magic",color:"Negro",talle:"XL",qty:1,pventa:null,pcosto:null,pmayorista:null},
 ];
 
+// ── LOGIN ──
+window.doLogin = async function(ev) {
+  ev.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  const btn   = document.getElementById('login-btn');
+  errEl.textContent = '';
+  btn.disabled = true; btn.textContent = 'Ingresando...';
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+    // onAuthStateChanged se encarga de mostrar la app
+  } catch(err) {
+    errEl.textContent = err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found'
+      ? 'Email o contraseña incorrectos.'
+      : 'No se pudo iniciar sesión: ' + err.message;
+    btn.disabled = false; btn.textContent = 'Ingresar';
+  }
+  return false;
+};
+
+window.doLogout = async function() {
+  if(unsubStock)  unsubStock();
+  if(unsubVentas) unsubVentas();
+  if(unsubCuotas) unsubCuotas();
+  if(unsubReservas) unsubReservas();
+  await signOut(auth);
+  // onAuthStateChanged se encarga de volver a mostrar el login
+};
+
+onAuthStateChanged(auth, user => {
+  if (user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('loader').style.display = 'flex';
+    init();
+  } else {
+    document.getElementById('loader').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    const errEl = document.getElementById('login-error');
+    if (errEl) errEl.textContent = '';
+    const btn = document.getElementById('login-btn');
+    if (btn) { btn.disabled = false; btn.textContent = 'Ingresar'; }
+  }
+});
+
 // ── INIT ──
 async function init() {
   try {
-    document.getElementById('loader-msg').textContent = 'Autenticando...';
-    await signInAnonymously(auth);
     document.getElementById('loader-msg').textContent = 'Conectando con la nube...';
     const metaRef  = doc(db,'meta','init');
     const metaSnap = await getDoc(metaRef);
@@ -2073,5 +2116,3 @@ document.getElementById('carga-masiva-modal').addEventListener('click',e=>{if(e.
 document.getElementById('edit-venta-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeEditVentaModal();});
 document.getElementById('edit-gasto-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeEditGastoModal();});
 document.getElementById('edit-compra-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeEditCompraModal();});
-
-await init();

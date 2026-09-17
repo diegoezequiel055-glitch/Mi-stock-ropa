@@ -1,0 +1,15 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "stockmgr-static",
+      "runtimeExecutable": "powershell.exe",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "C:\\Users\\Nicol\\AppData\\Local\\Temp\\claude\\C--Users-Nicol-Desktop-pet-stock\\d11db1d4-23ad-4f90-af63-d68aa0f78b1e\\scratchpad\\serve.ps1"
+      ],
+      "port": 8080
+    }
+  ]
+}
