@@ -163,23 +163,17 @@ window.cancelarReserva=async function(id){
   try{ await deleteDoc(doc(db,'reservas',id)); toast('Reserva cancelada'); }
   catch(e){ toast('Error: '+e.message,'error'); }
 }
-// Confirmar venta desde reserva: abre tab ventas con el producto pre-seleccionado
+// Confirmar venta desde reserva: abre tab ventas con el producto pre-cargado en el carrito
 window.confirmarVentaReserva=async function(id){
   const r=state.reservasData.find(x=>x.id===id); if(!r)return;
   // Eliminar la reserva y llevar al usuario a registrar la venta
   await deleteDoc(doc(db,'reservas',id));
   showTab('ventas', document.querySelector('[onclick*="ventas"]'));
-  setTipoVenta('minorista');
-  // Pre-seleccionar el producto
-  setTimeout(()=>{
-    const catSel=document.getElementById('v-cat');
-    if(catSel){ catSel.value=r.cat; fillProductosByCat(); }
-    setTimeout(()=>{
-      const prodSel=document.getElementById('v-prod');
-      if(prodSel){ prodSel.value=r.prodId; fillVentaPrecio(); }
-      document.getElementById('v-cant').value=r.cant;
-    },100);
-  },200);
+  if(!state.ventaCart.find(x=>x.prodId===r.prodId)){
+    addToUv(r.prodId);
+    const idx=state.ventaCart.findIndex(x=>x.prodId===r.prodId);
+    if(idx>=0) updateUvItem(idx,'cant',r.cant);
+  }
   toast(`Reserva de ${r.cliente} liberada — completá la venta ✓`,'success');
 }
 

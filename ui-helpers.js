@@ -16,8 +16,7 @@ window.acSelectFromEl=function(el){
 }
 document.addEventListener('click',e=>{
   if(!e.target.closest('.autocomplete-wrap')) document.querySelectorAll('.autocomplete-list').forEach(l=>l.classList.remove('open'));
-  // Bug #5 fix: agregar #cuo-search a la lista de excepciones
-  if(!e.target.closest('.venta-search-wrap')&&!e.target.closest('#curva-search')&&!e.target.closest('#cp-search')&&!e.target.closest('#vs-search')&&!e.target.closest('#cuo-search')&&!e.target.closest('#multi-search')&&!e.target.closest('#rm-search'))
+  if(!e.target.closest('.venta-search-wrap')&&!e.target.closest('#cp-search')&&!e.target.closest('#uv-search')&&!e.target.closest('#rm-search'))
     document.querySelectorAll('.venta-search-results').forEach(r=>r.classList.remove('open'));
 });
 window.toast=function(msg,type=''){

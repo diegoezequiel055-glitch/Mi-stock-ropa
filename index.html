@@ -114,160 +114,65 @@
   <div class="panel">
     <div class="panel-head">
       <h2>Registrar Venta</h2>
-      <div class="tipo-toggle">
-        <button class="tipo-btn active-min" id="tipo-min" onclick="setTipoVenta('minorista')">Minorista</button>
-        <button class="tipo-btn" id="tipo-may" onclick="setTipoVenta('mayorista')">Mayorista</button>
-        <button class="tipo-btn" id="tipo-cur" onclick="setTipoVenta('curva')">Por curva</button>
-        <button class="tipo-btn" id="tipo-cuo" onclick="setTipoVenta('cuotas')">En cuotas</button>
-        <button class="tipo-btn" id="tipo-multi" onclick="setTipoVenta('multiple')">Múltiple</button>
-      </div>
     </div>
     <div class="panel-body">
 
-      <!-- MINORISTA / MAYORISTA -->
-      <div id="form-single" class="venta-form-grid">
-        <div class="field venta-search-wrap" style="grid-column:1/-1">
-          <label>🔍 Búsqueda rápida</label>
-          <span class="search-icon" style="top:calc(50% + 10px)">🔍</span>
-          <input type="text" id="vs-search" placeholder="Escribí modelo, talle, color..." autocomplete="off" oninput="ventaSearchFilter()" onfocus="ventaSearchFilter()">
-          <div class="venta-search-results" id="vs-results"></div>
-        </div>
-        <div class="field">
-          <label>— o por Categoría</label>
-          <select id="v-cat" onchange="fillProductosByCat()" style="width:100%"><option value="">Seleccionar categoría...</option></select>
-        </div>
-        <div class="field">
-          <label>Producto</label>
-          <select id="v-prod" onchange="fillVentaPrecio()" style="width:100%"><option value="">Primero elegí categoría</option></select>
-        </div>
-        <div class="prod-preview" id="prod-preview">
-          <div class="prod-preview-title">Producto seleccionado</div>
-          <div class="prod-preview-data" id="prod-preview-data"></div>
-        </div>
-        <div class="mayorista-extra" id="mayorista-extra" style="grid-column:1/-1">
-          <span style="font-size:0.78rem;color:var(--blue)">💼 Venta mayorista — el precio se aplicará a todas las unidades</span>
-        </div>
-        <div class="field">
-          <label id="lbl-precio-venta">Precio venta ($)</label>
-          <input type="number" id="v-precio" placeholder="0" min="1">
-        </div>
-        <div class="field">
-          <label>Precio costo ($)</label>
-          <input type="number" id="v-costo" placeholder="Autocompleta si cargaste" min="0">
-        </div>
-        <div class="field">
-          <label>Cantidad</label>
-          <input type="number" id="v-cant" value="1" min="1">
-        </div>
-        <div class="field">
-          <label>Cliente <span style="color:var(--muted);font-size:.7rem">— opcional</span></label>
-          <input type="text" id="v-cliente" placeholder="Ej: Juan García...">
-        </div>
-        <div class="field" style="display:flex;align-items:flex-end">
-          <button class="btn btn-gold" id="btn-registrar-venta" style="width:100%;padding:10px" onclick="registrarVenta()">✓ Registrar venta</button>
+      <div style="margin-bottom:12px;position:relative">
+        <input type="text" id="uv-search" placeholder="🔍 Buscá un producto para agregar..." autocomplete="off" oninput="uvSearchFilter()" onfocus="uvSearchFilter()">
+        <div class="venta-search-results" id="uv-results"></div>
+      </div>
+
+      <div id="uv-items">
+        <div class="empty" style="padding:20px"><div class="empty-icon">🛒</div><p>Buscá productos para agregar a la venta</p></div>
+      </div>
+
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:14px">
+        <button class="date-btn" id="uv-btn-mayorista" onclick="toggleUvMayorista()">💼 Usar precio mayorista</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--text2);cursor:pointer">
+          <input type="checkbox" id="uv-mismo-precio" onchange="toggleUvMismoPrecio()" style="width:auto">
+          Mismo precio para todos
+        </label>
+        <div class="field" id="uv-precio-unico-wrap" style="display:none;margin:0;max-width:160px">
+          <input type="number" id="uv-precio-unico" placeholder="Precio único" min="0" oninput="applyUvPrecioUnico()">
         </div>
       </div>
 
-      <!-- CURVA -->
-      <div id="form-curva" style="display:none">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:16px">
-          <div class="field">
-            <label>Buscar producto para agregar</label>
-            <input type="text" id="curva-search" placeholder="Modelo, talle, color..." autocomplete="off" oninput="curvaSearchFilter()" onfocus="curvaSearchFilter()" style="position:relative">
-            <div class="venta-search-results" id="curva-results"></div>
-          </div>
-          <div class="field">
-            <label>Precio mayorista unitario ($)</label>
-            <input type="number" id="curva-precio-unit" placeholder="Precio de venta por unidad" min="1">
-          </div>
-          <div class="field">
-            <label>Costo unitario ($) <span style="color:var(--muted);font-size:.7rem">— para calcular ganancia</span></label>
-            <input type="number" id="curva-costo-unit" placeholder="Costo por unidad" min="0">
-          </div>
-        </div>
-        <div class="curva-items" id="curva-items">
-          <div class="empty" style="padding:20px"><div class="empty-icon">👕</div><p>Buscá y agregá productos a la curva</p></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-          <div>
-            <div style="font-size:0.75rem;color:var(--muted)">Total curva</div>
-            <div style="font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--teal)" id="curva-total">$0 — 0 prendas</div>
-          </div>
-          <button class="btn" style="background:var(--teal);color:#080808;padding:10px 24px" id="btn-registrar-curva" onclick="registrarCurva()">✓ Confirmar pedido curva</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+        <div>
+          <div style="font-size:.75rem;color:var(--muted)">Total</div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--success)" id="uv-total">$0 — 0 productos</div>
         </div>
       </div>
 
-      <!-- CUOTAS -->
-      <div id="form-cuotas" style="display:none">
-        <div class="venta-form-grid">
-          <div class="field venta-search-wrap" style="grid-column:1/-1">
-            <label>🔍 Buscar producto</label>
-            <span class="search-icon" style="top:calc(50% + 10px)">🔍</span>
-            <input type="text" id="cuo-search" placeholder="Escribí modelo, talle, color..." autocomplete="off" oninput="cuotaSearchFilter()" onfocus="cuotaSearchFilter()">
-            <div class="venta-search-results" id="cuo-results"></div>
-          </div>
-          <div class="field">
-            <label>— o por Categoría</label>
-            <select id="cuo-cat" onchange="fillCuotaProductos()" style="width:100%"><option value="">Seleccionar categoría...</option></select>
-          </div>
-          <div class="field">
-            <label>Producto</label>
-            <select id="cuo-prod" onchange="fillCuotaPrecios()" style="width:100%"><option value="">Primero elegí categoría</option></select>
-          </div>
-          <div class="prod-preview" id="cuo-preview">
-            <div class="prod-preview-title">Producto seleccionado</div>
-            <div class="prod-preview-data" id="cuo-preview-data"></div>
-          </div>
-          <div class="field">
-            <label>Nombre del cliente</label>
-            <input type="text" id="cuo-cliente" placeholder="Ej: Juan García...">
-          </div>
-          <div class="field">
-            <label>Precio total ($)</label>
-            <input type="number" id="cuo-total" placeholder="0" min="1" oninput="calcCuotas()">
-          </div>
-          <div class="field">
-            <label>Precio costo ($)</label>
-            <input type="number" id="cuo-costo" placeholder="Autocompleta si cargaste" min="0" oninput="calcCuotas()">
-          </div>
-          <div class="field">
-            <label>Cantidad de cuotas</label>
-            <select id="cuo-ncuotas" onchange="calcCuotas()">
-              <option value="2">2 cuotas</option>
-              <option value="3" selected>3 cuotas</option>
-              <option value="4">4 cuotas</option>
-              <option value="6">6 cuotas</option>
-              <option value="12">12 cuotas</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Fecha primera cuota</label>
-            <input type="date" id="cuo-fecha1">
-          </div>
-          <div class="cuota-calc" id="cuo-calc" style="display:none"></div>
-          <div class="field" style="display:flex;align-items:flex-end;grid-column:1/-1">
-            <button class="btn" id="btn-registrar-cuota" style="width:100%;padding:10px;background:var(--orange);color:#080808;font-weight:600" onclick="registrarCuota()">💳 Registrar venta en cuotas</button>
-          </div>
-        </div>
+      <div class="tipo-toggle" style="margin-top:14px">
+        <button class="tipo-btn active-min" id="uv-modo-ahora" onclick="setUvModoCobro('ahora')">Pagar ahora</button>
+        <button class="tipo-btn" id="uv-modo-cuotas" onclick="setUvModoCobro('cuotas')">En cuotas</button>
       </div>
 
-      <!-- VENTA MÚLTIPLE -->
-      <div id="form-multiple" style="display:none">
-        <div style="margin-bottom:12px">
-          <input type="text" id="multi-cliente" placeholder="👤 Cliente (opcional)..." style="margin-bottom:8px">
-          <input type="text" id="multi-search" placeholder="🔍 Buscá un producto para agregar..." autocomplete="off" oninput="multiSearchFilter()" onfocus="multiSearchFilter()">
-          <div class="venta-search-results" id="multi-results"></div>
+      <div class="venta-form-grid" style="margin-top:14px">
+        <div class="field">
+          <label>Cliente <span id="uv-cliente-req" style="color:var(--muted);font-size:.7rem">— opcional</span></label>
+          <input type="text" id="uv-cliente" placeholder="Ej: Juan García...">
         </div>
-        <div id="multi-items">
-          <div class="empty" style="padding:20px"><div class="empty-icon">🛒</div><p>Buscá productos para agregar a la venta</p></div>
+        <div class="field" id="uv-ncuotas-wrap" style="display:none">
+          <label>Cantidad de cuotas</label>
+          <select id="uv-ncuotas" onchange="calcUvCuotas()">
+            <option value="2">2 cuotas</option>
+            <option value="3" selected>3 cuotas</option>
+            <option value="4">4 cuotas</option>
+            <option value="6">6 cuotas</option>
+            <option value="12">12 cuotas</option>
+          </select>
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-          <div>
-            <div style="font-size:.75rem;color:var(--muted)">Total venta múltiple</div>
-            <div style="font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--success)" id="multi-total">$0 — 0 productos</div>
-          </div>
-          <button class="btn btn-gold" id="btn-registrar-multi" style="padding:10px 24px" onclick="registrarMultiple()">✓ Registrar todo</button>
+        <div class="field" id="uv-fecha1-wrap" style="display:none">
+          <label>Fecha primera cuota</label>
+          <input type="date" id="uv-fecha1">
         </div>
+        <div class="cuota-calc" id="uv-cuota-calc" style="display:none;grid-column:1/-1"></div>
+      </div>
+
+      <div style="margin-top:14px">
+        <button class="btn btn-gold" id="btn-registrar-uv" style="width:100%;padding:10px" onclick="registrarVentaUnificada()">✓ Registrar venta</button>
       </div>
 
     </div>

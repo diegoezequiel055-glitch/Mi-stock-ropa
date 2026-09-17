@@ -151,7 +151,7 @@ async function init() {
     const hoy = new Date().toISOString().slice(0,10);
     document.getElementById('cp-fecha').value = hoy;
     document.getElementById('ga-fecha').value = hoy;
-    document.getElementById('cuo-fecha1').value = hoy;
+    document.getElementById('uv-fecha1').value = hoy;
     // Fecha default reserva: 7 días desde hoy
     const en7 = new Date(); en7.setDate(en7.getDate()+7);
     const resFecha = document.getElementById('res-fecha');
@@ -175,7 +175,7 @@ function startListeners() {
 
   state.unsubStock = onSnapshot(collection(db,'stock'), snap=>{
     state.stockData=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderStock(); populateCategoryFilter(); fillVentaCats(); updateHeader();
+    renderStock(); populateCategoryFilter(); updateHeader();
     // Bug #19 fix: alerta de stock bajo al cargar o cambiar
     checkStockBajo();
   },err=>{ toast('Error stock: '+err.message,'error'); });
@@ -204,10 +204,6 @@ function startListeners() {
 
   // Bug #12 fix: compras y gastos se cargan una vez (no tiempo real — ahorra lecturas Firestore)
   loadCompras(); loadGastos();
-
-  // Fix curva listeners
-  document.getElementById('curva-precio-unit').addEventListener('input', renderCurvaItems);
-  document.getElementById('curva-costo-unit').addEventListener('input', renderCurvaItems);
 
   document.getElementById('loader').style.display='none';
 }
