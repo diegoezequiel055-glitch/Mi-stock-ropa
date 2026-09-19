@@ -180,7 +180,7 @@ function startListeners() {
     checkStockBajo();
   },err=>{ toast('Error stock: '+err.message,'error'); });
 
-  state.unsubVentas = onSnapshot(query(collection(db,'ventas'),orderBy('fecha','desc'),limit(200)), snap=>{
+  state.unsubVentas = onSnapshot(query(collection(db,'ventas'),orderBy('fecha','desc')), snap=>{
     state.ventasData=snap.docs.map(d=>{ const r=d.data(); return{id:d.id,...r,pventa:r.pventa??r.precio??0,cant:r.cant??r.cantidad??1,pcosto:r.pcosto??r.costo??null}; });
     renderVentas(); renderComprasKPI(); renderDashboard();
     if(document.getElementById('tab-ganancias').classList.contains('active')) renderGanancias();
@@ -189,7 +189,7 @@ function startListeners() {
 
   state.unsubCuotas = onSnapshot(query(collection(db,'cuotas'),orderBy('createdAt','desc'),limit(100)), snap=>{
     state.cuotasData=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderCobros(); renderCobrosKPI(); updateHeader(); renderDashboard(); updateCobrosTabBadge();
+    renderCobros(); renderCobrosKPI(); updateHeader(); renderDashboard(); updateCobrosTabBadge(); renderVentas();
     if(document.getElementById('tab-ganancias').classList.contains('active')) renderGanancias();
   },err=>{ toast('Error cuotas: '+err.message,'error'); });
 
