@@ -8,7 +8,7 @@ import './cuotas.js';
 import './compras.js';
 import './gastos.js';
 import './reservas.js';
-import './ganancias.js';
+import './resumen-dia.js';
 import './carga-rapida.js';
 import './dashboard.js';
 import './corregir-fechas.js';
@@ -186,15 +186,13 @@ function startListeners() {
 
   state.unsubVentas = onSnapshot(query(collection(db,'ventas'),orderBy('fecha','desc')), snap=>{
     state.ventasData=snap.docs.map(d=>{ const r=d.data(); return{id:d.id,...r,pventa:r.pventa??r.precio??0,cant:r.cant??r.cantidad??1,pcosto:r.pcosto??r.costo??null}; });
-    renderVentas(); renderComprasKPI(); renderDashboard();
-    if(document.getElementById('tab-ganancias').classList.contains('active')) renderGanancias();
+    renderVentas(); renderComprasKPI(); renderResumenDia();
     updateHeader();
   },err=>{ toast('Error ventas: '+err.message,'error'); });
 
   state.unsubCuotas = onSnapshot(query(collection(db,'cuotas'),orderBy('createdAt','desc')), snap=>{
     state.cuotasData=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderCobros(); renderCobrosKPI(); updateHeader(); renderDashboard(); updateCobrosTabBadge(); renderVentas();
-    if(document.getElementById('tab-ganancias').classList.contains('active')) renderGanancias();
+    renderCobros(); renderCobrosKPI(); updateHeader(); renderResumenDia(); updateCobrosTabBadge(); renderVentas();
   },err=>{ toast('Error cuotas: '+err.message,'error'); });
 
   if(state.unsubReservas) state.unsubReservas();
@@ -232,9 +230,8 @@ window.showTab=function(name,btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   if(btn)btn.classList.add('active');
-  // Bug #4 fix: lazy render para todas las tabs, no solo ganancias
+  // Render diferido: cada pestaña se dibuja al abrirla
   if(name==='dashboard'){ dbRender(); }
-  if(name==='ganancias'){ buildMesOptions(); renderFlujoCaja(); renderGanancias(); }
   if(name==='compras'){ renderComprasKPI(); renderCompras(); setCpStockMode(state.cpActualizaStock); }
   if(name==='gastos'){ renderGastosKPI(); renderGastos(); }
   if(name==='cobros'){ renderCobrosKPI(); renderCobros(); }

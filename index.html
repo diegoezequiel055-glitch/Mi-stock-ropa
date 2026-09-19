@@ -53,7 +53,6 @@
   <button class="tab" onclick="showTab('reservas',this)">🔖 Reservas</button>
   <button class="tab" onclick="showTab('compras',this)">📥 Compras</button>
   <button class="tab" onclick="showTab('gastos',this)">💸 Gastos</button>
-  <button class="tab" onclick="showTab('ganancias',this)">📊 Ganancias</button>
 </nav>
 
 <main>
@@ -236,6 +235,7 @@
           <button class="date-btn" onclick="setDateFilter('month',this)">Este mes</button>
         </div>
         <button class="btn btn-outline btn-sm" onclick="openFechasModal()" style="font-size:.72rem" title="Mover ventas cargadas tarde a su fecha real">🗓 Corregir fechas</button>
+        <button class="btn btn-outline btn-sm" onclick="exportCSV()" style="font-size:.72rem" title="Descargar el reporte de ventas y rentabilidad por producto">⬇ Exportar CSV</button>
       </div>
     </div>
     <div class="panel-body" id="ventas-list"></div>
@@ -410,49 +410,6 @@
       </div>
     </div>
     <div class="panel-body" id="gastos-list"></div>
-  </div>
-</div>
-
-<!-- ══ GANANCIAS ══ -->
-<div id="tab-ganancias" class="section">
-  <div class="kpi-grid">
-    <div class="kpi green"><div class="v" id="g-ing">$0</div><div class="l">Ingresos totales</div></div>
-    <div class="kpi red"><div class="v" id="g-cos">$0</div><div class="l">Costos de productos</div></div>
-    <div class="kpi red"><div class="v" id="g-gas">$0</div><div class="l">Gastos del negocio</div></div>
-    <div class="kpi gold"><div class="v" id="g-gan">$0</div><div class="l">Ganancia neta real</div></div>
-    <div class="kpi purple"><div class="v" id="g-mar">0%</div><div class="l">Margen promedio</div></div>
-  </div>
-
-  <div class="panel">
-    <div class="panel-head">
-      <h2>Flujo de caja mensual</h2>
-      <select id="g-mes-sel" onchange="renderFlujoCaja()" style="width:auto"></select>
-    </div>
-    <div class="panel-body" id="flujo-caja-body">
-      <div class="empty"><div class="empty-icon">📅</div><p>Seleccioná un mes para ver el detalle</p></div>
-    </div>
-  </div>
-
-  <div class="panel">
-    <div class="panel-head">
-      <h2>🏆 Top 10 más vendidos</h2>
-    </div>
-    <div class="panel-body" id="top-productos-body">
-      <div class="empty"><div class="empty-icon">📦</div><p>Registrá ventas para ver el ranking</p></div>
-    </div>
-  </div>
-
-  <div class="panel">
-    <div class="panel-head">
-      <h2>Rentabilidad por producto</h2>
-      <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ Exportar CSV</button>
-    </div>
-    <div class="table-scroll">
-      <table>
-        <thead><tr><th>Producto</th><th>Tipo</th><th>Unidades</th><th>Ingresos</th><th>Costos</th><th>Ganancia</th><th>Margen</th></tr></thead>
-        <tbody id="gan-tbody"></tbody>
-      </table>
-    </div>
   </div>
 </div>
 
