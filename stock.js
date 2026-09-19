@@ -16,6 +16,8 @@ window.updateStockKPIs = function(){
   document.getElementById('k-total').textContent=total;
   document.getElementById('k-prods').textContent=state.stockData.length;
   document.getElementById('k-sinprecio').textContent=state.stockData.filter(p=>!p.pventa).length;
+  document.getElementById('k-sincosto').textContent=state.stockData.filter(p=>!p.pcosto).length;
+  document.getElementById('kpi-sincosto').style.outline=state.filtroSinCosto?'2px solid var(--danger)':'none';
   document.getElementById('k-liq').textContent=state.stockData.filter(p=>p.modelo.toLowerCase().includes('liquidación')).reduce((a,p)=>a+p.qty,0);
   // F#1: valor del inventario
   const kVal=document.getElementById('k-valor');
@@ -25,7 +27,7 @@ window.renderStock = function() {
   const q    = (document.getElementById('s-search')?.value||'').toLowerCase();
   const cat  = document.getElementById('s-cat')?.value||'';
   const sort = document.getElementById('s-sort')?.value||'cat';
-  let filtered = state.stockData.filter(p=>{ const txt=[p.cat,p.modelo,p.color||'',p.talle].join(' ').toLowerCase(); return(!q||txt.includes(q))&&(!cat||p.cat===cat); });
+  let filtered = state.stockData.filter(p=>{ const txt=[p.cat,p.modelo,p.color||'',p.talle].join(' ').toLowerCase(); return(!q||txt.includes(q))&&(!cat||p.cat===cat)&&(!state.filtroSinCosto||!p.pcosto); });
   filtered.sort((a,b)=>{
     if(sort==='cat') return a.cat.localeCompare(b.cat)||a.modelo.localeCompare(b.modelo);
     if(sort==='qty-asc') return a.qty-b.qty; if(sort==='qty-desc') return b.qty-a.qty;
@@ -33,7 +35,7 @@ window.renderStock = function() {
     return 0;
   });
   updateStockKPIs();
-  const renderKey = filtered.map(p=>`${p.id}:${p.qty}:${p.pventa}:${p.pcosto}`).join('|')+'|'+q+'|'+cat+'|'+sort;
+  const renderKey = filtered.map(p=>`${p.id}:${p.qty}:${p.pventa}:${p.pcosto}:${p.pmayorista}:${p.pcurva}`).join('|')+'|'+q+'|'+cat+'|'+sort+'|'+state.filtroSinCosto;
   if(!state.inventarioMode && renderKey === state.lastStockRenderKey) return;
   state.lastStockRenderKey = renderKey;
 
@@ -43,18 +45,19 @@ window.renderStock = function() {
     const qtyCell=state.inventarioMode
       ? `<td><input type="number" value="${state.inventarioCounts[p.id]??p.qty}" min="0" onchange="setInventarioCant('${p.id}',this.value)" style="width:70px;text-align:center;${(state.inventarioCounts[p.id]!==undefined&&state.inventarioCounts[p.id]!==p.qty)?'background:rgba(212,168,67,.15);border-color:var(--accent)':''}"></td>`
       : `<td><div class="qty-ctrl"><button class="qty-btn" onclick="adjustQty('${p.id}',-1)">−</button><span class="qty-val" style="color:${p.qty===0?'var(--danger)':p.qty<=1?'var(--warning)':'var(--text)'}">${p.qty}</span><button class="qty-btn" onclick="adjustQty('${p.id}',1)">+</button></div></td>`;
-    return`<tr>
+    return`<tr${p.pcosto?'':' style="box-shadow:inset 3px 0 0 var(--danger)"'}>
       <td><span style="font-size:.75rem;color:var(--muted)">${p.cat}</span></td>
       <td><strong style="font-size:.86rem">${p.modelo}</strong>${p.notas?`<div style="font-size:.68rem;color:var(--warning);margin-top:2px">📝 ${p.notas}</div>`:''}</td>
       <td>${p.color||'<span style="color:var(--muted)">—</span>'}</td>
       <td><strong>${p.talle}</strong></td>
       ${qtyCell}
-      <td>${p.pventa?'$'+fmt(p.pventa):'<span style="color:var(--muted)">—</span>'}</td>
+      <td>${p.pcosto?'$'+fmt(p.pcosto):'<span style="color:var(--danger);font-size:.72rem;font-weight:600;white-space:nowrap">⚠ Sin costo</span>'}</td>
       <td>${p.pmayorista?'<span style="color:var(--blue)">$'+fmt(p.pmayorista)+'</span>':'<span style="color:var(--muted)">—</span>'}</td>
-      <td>${p.pcosto?'$'+fmt(p.pcosto):'<span style="color:var(--muted)">—</span>'}</td>
+      <td>${p.pcurva?'<span style="color:var(--teal)">$'+fmt(p.pcurva)+'</span>':'<span style="color:var(--muted)">—</span>'}</td>
+      <td>${p.pventa?'$'+fmt(p.pventa):'<span style="color:var(--muted)">—</span>'}</td>
       <td><span class="badge ${badge}">${label}</span></td>
       <td>${state.inventarioMode?`<span style="font-size:.72rem;color:${state.inventarioCounts[p.id]!==undefined&&state.inventarioCounts[p.id]!==p.qty?'var(--accent)':'var(--muted)'}">${state.inventarioCounts[p.id]!==undefined&&state.inventarioCounts[p.id]!==p.qty?`era ${p.qty}`:''}</span>`:`<button class="btn btn-outline btn-sm" onclick="openProductModal('${p.id}')">✏️ Editar</button>`}</td>
-    </tr>`; }).join(''):`<tr><td colspan="10"><div class="empty"><div class="empty-icon">📦</div><p>No hay productos</p></div></td></tr>`;
+    </tr>`; }).join(''):`<tr><td colspan="11"><div class="empty"><div class="empty-icon">📦</div><p>No hay productos</p></div></td></tr>`;
 
   const cards=document.getElementById('stock-cards');
   cards.innerHTML=filtered.length?filtered.map(p=>{
@@ -62,13 +65,18 @@ window.renderStock = function() {
     const qtyMobile=state.inventarioMode
       ? `<input type="number" value="${state.inventarioCounts[p.id]??p.qty}" min="0" onchange="setInventarioCant('${p.id}',this.value)" style="width:60px;text-align:center">`
       : `<div class="qty-ctrl"><button class="qty-btn" onclick="adjustQty('${p.id}',-1)">−</button><span class="qty-val" style="color:${p.qty===0?'var(--danger)':p.qty<=1?'var(--warning)':'var(--text)'}">${p.qty}</span><button class="qty-btn" onclick="adjustQty('${p.id}',1)">+</button></div>`;
-    return`<div class="stock-card">
+    const chip=(txt,color)=>`<span style="font-size:.74rem;color:var(--muted);white-space:nowrap">${txt} <strong style="color:${color}">`;
+    return`<div class="stock-card"${p.pcosto?'':' style="border-left:3px solid var(--danger)"'}>
       <div class="stock-card-head"><div><div class="stock-card-title">${p.modelo}</div><div class="stock-card-sub">${p.cat}${p.color?' · '+p.color:''} · T.${p.talle}${p.notas?' · 📝 '+p.notas:''}</div></div><span class="badge ${badge}">${label}</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px">
+        ${p.pcosto?`${chip('Costo','var(--text2)')}$${fmt(p.pcosto)}</strong></span>`:'<span style="font-size:.74rem;font-weight:600;color:var(--danger)">⚠ Sin costo</span>'}
+        ${p.pmayorista?`${chip('May','var(--blue)')}$${fmt(p.pmayorista)}</strong></span>`:''}
+        ${p.pcurva?`${chip('Curva','var(--teal)')}$${fmt(p.pcurva)}</strong></span>`:''}
+        ${p.pventa?`${chip('Menor','var(--accent)')}$${fmt(p.pventa)}</strong></span>`:''}
+      </div>
       <div class="stock-card-row">
         <div style="display:flex;gap:14px;align-items:center">
           ${qtyMobile}
-          ${p.pventa?`<span style="font-size:.78rem;color:var(--muted)">$<strong style="color:var(--accent)">${fmt(p.pventa)}</strong></span>`:''}
-          ${p.pmayorista?`<span style="font-size:.78rem;color:var(--muted)">May <strong style="color:var(--blue)">$${fmt(p.pmayorista)}</strong></span>`:''}
         </div>
         ${state.inventarioMode?'':`<button class="btn btn-outline btn-sm" onclick="openProductModal('${p.id}')">✏️ Editar</button>`}
       </div>
@@ -113,6 +121,7 @@ window.openProductModal=function(id){
   document.getElementById('pm-qty').value=p?.qty??1;
   document.getElementById('pm-pventa').value=p?.pventa||'';
   document.getElementById('pm-pmayorista').value=p?.pmayorista||'';
+  document.getElementById('pm-pcurva').value=p?.pcurva||'';
   document.getElementById('pm-pcosto').value=p?.pcosto||'';
   document.getElementById('pm-notas').value=p?.notas||''; // F#3
   // F#4: mostrar historial de precio de costo
@@ -137,21 +146,35 @@ window.saveProduct=async function(){
   const pventa=parseFloat(document.getElementById('pm-pventa').value)||null;
   const pcosto=parseFloat(document.getElementById('pm-pcosto').value)||null;
   const pmayorista=parseFloat(document.getElementById('pm-pmayorista').value)||null;
-  if(pventa&&pventa<0){toast('El precio no puede ser negativo.','error');return;}
-  if(pcosto&&pventa&&pcosto>=pventa) toast('⚠️ El costo supera el precio de venta.','error');
+  const pcurva=parseFloat(document.getElementById('pm-pcurva').value)||null;
+  if(!pcosto||pcosto<=0){toast('El precio de costo es obligatorio.','error');document.getElementById('pm-pcosto').focus();return;}
+  if([pventa,pmayorista,pcurva].some(v=>v!==null&&v<0)){toast('Los precios no pueden ser negativos.','error');return;}
+  const avisos=precioAvisos({pcosto,pmayorista,pcurva,pventa});
   const data={cat,modelo,color:document.getElementById('pm-color').value.trim(),talle,
     qty:parseInt(document.getElementById('pm-qty').value)||0,
-    pventa,pcosto,pmayorista,
+    pventa,pcosto,pmayorista,pcurva,
     notas:document.getElementById('pm-notas').value.trim()||null // F#3
   };
   const btn=document.getElementById('pm-save-btn'); btn.disabled=true; btn.textContent='Guardando...';
   try{
     const id=document.getElementById('pm-id').value;
-    if(id){await updateDoc(doc(db,'stock',id),data);toast('Producto actualizado ✓','success');}
-    else{await addDoc(collection(db,'stock'),{...data,createdAt:Date.now()});toast('Producto agregado ✓','success');}
+    if(id){await updateDoc(doc(db,'stock',id),data);toast('Producto actualizado ✓'+avisos,'success');}
+    else{await addDoc(collection(db,'stock'),{...data,createdAt:Date.now()});toast('Producto agregado ✓'+avisos,'success');}
     closeProdModal();
   }catch(e){toast('Error: '+e.message,'error');}
   finally{btn.disabled=false;btn.textContent='Guardar';}
+}
+window.precioAvisos=function({pcosto,pmayorista,pcurva,pventa}){
+  const faltan=[['Mayorista',pmayorista],['Curva',pcurva],['Menor',pventa]].filter(([,v])=>!v).map(([n])=>n);
+  const bajos=[['Mayorista',pmayorista],['Curva',pcurva],['Menor',pventa]].filter(([,v])=>v&&v<=pcosto).map(([n])=>n);
+  let msg='';
+  if(faltan.length) msg+=` · Faltan: ${faltan.join(', ')}`;
+  if(bajos.length) msg+=` · ⚠ ${bajos.join(', ')} no supera el costo`;
+  return msg;
+}
+window.toggleFiltroSinCosto=function(){
+  state.filtroSinCosto=!state.filtroSinCosto;
+  renderStock();
 }
 window.delProductFromModal=async function(){
   const id=document.getElementById('pm-id').value; if(!id)return;
@@ -191,10 +214,10 @@ window.exportCSV=function(){
 
 window.exportStockCSV=function(){
   if(!state.stockData.length){toast('No hay productos para exportar.','error');return;}
-  const rows=[['Categoría','Modelo','Color','Talle','Cantidad','Precio venta','Precio mayorista','Precio costo','Notas']];
+  const rows=[['Categoría','Modelo','Color','Talle','Cantidad','Precio costo','Precio mayorista','Precio curva','Precio menor','Notas']];
   [...state.stockData]
     .sort((a,b)=>a.cat.localeCompare(b.cat)||a.modelo.localeCompare(b.modelo)||String(a.talle).localeCompare(String(b.talle)))
-    .forEach(p=>rows.push([p.cat,p.modelo,p.color||'',p.talle,p.qty,p.pventa??'',p.pmayorista??'',p.pcosto??'',p.notas||'']));
+    .forEach(p=>rows.push([p.cat,p.modelo,p.color||'',p.talle,p.qty,p.pcosto??'',p.pmayorista??'',p.pcurva??'',p.pventa??'',p.notas||'']));
   const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
@@ -266,6 +289,7 @@ window.openCargaMasivaModal=function(){
   document.getElementById('cm2-color').value='';
   document.getElementById('cm2-pventa').value='';
   document.getElementById('cm2-pmayorista').value='';
+  document.getElementById('cm2-pcurva').value='';
   document.getElementById('cm2-pcosto').value='';
   document.querySelectorAll('.talle-chip').forEach(c=>c.classList.remove('selected'));
   document.getElementById('cm2-talles-config').style.display='none';
@@ -313,8 +337,11 @@ window.saveCargaMasiva=async function(){
   const color=document.getElementById('cm2-color').value.trim();
   const pventa=parseFloat(document.getElementById('cm2-pventa').value)||null;
   const pmayorista=parseFloat(document.getElementById('cm2-pmayorista').value)||null;
+  const pcurva=parseFloat(document.getElementById('cm2-pcurva').value)||null;
   const pcosto=parseFloat(document.getElementById('cm2-pcosto').value)||null;
   if(!cat||!modelo){ toast('Completá categoría y modelo.','error'); return; }
+  if(!pcosto||pcosto<=0){ toast('El precio de costo es obligatorio.','error'); document.getElementById('cm2-pcosto').focus(); return; }
+  if([pventa,pmayorista,pcurva].some(v=>v!==null&&v<0)){ toast('Los precios no pueden ser negativos.','error'); return; }
   const keys=Object.keys(state.tallesSeleccionados);
   if(!keys.length){ toast('Seleccioná al menos un talle.','error'); return; }
   const btn=document.getElementById('cm2-save-btn'); btn.disabled=true; btn.textContent='Guardando...';
@@ -328,16 +355,17 @@ window.saveCargaMasiva=async function(){
         const upd={qty:existe.qty+qty};
         if(pventa) upd.pventa=pventa;
         if(pmayorista) upd.pmayorista=pmayorista;
+        if(pcurva) upd.pcurva=pcurva;
         if(pcosto) upd.pcosto=pcosto;
         batch.update(doc(db,'stock',existe.id),upd);
       } else {
         const ref=doc(collection(db,'stock'));
-        batch.set(ref,{cat,modelo,color,talle,qty,pventa,pmayorista,pcosto,notas:null,createdAt:Date.now()});
+        batch.set(ref,{cat,modelo,color,talle,qty,pventa,pmayorista,pcurva,pcosto,notas:null,createdAt:Date.now()});
       }
     }
     await batch.commit();
     const total=Object.values(state.tallesSeleccionados).reduce((a,b)=>a+b,0);
-    toast(`${keys.length} talles guardados — ${total} unidades ✓`,'success');
+    toast(`${keys.length} talles guardados — ${total} unidades ✓`+precioAvisos({pcosto,pmayorista,pcurva,pventa}),'success');
     closeCargaMasivaModal();
   }catch(e){ toast('Error: '+e.message,'error'); }
   finally{ btn.disabled=false; btn.textContent='Guardar todos'; }

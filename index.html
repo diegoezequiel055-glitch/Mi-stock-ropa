@@ -65,7 +65,8 @@
   <div class="kpi-grid">
     <div class="kpi gold"><div class="v" id="k-total">—</div><div class="l">Unidades en stock</div></div>
     <div class="kpi green"><div class="v" id="k-prods">—</div><div class="l">Referencias</div></div>
-    <div class="kpi red"><div class="v" id="k-sinprecio">—</div><div class="l">Sin precio</div></div>
+    <div class="kpi red" id="kpi-sincosto" onclick="toggleFiltroSinCosto()" style="cursor:pointer" title="Tocá para ver solo los productos sin costo"><div class="v" id="k-sincosto">—</div><div class="l">⚠ Sin costo · tocá para filtrar</div></div>
+    <div class="kpi red"><div class="v" id="k-sinprecio">—</div><div class="l">Sin precio menor</div></div>
     <div class="kpi purple"><div class="v" id="k-liq">—</div><div class="l">Liquidación</div></div>
     <div class="kpi teal"><div class="v" id="k-valor">—</div><div class="l">Valor inventario</div></div>
   </div>
@@ -94,7 +95,7 @@
     </div>
     <div class="table-wrap-desktop table-scroll">
       <table>
-        <thead><tr><th>Categoría</th><th>Modelo</th><th>Color</th><th>Talle</th><th>Stock</th><th>P. Venta</th><th>P. Mayor</th><th>P. Costo</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Categoría</th><th>Modelo</th><th>Color</th><th>Talle</th><th>Stock</th><th>P. Costo</th><th>P. Mayor</th><th>P. Curva</th><th>P. Menor</th><th>Estado</th><th>Acciones</th></tr></thead>
         <tbody id="stock-tbody"></tbody>
       </table>
     </div>
@@ -117,6 +118,13 @@
     </div>
     <div class="panel-body">
 
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+        <span style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Precio a usar:</span>
+        <button class="date-btn active" id="uv-tp-menor" onclick="setUvTipoPrecio('menor')">Menor</button>
+        <button class="date-btn" id="uv-tp-mayorista" onclick="setUvTipoPrecio('mayorista')">Mayorista</button>
+        <button class="date-btn" id="uv-tp-curva" onclick="setUvTipoPrecio('curva')">Curva</button>
+      </div>
+
       <div style="margin-bottom:12px;position:relative">
         <input type="text" id="uv-search" placeholder="🔍 Buscá un producto para agregar..." autocomplete="off" oninput="uvSearchFilter()" onfocus="uvSearchFilter()">
         <div class="venta-search-results" id="uv-results"></div>
@@ -124,17 +132,6 @@
 
       <div id="uv-items">
         <div class="empty" style="padding:20px"><div class="empty-icon">🛒</div><p>Buscá productos para agregar a la venta</p></div>
-      </div>
-
-      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:14px">
-        <button class="date-btn" id="uv-btn-mayorista" onclick="toggleUvMayorista()">💼 Usar precio mayorista</button>
-        <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--text2);cursor:pointer">
-          <input type="checkbox" id="uv-mismo-precio" onchange="toggleUvMismoPrecio()" style="width:auto">
-          Mismo precio para todos
-        </label>
-        <div class="field" id="uv-precio-unico-wrap" style="display:none;margin:0;max-width:160px">
-          <input type="number" id="uv-precio-unico" placeholder="Precio único" min="0" oninput="applyUvPrecioUnico()">
-        </div>
       </div>
 
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
@@ -521,17 +518,21 @@
         <label>Color (opcional)</label>
         <input type="text" id="cm2-color" placeholder="Ej: Negro, Azul...">
       </div>
-      <div class="field">
-        <label>Precio de venta ($)</label>
-        <input type="number" id="cm2-pventa" placeholder="0" min="0">
+      <div class="field" style="grid-column:1/-1">
+        <label>Precio de costo ($) <span style="color:var(--danger);font-size:0.7rem">— obligatorio</span></label>
+        <input type="number" id="cm2-pcosto" placeholder="0" min="0">
       </div>
       <div class="field">
-        <label>Precio mayorista ($)</label>
+        <label>Mayorista ($) <span style="color:var(--muted);font-size:0.7rem">— recomendado</span></label>
         <input type="number" id="cm2-pmayorista" placeholder="0" min="0">
       </div>
       <div class="field">
-        <label>Precio de costo ($)</label>
-        <input type="number" id="cm2-pcosto" placeholder="0" min="0">
+        <label>Curva ($) <span style="color:var(--muted);font-size:0.7rem">— recomendado</span></label>
+        <input type="number" id="cm2-pcurva" placeholder="0" min="0">
+      </div>
+      <div class="field">
+        <label>Menor / unidad ($) <span style="color:var(--muted);font-size:0.7rem">— recomendado</span></label>
+        <input type="number" id="cm2-pventa" placeholder="0" min="0">
       </div>
     </div>
     <hr class="divider">
@@ -720,18 +721,22 @@
         <label>Cantidad</label>
         <input type="number" id="pm-qty" value="1" min="0">
       </div>
-      <div class="field">
-        <label>Precio de venta ($)</label>
-        <input type="number" id="pm-pventa" placeholder="0" min="0">
-      </div>
-      <div class="field">
-        <label>Precio mayorista ($) <span style="color:var(--muted);font-size:0.7rem">— opcional</span></label>
-        <input type="number" id="pm-pmayorista" placeholder="0" min="0">
-      </div>
       <div class="field" style="grid-column:1/-1">
-        <label>Precio de costo ($) <span style="color:var(--muted);font-size:0.7rem">— para calcular ganancias</span></label>
+        <label>Precio de costo ($) <span style="color:var(--danger);font-size:0.7rem">— obligatorio</span></label>
         <input type="number" id="pm-pcosto" placeholder="0" min="0">
         <div id="pm-hist-costo" style="margin-top:6px;font-size:.72rem;color:var(--muted)"></div>
+      </div>
+      <div class="field">
+        <label>Mayorista ($) <span style="color:var(--muted);font-size:0.7rem">— recomendado</span></label>
+        <input type="number" id="pm-pmayorista" placeholder="0" min="0">
+      </div>
+      <div class="field">
+        <label>Curva ($) <span style="color:var(--muted);font-size:0.7rem">— recomendado</span></label>
+        <input type="number" id="pm-pcurva" placeholder="0" min="0">
+      </div>
+      <div class="field">
+        <label>Menor / unidad ($) <span style="color:var(--muted);font-size:0.7rem">— recomendado</span></label>
+        <input type="number" id="pm-pventa" placeholder="0" min="0">
       </div>
       <div class="field" style="grid-column:1/-1">
         <label>Notas <span style="color:var(--muted);font-size:0.7rem">— opcional, uso interno</span></label>

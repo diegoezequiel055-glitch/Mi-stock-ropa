@@ -4,6 +4,10 @@ import { db, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, 
 // ══════════════════════════════════════════
 // REGISTRAR VENTA — carrito único
 // ══════════════════════════════════════════
+const TIPOS_PRECIO={menor:'Menor',mayorista:'Mayorista',curva:'Curva'};
+const TIPO_VENTA={menor:'minorista',mayorista:'mayorista',curva:'curva'};
+const precioSegunTipo=(p,tipo)=>(tipo==='mayorista'?p.pmayorista:tipo==='curva'?p.pcurva:p.pventa)||0;
+
 window.uvSearchFilter=function(){
   const q=document.getElementById('uv-search').value.toLowerCase().trim();
   const results=document.getElementById('uv-results');
@@ -11,7 +15,7 @@ window.uvSearchFilter=function(){
   const matches=state.stockData.filter(p=>p.qty>0).filter(p=>[p.cat,p.modelo,p.color||'',p.talle].join(' ').toLowerCase().includes(q)).slice(0,8);
   results.innerHTML=matches.length?matches.map(p=>`<div class="vs-item" onmousedown="addToUv('${p.id}')">
     <div class="vs-item-title">${p.modelo}${p.color?' — '+p.color:''}</div>
-    <div class="vs-item-sub"><span>${p.cat}</span><span>T.${p.talle}</span><span style="color:${p.qty<=1?'var(--warning)':'var(--success)'}">x${p.qty}</span>${p.pventa?`<span style="color:var(--accent)">$${fmt(p.pventa)}</span>`:''}${p.pmayorista?`<span style="color:var(--blue)">May $${fmt(p.pmayorista)}</span>`:''}</div>
+    <div class="vs-item-sub"><span>${p.cat}</span><span>T.${p.talle}</span><span style="color:${p.qty<=1?'var(--warning)':'var(--success)'}">x${p.qty}</span>${p.pventa?`<span style="color:var(--accent)">Menor $${fmt(p.pventa)}</span>`:''}${p.pmayorista?`<span style="color:var(--blue)">May $${fmt(p.pmayorista)}</span>`:''}${p.pcurva?`<span style="color:var(--teal)">Curva $${fmt(p.pcurva)}</span>`:''}</div>
   </div>`).join(''):`<div class="vs-item"><div class="vs-item-title" style="color:var(--muted)">Sin resultados</div></div>`;
   results.classList.add('open');
 }
@@ -19,8 +23,8 @@ window.addToUv=function(id){
   const p=state.stockData.find(x=>x.id===id); if(!p)return;
   if(state.ventaCart.find(x=>x.prodId===id)){toast('Ya está en la lista. Cambiá la cantidad.','error');return;}
   if(state.uvModo==='cuotas'&&state.ventaCart.length>=1){toast('En cuotas solo se puede vender un producto a la vez.','error');return;}
-  const precioBase=state.uvMayorista&&p.pmayorista?p.pmayorista:(p.pventa||0);
-  state.ventaCart.push({prodId:id,cant:1,pventa:precioBase,pcosto:p.pcosto||0});
+  const tipoPrecio=state.uvTipoPrecio;
+  state.ventaCart.push({prodId:id,cant:1,tipoPrecio,pventa:precioSegunTipo(p,tipoPrecio),pcosto:p.pcosto||0});
   document.getElementById('uv-search').value='';
   document.getElementById('uv-results').classList.remove('open');
   renderUvItems();
@@ -31,6 +35,24 @@ window.updateUvItem=function(idx,field,val){
   renderUvItems();
 }
 window.removeUvItem=function(idx){ state.ventaCart.splice(idx,1); renderUvItems(); }
+window.setUvItemTipo=function(idx,tipo){
+  const item=state.ventaCart[idx];
+  const p=state.stockData.find(x=>x.id===item.prodId); if(!p)return;
+  item.tipoPrecio=tipo;
+  item.pventa=precioSegunTipo(p,tipo);
+  renderUvItems();
+}
+window.setUvTipoPrecio=function(tipo){
+  state.uvTipoPrecio=tipo;
+  Object.keys(TIPOS_PRECIO).forEach(t=>document.getElementById('uv-tp-'+t).classList.toggle('active',t===tipo));
+  // El selector de arriba re-precia todo el carrito; después se puede cambiar fila por fila
+  state.ventaCart.forEach(item=>{
+    const p=state.stockData.find(x=>x.id===item.prodId); if(!p)return;
+    item.tipoPrecio=tipo;
+    item.pventa=precioSegunTipo(p,tipo);
+  });
+  renderUvItems();
+}
 function renderUvItems(){
   const cont=document.getElementById('uv-items');
   if(!state.ventaCart.length){
@@ -42,12 +64,20 @@ function renderUvItems(){
     const p=state.stockData.find(x=>x.id===item.prodId); if(!p)return'';
     const subtotal=item.pventa*item.cant;
     totalMonto+=subtotal; totalItems+=item.cant;
-    const gan=item.pcosto?(item.pventa-item.pcosto)*item.cant:null;
+    const gan=item.pcosto&&item.pventa?(item.pventa-item.pcosto)*item.cant:null;
     const cantDisabled=state.uvModo==='cuotas'; // en cuotas se vende 1 unidad del producto
-    return`<div class="mventa-item">
-      <div><div style="font-size:.85rem;font-weight:500">${p.modelo}${p.color?' ('+p.color+')':''}</div><div style="font-size:.72rem;color:var(--muted)">${p.cat} · T.${p.talle} · Stock: ${p.qty}</div></div>
+    const falta=!item.pventa;
+    return`<div class="mventa-item"${falta?' style="border-color:var(--danger)"':''}>
+      <div>
+        <div style="font-size:.85rem;font-weight:500">${p.modelo}${p.color?' ('+p.color+')':''}</div>
+        <div style="font-size:.72rem;color:var(--muted)">${p.cat} · T.${p.talle} · Stock: ${p.qty}</div>
+        <select onchange="setUvItemTipo(${idx},this.value)" style="width:auto;padding:3px 8px;font-size:.72rem;margin-top:4px">
+          ${Object.entries(TIPOS_PRECIO).map(([t,n])=>`<option value="${t}"${t===item.tipoPrecio?' selected':''}>${n}</option>`).join('')}
+        </select>
+        ${falta?`<div style="font-size:.7rem;color:var(--danger);margin-top:4px">⚠ Falta precio ${TIPOS_PRECIO[item.tipoPrecio].toLowerCase()} — escribilo o cambiá el tipo</div>`:''}
+      </div>
       <input type="number" value="${item.cant}" min="1" max="${p.qty}" onchange="updateUvItem(${idx},'cant',this.value)" ${cantDisabled?'disabled':''} style="text-align:center">
-      <input type="number" value="${item.pventa}" min="0" placeholder="Precio" onchange="updateUvItem(${idx},'pventa',this.value)" ${state.uvMismoPrecio?'disabled':''}>
+      <input type="number" value="${item.pventa||''}" min="0" placeholder="Precio" onchange="updateUvItem(${idx},'pventa',this.value)">
       <div style="text-align:right">
         <div style="font-size:.82rem;color:var(--accent)">$${fmt(Math.round(subtotal))}</div>
         ${gan!==null?`<div style="font-size:.7rem;color:${gan>=0?'var(--success)':'var(--danger)'}">$${fmt(Math.round(gan))}</div>`:''}
@@ -57,32 +87,6 @@ function renderUvItems(){
   }).join('');
   document.getElementById('uv-total').textContent=`$${fmt(Math.round(totalMonto))} — ${totalItems} producto${totalItems!==1?'s':''}`;
   if(state.uvModo==='cuotas') calcUvCuotas();
-}
-
-window.toggleUvMayorista=function(){
-  state.uvMayorista=!state.uvMayorista;
-  document.getElementById('uv-btn-mayorista').classList.toggle('active',state.uvMayorista);
-  // Re-aplicar precio mayorista a los items ya cargados que lo tengan
-  state.ventaCart.forEach(item=>{
-    const p=state.stockData.find(x=>x.id===item.prodId); if(!p)return;
-    if(state.uvMayorista&&p.pmayorista) item.pventa=p.pmayorista;
-    else if(!state.uvMayorista&&p.pventa) item.pventa=p.pventa;
-  });
-  if(state.uvMismoPrecio&&state.ventaCart.length) document.getElementById('uv-precio-unico').value=state.ventaCart[0].pventa;
-  renderUvItems();
-}
-window.toggleUvMismoPrecio=function(){
-  state.uvMismoPrecio=document.getElementById('uv-mismo-precio').checked;
-  document.getElementById('uv-precio-unico-wrap').style.display=state.uvMismoPrecio?'block':'none';
-  if(state.uvMismoPrecio&&state.ventaCart.length){
-    document.getElementById('uv-precio-unico').value=state.ventaCart[0].pventa;
-    applyUvPrecioUnico();
-  } else renderUvItems();
-}
-window.applyUvPrecioUnico=function(){
-  const precio=parseFloat(document.getElementById('uv-precio-unico').value)||0;
-  state.ventaCart.forEach(item=>item.pventa=precio);
-  renderUvItems();
 }
 
 window.setUvModoCobro=function(modo){
@@ -129,7 +133,7 @@ window.registrarVentaUnificada=async function(){
   for(const item of state.ventaCart){
     const p=state.stockData.find(x=>x.id===item.prodId);
     if(!p||p.qty<item.cant){toast(`Stock insuficiente: ${p?.modelo||'?'} T.${p?.talle}`,'error');return;}
-    if(!item.pventa||item.pventa<=0){toast('Todos los productos deben tener precio.','error');return;}
+    if(!item.pventa||item.pventa<=0){toast(`Falta el precio ${TIPOS_PRECIO[item.tipoPrecio].toLowerCase()} de ${p.modelo} T.${p.talle}. Escribilo o cambiá el tipo.`,'error');return;}
   }
   if(state.uvModo==='cuotas') return registrarCuotaDesdeCarrito();
 
@@ -137,29 +141,24 @@ window.registrarVentaUnificada=async function(){
   const cliente=document.getElementById('uv-cliente').value.trim()||null;
   const cartLen=state.ventaCart.length;
   const fecha=Date.now();
-  let tipo, curvaId=null, loteId=null;
-  if(cartLen>1&&state.uvMismoPrecio){ tipo='curva'; curvaId=fecha.toString(); }
-  else if(cartLen>1){ tipo='multiple'; loteId=fecha.toString(); }
-  else { tipo=state.uvMayorista?'mayorista':'minorista'; }
+  const loteId=cartLen>1?fecha.toString():null;
+  // Las líneas de tipo curva de una misma venta comparten curvaId (para poder borrarlas juntas)
+  const curvaId=state.ventaCart.filter(i=>i.tipoPrecio==='curva').length>1?fecha.toString():null;
   try{
     const batch=writeBatch(db);
     for(const item of state.ventaCart){
       const p=state.stockData.find(x=>x.id===item.prodId);
       batch.update(doc(db,'stock',item.prodId),{qty:p.qty-item.cant});
-      if(item.pcosto&&!p.pcosto) batch.update(doc(db,'stock',item.prodId),{pcosto:item.pcosto});
       batch.set(doc(collection(db,'ventas')),{
         prodId:item.prodId,cat:p.cat,modelo:p.modelo,color:p.color||'',talle:p.talle,
-        pventa:item.pventa,pcosto:item.pcosto||null,cant:item.cant,tipo,cliente,
-        ...(curvaId?{curvaId}:{}),...(loteId?{loteId}:{}),
+        pventa:item.pventa,pcosto:item.pcosto||null,cant:item.cant,tipo:TIPO_VENTA[item.tipoPrecio],cliente,
+        ...(curvaId&&item.tipoPrecio==='curva'?{curvaId}:{}),...(loteId?{loteId}:{}),
         fecha
       });
     }
     await batch.commit();
     state.ventaCart=[];
     document.getElementById('uv-cliente').value='';
-    document.getElementById('uv-mismo-precio').checked=false;
-    state.uvMismoPrecio=false;
-    document.getElementById('uv-precio-unico-wrap').style.display='none';
     renderUvItems();
     toast(`${cartLen} producto${cartLen!==1?'s':''} vendido${cartLen!==1?'s':''} ✓`,'success');
   }catch(e){toast('Error: '+e.message,'error');}
@@ -189,7 +188,6 @@ async function registrarCuotaDesdeCarrito(){
     }
     const batch=writeBatch(db);
     batch.update(doc(db,'stock',item.prodId),{qty:p.qty-item.cant});
-    if(costo&&!p.pcosto) batch.update(doc(db,'stock',item.prodId),{pcosto:item.pcosto});
     batch.set(doc(collection(db,'cuotas')),{
       prodId:item.prodId,cat:p.cat,modelo:p.modelo,color:p.color||'',talle:p.talle,
       cliente,totalVenta:total,pcosto:costo,cuotas,

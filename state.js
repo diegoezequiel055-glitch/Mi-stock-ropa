@@ -17,10 +17,10 @@ export const state = {
 
   cpItems: [],
   cpActualizaStock: true, // toggle: si la compra suma al stock o solo guarda historial
-  ventaCart: [], // [{prodId, cant, pventa, pcosto}] — carrito único de "Registrar Venta"
-  uvMayorista: false, // toggle: usar precio mayorista en el carrito de venta
-  uvMismoPrecio: false, // toggle: un solo precio para todos los items del carrito
+  ventaCart: [], // [{prodId, cant, tipoPrecio, pventa, pcosto}] — carrito único de "Registrar Venta"
+  uvTipoPrecio: 'menor', // precio por defecto para lo que se agrega al carrito: 'menor' | 'mayorista' | 'curva'
   uvModo: 'ahora', // 'ahora' | 'cuotas'
+  filtroSinCosto: false, // lista de stock: mostrar solo productos sin costo
 
   confirmCb: null,
   unsubStock: null, unsubVentas: null, unsubCompras: null, unsubGastos: null, unsubCuotas: null, unsubReservas: null,
