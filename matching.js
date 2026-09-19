@@ -75,3 +75,51 @@ export function buscarModelos(item, modelos) {
 export const eleccionAutomatica = (res) => (res.modelos.length === 1 ? res.modelos[0] : null);
 
 export const etiquetaModelo = (m) => `${m.cat} · ${m.modelo}${m.color ? ' · ' + m.color : ''}`;
+
+// ── Precios por grupo ("todas las camisetas versión jugador") ──
+// "versión" no filtra: en el stock aparece como "Version Jugador", "Jugador Titular", "2025 Jugador"…
+const RELLENO_GRUPO = new Set([...RELLENO, 'version', 'todo', 'toda', 'linea']);
+
+export const PRECIOS_CAMPOS = [
+  { clave: 'costo', campo: 'pcosto', etiqueta: 'Costo' },
+  { clave: 'mayorista', campo: 'pmayorista', etiqueta: 'Mayorista' },
+  { clave: 'curva', campo: 'pcurva', etiqueta: 'Curva' },
+  { clave: 'menor', campo: 'pventa', etiqueta: 'Menor' },
+];
+
+// Categorías reales del stock a las que se refiere el texto de la IA ("camisetas", "remera"…).
+export function categoriasDeGrupo(texto, modelos) {
+  if (!String(texto ?? '').trim()) return [];
+  const set = categoriasPosibles({ categoria: texto, producto: texto }, modelos);
+  return [...new Set(modelos.filter((m) => set.has(m.catNorm)).map((m) => m.cat))];
+}
+
+export const palabrasDeGrupo = (texto) => tokens(texto).filter((t) => !RELLENO_GRUPO.has(t));
+
+// Modelos del grupo: de esas categorías (todas si no se eligió ninguna) y con TODAS las palabras en el nombre o color.
+export function buscarGrupo({ cats, palabras }, modelos) {
+  const catsNorm = new Set((cats || []).map((c) => tokens(c).join(' ')));
+  const toks = palabrasDeGrupo(palabras);
+  return modelos
+    .filter((m) => (!catsNorm.size || catsNorm.has(m.catNorm)) && toks.every((t) => coincide(m.hay, t)))
+    .sort((a, b) => a.cat.localeCompare(b.cat) || a.modelo.localeCompare(b.modelo) || a.color.localeCompare(b.color));
+}
+
+// Compara los precios nuevos con los que ya tiene cada modelo (todas sus filas/talles).
+//  ok        → no tiene precio en esos campos (se completan) o tiene el mismo: se puede aplicar solo.
+//  conflicto → tiene OTRO precio cargado en algún campo: se muestra aparte, no se pisa sin permiso.
+//  igual     → ya tiene exactamente esos precios: no hay nada que cambiar.
+export function planificarPrecios(modelos, precios) {
+  const pedidos = PRECIOS_CAMPOS.filter((c) => precios[c.clave] > 0);
+  return modelos.map((m) => {
+    const cambios = pedidos.map((c) => {
+      const nuevo = precios[c.clave];
+      const actuales = [...new Set(m.filas.map((f) => f[c.campo]).filter((v) => v > 0))].sort((a, b) => a - b);
+      const distintos = actuales.filter((v) => v !== nuevo);
+      const filasACambiar = m.filas.filter((f) => f[c.campo] !== nuevo).length;
+      return { ...c, nuevo, actuales, estado: distintos.length ? 'distinto' : filasACambiar ? 'vacio' : 'igual', filasACambiar };
+    });
+    const estado = cambios.some((x) => x.estado === 'distinto') ? 'conflicto' : cambios.every((x) => x.estado === 'igual') ? 'igual' : 'ok';
+    return { modelo: m, cambios, estado };
+  });
+}

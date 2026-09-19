@@ -1,10 +1,10 @@
 import { state } from './state.js';
 import { auth, db, collection, doc, writeBatch } from './firebase-config.js';
-import { armarModelos, buscarModelos, eleccionAutomatica, filaPorTalle, etiquetaModelo, normTalle, norm, tokens } from './matching.js';
+import { armarModelos, buscarModelos, eleccionAutomatica, filaPorTalle, etiquetaModelo, normTalle, norm, tokens, PRECIOS_CAMPOS, categoriasDeGrupo, palabrasDeGrupo, buscarGrupo, planificarPrecios } from './matching.js';
 
 const WORKER_URL = 'https://stockmgr-ia.diegoezequiel055.workers.dev/interpretar';
 const TIPOS = { menor: 'Menor', mayorista: 'Mayorista', curva: 'Curva' };
-const OPS = { compra: 'Compra', venta: 'Venta', producto_nuevo: 'Producto nuevo' };
+const OPS = { compra: 'Compra', venta: 'Venta', producto_nuevo: 'Producto nuevo', precios_masivos: 'Precios por grupo' };
 const MAX_OPCIONES = 60;
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -15,12 +15,12 @@ const el = (id) => document.getElementById(id);
 let opForzada = 'auto';
 
 const cr = () => state.cr;
-const vacio = () => ({ op: null, items: [], tipoPrecio: 'menor', cliente: '', proveedor: '', fecha: hoy(), notas: '', totalPack: null, avisoPack: '', noEntendido: [], hayResultado: false, busy: false });
+const vacio = () => ({ op: null, items: [], tipoPrecio: 'menor', cliente: '', proveedor: '', fecha: hoy(), notas: '', totalPack: null, avisoPack: '', noEntendido: [], hayResultado: false, busy: false, grupo: { cats: [], palabras: '' }, precios: { costo: null, mayorista: null, curva: null, menor: null }, marcas: {} });
 
 // ── pantalla de entrada ──
 window.crSetOpForzada = function (op) {
   opForzada = op;
-  ['auto', 'compra', 'venta', 'producto_nuevo'].forEach((o) => el('cr-op-' + o).classList.toggle('active', o === op));
+  ['auto', 'compra', 'venta', 'producto_nuevo', 'precios_masivos'].forEach((o) => el('cr-op-' + o).classList.toggle('active', o === op));
 };
 
 function mensajeError(status, code, detalle) {
@@ -65,6 +65,9 @@ function cargarResultado(res) {
   c.proveedor = res.proveedor || '';
   c.totalPack = res.total_pack;
   c.noEntendido = res.no_entendido || [];
+  const cats = categoriasDeGrupo(res.grupo?.categoria, armarModelos(state.stockData));
+  c.grupo = { cats, palabras: [...(res.grupo?.palabras || []), ...(!cats.length && res.grupo?.categoria ? [res.grupo.categoria] : [])].join(' ') };
+  c.precios = { ...c.precios, ...(res.precios_grupo || {}) };
   c.items = res.items.map((it) => ({
     categoria: it.categoria, producto: it.producto, color: it.color, talle: it.talle, cantidad: it.cantidad,
     precios: { ...it.precios }, costo: it.precios.costo || null,
@@ -102,6 +105,7 @@ function nuevoDesde(it) {
 // Empareja cada ítem con el stock. Solo elige solo cuando hay UNA única opción.
 function prepararItems() {
   const c = cr();
+  if (c.op === 'precios_masivos') return;
   const modelos = armarModelos(state.stockData);
   for (const it of c.items) {
     it.selKey = null; it.busqueda = '';
@@ -141,6 +145,112 @@ window.crPrecioNuevo = function (i, campo, v) { const it = cr().items[i]; if (ca
 window.crTextoNuevo = function (i, campo, v) { cr().items[i].nuevo[campo] = String(v).trim(); crRender(); };
 window.crQuitar = function (i) { cr().items.splice(i, 1); crRender(); };
 window.crDescartar = function () { state.cr = vacio(); el('cr-revision').style.display = 'none'; el('cr-revision-body').innerHTML = ''; };
+
+// ── precios por grupo ──
+// Cambiar el grupo o los precios borra las marcas manuales: nada queda marcado "por arrastre".
+window.crGrupoCat = function (cat) { const g = cr().grupo; g.cats = g.cats.includes(cat) ? g.cats.filter((x) => x !== cat) : [...g.cats, cat]; cr().marcas = {}; crRender(); };
+window.crGrupoPalabras = function (v) { cr().grupo.palabras = String(v).trim(); cr().marcas = {}; crRender(); };
+window.crPrecioGrupo = function (clave, v) { cr().precios[clave] = num(v); cr().marcas = {}; crRender(); };
+window.crMarcar = function (key, on) { cr().marcas[key] = !!on; crRender(); };
+window.crMarcarTodos = function (estado, on) { planActual().filter((p) => p.estado === estado).forEach((p) => { cr().marcas[p.modelo.key] = !!on; }); crRender(); };
+
+const hayPrecios = () => PRECIOS_CAMPOS.some((x) => cr().precios[x.clave] > 0);
+const hayGrupo = () => cr().grupo.cats.length > 0 || palabrasDeGrupo(cr().grupo.palabras).length > 0;
+function planActual() {
+  const c = cr();
+  if (!hayPrecios() || !hayGrupo()) return [];
+  return planificarPrecios(buscarGrupo(c.grupo, armarModelos(state.stockData)), c.precios);
+}
+const marcado = (p) => (p.modelo.key in cr().marcas ? cr().marcas[p.modelo.key] : p.estado === 'ok');
+const pesos = (n) => '$' + fmt(n);
+
+function textoCambio(x) {
+  if (x.estado === 'igual') return `<span style="color:var(--muted)">${x.etiqueta}: ya es ${pesos(x.nuevo)}</span>`;
+  if (x.estado === 'distinto') return `<span style="color:var(--danger)">${x.etiqueta}: ${x.actuales.map(pesos).join(' / ')} → <strong>${pesos(x.nuevo)}</strong></span>`;
+  const previo = x.actuales.length ? `ya tiene ${pesos(x.actuales[0])} en algunos talles` : 'sin cargar';
+  return `<span style="color:var(--text2)">${x.etiqueta}: ${previo} → <strong style="color:var(--success)">${pesos(x.nuevo)}</strong></span>`;
+}
+
+function filaGrupoHTML(p, conCheck) {
+  const m = p.modelo;
+  const talles = m.filas.slice().sort((a, b) => String(a.talle).localeCompare(String(b.talle), undefined, { numeric: true })).map((f) => `${esc(f.talle)}(${f.qty})`).join(' ');
+  const borde = p.estado === 'conflicto' ? 'var(--danger)' : p.estado === 'igual' ? 'var(--border2)' : 'var(--success)';
+  const check = conCheck ? `<input type="checkbox" data-k="${esc(m.key)}" ${marcado(p) ? 'checked' : ''} onchange="crMarcar(this.dataset.k,this.checked)" style="width:auto;margin-top:3px;flex-shrink:0">` : '';
+  return `<label style="display:flex;gap:10px;align-items:flex-start;text-transform:none;letter-spacing:0;color:var(--text);font-size:.85rem;background:var(--surface2);border:1px solid var(--border);border-left:3px solid ${borde};border-radius:8px;padding:8px 12px;margin-bottom:6px;cursor:${conCheck ? 'pointer' : 'default'}">${check}<div style="min-width:0;flex:1"><div style="font-size:.85rem"><strong>${esc(m.cat)}</strong> — ${esc(m.modelo)}${m.color ? ' · ' + esc(m.color) : ''}</div><div style="font-size:.7rem;color:var(--muted);margin-top:2px">Talles (unidades): ${talles}</div><div style="font-size:.76rem;margin-top:4px;display:flex;gap:4px 14px;flex-wrap:wrap">${p.cambios.map(textoCambio).join('')}</div></div></label>`;
+}
+
+function preciosHTML() {
+  const c = cr(), g = c.grupo;
+  const modelos = armarModelos(state.stockData);
+  const cats = [...new Set(state.stockData.map((p) => p.cat).filter(Boolean))].sort();
+  const lab = 'font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px';
+  let h = `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px">
+    <div style="${lab}">1 · ¿A qué productos?</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center"><span style="font-size:.72rem;color:var(--muted)">Categoría:</span>${cats.map((k) => `<button class="date-btn${g.cats.includes(k) ? ' active' : ''}" data-k="${esc(k)}" onclick="crGrupoCat(this.dataset.k)">${esc(k)}</button>`).join('')}</div>
+    <div style="margin-top:10px"><label style="${lab}">Palabras del nombre (deben estar todas)</label><input type="text" value="${esc(g.palabras)}" onchange="crGrupoPalabras(this.value)" placeholder="Ej: jugador" ${inp('width:100%;margin-top:3px')}></div>
+    <div style="${lab};margin-top:14px">2 · Precios nuevos <span style="text-transform:none;letter-spacing:0">(dejá vacío el que no querés cambiar)</span></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">${PRECIOS_CAMPOS.map((x) => `<div style="display:flex;flex-direction:column;gap:3px"><label style="${lab}">${x.etiqueta}</label><input type="number" min="0" value="${c.precios[x.clave] || ''}" placeholder="—" onchange="crPrecioGrupo('${x.clave}',this.value)" ${inp('width:104px')}></div>`).join('')}</div>
+  </div>`;
+
+  const costo = c.precios.costo;
+  const raros = costo > 0 ? PRECIOS_CAMPOS.filter((x) => x.clave !== 'costo' && c.precios[x.clave] > 0 && c.precios[x.clave] <= costo).map((x) => `${x.etiqueta} (${pesos(c.precios[x.clave])}) no supera el costo (${pesos(costo)})`) : [];
+  if (raros.length) h += `<div style="font-size:.78rem;color:var(--warning);margin-bottom:12px">⚠ Revisá los precios: ${esc(raros.join('; '))}.</div>`;
+
+  if (!hayPrecios()) return h + `<div style="font-size:.82rem;color:var(--warning)">⚠ No hay ningún precio para aplicar. Escribilo arriba.</div>`;
+  if (!hayGrupo()) return h + `<div style="font-size:.82rem;color:var(--warning)">⚠ Elegí una categoría o escribí palabras del nombre. No se aplica a todo el stock de una sola vez.</div>`;
+
+  const plan = planActual();
+  const enGrupo = plan.length, filas = plan.reduce((a, p) => a + p.modelo.filas.length, 0), unid = plan.reduce((a, p) => a + p.modelo.filas.reduce((s, f) => s + f.qty, 0), 0);
+  h += `<div style="${lab};margin-bottom:8px">3 · Productos que coinciden</div><div style="font-size:.8rem;color:var(--text2);margin-bottom:10px">${enGrupo} producto${enGrupo !== 1 ? 's' : ''} (${filas} talle${filas !== 1 ? 's' : ''}, ${unid} unidad${unid !== 1 ? 'es' : ''} en stock)</div>`;
+  if (!enGrupo) return h + `<div class="empty" style="padding:16px"><p>Ningún producto coincide. Cambiá la categoría o las palabras.</p></div>`;
+
+  const seccion = (estado, titulo, ayuda, color, conCheck) => {
+    const l = plan.filter((p) => p.estado === estado);
+    if (!l.length) return '';
+    const botones = conCheck ? `<span style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" style="font-size:.68rem;padding:2px 8px" onclick="crMarcarTodos('${estado}',true)">Marcar todos</button><button class="btn btn-outline btn-sm" style="font-size:.68rem;padding:2px 8px" onclick="crMarcarTodos('${estado}',false)">Ninguno</button></span>` : '';
+    return `<div style="margin:14px 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><div style="font-size:.85rem;color:${color}"><strong>${titulo} (${l.length})</strong></div>${botones}</div><div style="font-size:.74rem;color:var(--muted);margin-bottom:8px">${ayuda}</div>${l.map((p) => filaGrupoHTML(p, conCheck)).join('')}`;
+  };
+  h += seccion('ok', '✅ Se van a actualizar', 'No tienen precio cargado en esos campos (o ya coincide). Destildá los que no quieras tocar.', 'var(--success)', true);
+  h += seccion('conflicto', '⚠ Ya tienen otro precio cargado', 'NO se tocan salvo que los marques uno por uno. Fijate el precio de hoy → el nuevo.', 'var(--danger)', true);
+  h += seccion('igual', 'Sin cambios', 'Ya tienen exactamente estos precios.', 'var(--muted)', false);
+
+  const aplicar = plan.filter((p) => p.estado !== 'igual' && marcado(p));
+  const talles = aplicar.reduce((a, p) => a + p.modelo.filas.filter((f) => p.cambios.some((x) => f[x.campo] !== x.nuevo)).length, 0);
+  const pisan = aplicar.filter((p) => p.estado === 'conflicto').length, sinTocar = plan.filter((p) => p.estado === 'conflicto' && !marcado(p)).length;
+  h += `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)"><div style="font-size:.78rem;color:var(--text2)">Se modifican <strong>${aplicar.length}</strong> producto${aplicar.length !== 1 ? 's' : ''} (${talles} talle${talles !== 1 ? 's' : ''})${pisan ? ` · <span style="color:var(--danger)">${pisan} pisando otro precio</span>` : ''}${sinTocar ? `<br><span style="color:var(--muted)">${sinTocar} con otro precio quedan sin tocar</span>` : ''}</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline" onclick="crDescartar()">Descartar</button><button class="btn btn-gold" id="cr-btn-confirmar" onclick="crConfirmar()" ${aplicar.length && !c.busy ? '' : 'disabled'}>✓ Aplicar precios</button></div></div>`;
+  return h;
+}
+
+async function confirmarPrecios() {
+  const c = cr();
+  const plan = planActual().filter((p) => p.estado !== 'igual' && marcado(p));
+  const ahora = Date.now(), ops = [];
+  for (const p of plan) for (const f of p.modelo.filas) {
+    const u = {};
+    for (const x of p.cambios) if (f[x.campo] !== x.nuevo) u[x.campo] = x.nuevo;
+    if ('pcosto' in u) u.historialCosto = [...(f.historialCosto || []), { precio: u.pcosto, fecha: ahora }].slice(-12);
+    if (Object.keys(u).length) ops.push([f.id, u]);
+  }
+  if (!ops.length) { toast('No hay nada para cambiar.'); return; }
+  const pisan = plan.filter((p) => p.estado === 'conflicto').length;
+  const resumen = PRECIOS_CAMPOS.filter((x) => c.precios[x.clave] > 0).map((x) => `${x.etiqueta} ${pesos(c.precios[x.clave])}`).join(' · ');
+  const ok = await confirm2(`¿Cambiar precios de ${plan.length} producto${plan.length !== 1 ? 's' : ''}?`, `${ops.length} talle${ops.length !== 1 ? 's' : ''} quedan con: ${resumen}.${pisan ? ` ATENCIÓN: ${pisan} ya tenían otro precio y se van a pisar.` : ''}`, 'Aplicar', 'var(--blue)');
+  if (!ok) return;
+  c.busy = true; crRender();
+  try {
+    for (let i = 0; i < ops.length; i += 400) {
+      const batch = writeBatch(db);
+      ops.slice(i, i + 400).forEach(([id, u]) => batch.update(doc(db, 'stock', id), u));
+      await batch.commit();
+    }
+    toast(`Precios actualizados: ${plan.length} producto${plan.length !== 1 ? 's' : ''} ✓`, 'success');
+    el('cr-texto').value = '';
+    window.crDescartar();
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+    c.busy = false; crRender();
+  }
+}
 
 // ── evaluación de cada ítem ──
 const ok = (extra = {}) => ({ kind: 'ok', msg: '', ...extra });
@@ -297,6 +407,7 @@ function crRender() {
   if (!c.op) h += `<div style="font-size:.82rem;color:var(--warning);margin-bottom:12px">⚠ No pude saber si es compra, venta o producto nuevo. Elegí una arriba.</div>`;
   if (c.noEntendido.length) h += `<div style="background:var(--danger-dim);border:1px solid var(--danger);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:.78rem;color:var(--danger)">No entendí: ${c.noEntendido.map((s) => '«' + esc(s) + '»').join(' · ')}</div>`;
   if (!c.op) { body.innerHTML = h; return; }
+  if (c.op === 'precios_masivos') { body.innerHTML = h + preciosHTML(); return; }
   if (c.avisoPack && c.op === 'compra') h += `<div style="font-size:.78rem;color:var(--warning);margin-bottom:12px">📦 ${esc(c.avisoPack)}</div>`;
 
   if (c.op === 'venta') {
@@ -322,6 +433,7 @@ function crRender() {
 // ── guardar (solo al confirmar) ──
 window.crConfirmar = async function () {
   const c = cr();
+  if (c.op === 'precios_masivos') { if (!c.busy) await confirmarPrecios(); return; }
   const t = evaluarTodo();
   if (!t.todoOk || c.busy) return;
   c.busy = true; crRender();

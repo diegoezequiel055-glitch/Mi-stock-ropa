@@ -123,7 +123,7 @@
       <h2>⚡ Carga rápida por texto</h2>
     </div>
     <div class="panel-body">
-      <p style="font-size:.8rem;color:var(--muted);margin-bottom:10px">Pegá el texto de WhatsApp (una compra, una venta o un producto nuevo). La IA lo ordena y vos revisás y corregís todo antes de que se guarde.</p>
+      <p style="font-size:.8rem;color:var(--muted);margin-bottom:10px">Pegá el texto de WhatsApp (una compra, una venta, un producto nuevo o un cambio de precios a todo un grupo, ej: "poné a todas las camisetas versión jugador: costo 9000, mayorista 14000, curva 16000, menor 20000"). La IA lo ordena y vos revisás y corregís todo antes de que se guarde.</p>
       <textarea id="cr-texto" rows="6" placeholder="Ej: Compré pack surtido camisetas: River S1 M1, Boca L2, Barcelona XL1 XXL1" style="width:100%;resize:vertical"></textarea>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
         <span style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Es una:</span>
@@ -131,6 +131,7 @@
         <button class="date-btn" id="cr-op-compra" onclick="crSetOpForzada('compra')">Compra</button>
         <button class="date-btn" id="cr-op-venta" onclick="crSetOpForzada('venta')">Venta</button>
         <button class="date-btn" id="cr-op-producto_nuevo" onclick="crSetOpForzada('producto_nuevo')">Producto nuevo</button>
+        <button class="date-btn" id="cr-op-precios_masivos" onclick="crSetOpForzada('precios_masivos')">Precios por grupo</button>
       </div>
       <button class="btn btn-gold" id="cr-btn-interpretar" onclick="crInterpretar()" style="width:100%;padding:10px;margin-top:12px">🤖 Interpretar</button>
       <div id="cr-estado" style="font-size:.78rem;margin-top:8px"></div>

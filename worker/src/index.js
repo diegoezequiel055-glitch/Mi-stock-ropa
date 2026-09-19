@@ -8,6 +8,7 @@ let jwksCache = { keys: null, exp: 0 };
 
 const MAX_TEXTO = 6000;
 const MAX_CATEGORIAS = 60;
+const OPERACIONES = ['compra', 'venta', 'producto_nuevo', 'precios_masivos'];
 
 // ── utilidades ──
 const b64uToBytes = (s) => {
@@ -69,7 +70,7 @@ function validarEntrada(body) {
     .slice(0, MAX_CATEGORIAS)
     .map((c) => String(c ?? '').replace(/[\n\r,]/g, ' ').trim().slice(0, 40))
     .filter(Boolean);
-  const operacion = ['compra', 'venta', 'producto_nuevo'].includes(body.operacion) ? body.operacion : null;
+  const operacion = OPERACIONES.includes(body.operacion) ? body.operacion : null;
   const modelo = typeof body.modelo === 'string' && /^@cf\/[\w.\-/]+$/.test(body.modelo) ? body.modelo : null;
   return { texto, categorias, operacion, modelo };
 }
@@ -78,7 +79,7 @@ function validarEntrada(body) {
 const SISTEMA = `Sos un asistente que interpreta mensajes de WhatsApp de un negocio de indumentaria (Argentina) y los convierte en JSON. Respondé SOLO con el JSON pedido.
 
 REGLAS:
-1. operacion: "compra" si habla de mercadería comprada/recibida de un proveedor (compré, compra, pedido que llegó, pack); "venta" si es una venta a un cliente (venta, vendí, pedido de un cliente); "producto_nuevo" si dice nuevo producto / agregar producto con precios; si no está claro, "desconocida".
+1. operacion: "compra" si habla de mercadería comprada/recibida de un proveedor (compré, compra, pedido que llegó, pack); "venta" si es una venta a un cliente (venta, vendí, pedido de un cliente); "producto_nuevo" si dice nuevo producto / agregar producto con precios; "precios_masivos" si pide poner o actualizar los precios de TODAS las prendas de una categoría o grupo (ej: "poné a todas las camisetas versión jugador: costo 9000, mayorista 14000..."); si no está claro, "desconocida".
 2. tipo_precio (solo ventas): "mayorista", "curva" o "menor" (menor = minorista / por unidad / normal) si el texto lo dice; si no, "ninguno".
 3. Un item por cada combinación producto + talle. Un pack surtido NUNCA es un item "pack": se desglosa por talle. Notación abreviada: talle seguido de número = talle + cantidad. "S1 M1" son dos items (talle S cantidad 1, talle M cantidad 1); "L2" es talle L cantidad 2; también "M x2" o "2 L". Si un producto (equipo) va seguido de varios talles, repetí el producto en cada item. Talles: XS, S, M, L, XL, XXL, XXXL o numéricos (36, 38, 40, 42, 44...). "cantidad" es el número de unidades de ese item.
 4. Si no se aclara el talle, talle = "". Si no se aclara la cantidad, cantidad = 1.
@@ -86,12 +87,13 @@ REGLAS:
 6. Precios (costo, mayorista, curva, menor): SOLO si el texto los trae explícitos con esa palabra ("costo 12000", "mayorista 18000", "curva 20000", "menor 25000" o "unidad 25000"). 12.000, 12000 y 12k significan 12000. Si no aparece, 0. NUNCA inventes precios.
 7. total_pack: si el texto da un precio total del pack o pedido (ej: "pack $120.000", "total 90000"), ponelo; si no, 0.
 8. Todo fragmento que no puedas interpretar va textual en no_entendido.
-9. proveedor y cliente: solo si el texto los menciona; si no, "".`;
+9. proveedor y cliente: solo si el texto los menciona; si no, "".
+10. Solo en "precios_masivos": items = []; grupo.categoria = el tipo de prenda elegido de la lista de CATEGORÍAS DEL NEGOCIO (camisetas -> Camiseta); grupo.palabras = las palabras que acotan el grupo, tal como las escribió el usuario (ej: "versión jugador" -> ["versión jugador"]; "hincha" -> ["hincha"]), sin la palabra de la categoría ni relleno como "todas las"; [] si aplica a toda la categoría; precios_grupo = costo, mayorista, curva y menor solo si el texto los trae explícitos con esa palabra (unidad / menor = menor), 0 si no. En cualquier otra operación: grupo.categoria = "", grupo.palabras = [] y precios_grupo todo 0.`;
 
 const ESQUEMA = {
   type: 'object',
   properties: {
-    operacion: { type: 'string', enum: ['compra', 'venta', 'producto_nuevo', 'desconocida'] },
+    operacion: { type: 'string', enum: [...OPERACIONES, 'desconocida'] },
     tipo_precio: { type: 'string', enum: ['menor', 'mayorista', 'curva', 'ninguno'] },
     proveedor: { type: 'string' },
     cliente: { type: 'string' },
@@ -114,9 +116,19 @@ const ESQUEMA = {
         required: ['categoria', 'producto', 'color', 'talle', 'cantidad', 'costo', 'mayorista', 'curva', 'menor'],
       },
     },
+    grupo: {
+      type: 'object',
+      properties: { categoria: { type: 'string' }, palabras: { type: 'array', items: { type: 'string' } } },
+      required: ['categoria', 'palabras'],
+    },
+    precios_grupo: {
+      type: 'object',
+      properties: { costo: { type: 'number' }, mayorista: { type: 'number' }, curva: { type: 'number' }, menor: { type: 'number' } },
+      required: ['costo', 'mayorista', 'curva', 'menor'],
+    },
     no_entendido: { type: 'array', items: { type: 'string' } },
   },
-  required: ['operacion', 'tipo_precio', 'proveedor', 'cliente', 'total_pack', 'items', 'no_entendido'],
+  required: ['operacion', 'tipo_precio', 'proveedor', 'cliente', 'total_pack', 'items', 'grupo', 'precios_grupo', 'no_entendido'],
 };
 
 function armarUsuario({ texto, categorias, operacion }) {
@@ -162,8 +174,15 @@ function limpiarSalida(raw) {
     cantidad: Math.max(1, Math.min(999, parseInt(it.cantidad, 10) || 1)),
     precios: { costo: num(it.costo), mayorista: num(it.mayorista), curva: num(it.curva), menor: num(it.menor) },
   }));
+  const g = raw.grupo && typeof raw.grupo === 'object' ? raw.grupo : {};
+  const pg = raw.precios_grupo && typeof raw.precios_grupo === 'object' ? raw.precios_grupo : {};
   return {
-    operacion: ['compra', 'venta', 'producto_nuevo'].includes(raw.operacion) ? raw.operacion : 'desconocida',
+    operacion: OPERACIONES.includes(raw.operacion) ? raw.operacion : 'desconocida',
+    grupo: {
+      categoria: str(g.categoria, 40) || null,
+      palabras: (Array.isArray(g.palabras) ? g.palabras : []).map((s) => str(s, 60)).filter(Boolean).slice(0, 8),
+    },
+    precios_grupo: { costo: num(pg.costo), mayorista: num(pg.mayorista), curva: num(pg.curva), menor: num(pg.menor) },
     tipo_precio: ['menor', 'mayorista', 'curva'].includes(raw.tipo_precio) ? raw.tipo_precio : null,
     proveedor: str(raw.proveedor) || null,
     cliente: str(raw.cliente) || null,
