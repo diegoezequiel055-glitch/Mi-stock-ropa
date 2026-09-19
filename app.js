@@ -9,6 +9,7 @@ import './compras.js';
 import './gastos.js';
 import './reservas.js';
 import './ganancias.js';
+import './carga-rapida.js';
 
 // ── INITIAL STOCK ──
 const INITIAL = [

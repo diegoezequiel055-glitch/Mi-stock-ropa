@@ -139,30 +139,36 @@ window.registrarVentaUnificada=async function(){
 
   const btn=document.getElementById('btn-registrar-uv'); btn.disabled=true; btn.textContent='Registrando...';
   const cliente=document.getElementById('uv-cliente').value.trim()||null;
-  const cartLen=state.ventaCart.length;
-  const fecha=Date.now();
-  const loteId=cartLen>1?fecha.toString():null;
-  // Las líneas de tipo curva de una misma venta comparten curvaId (para poder borrarlas juntas)
-  const curvaId=state.ventaCart.filter(i=>i.tipoPrecio==='curva').length>1?fecha.toString():null;
   try{
-    const batch=writeBatch(db);
-    for(const item of state.ventaCart){
-      const p=state.stockData.find(x=>x.id===item.prodId);
-      batch.update(doc(db,'stock',item.prodId),{qty:p.qty-item.cant});
-      batch.set(doc(collection(db,'ventas')),{
-        prodId:item.prodId,cat:p.cat,modelo:p.modelo,color:p.color||'',talle:p.talle,
-        pventa:item.pventa,pcosto:item.pcosto||null,cant:item.cant,tipo:TIPO_VENTA[item.tipoPrecio],cliente,
-        ...(curvaId&&item.tipoPrecio==='curva'?{curvaId}:{}),...(loteId?{loteId}:{}),
-        fecha
-      });
-    }
-    await batch.commit();
+    const cartLen=await guardarVentaItems(state.ventaCart,cliente);
     state.ventaCart=[];
     document.getElementById('uv-cliente').value='';
     renderUvItems();
     toast(`${cartLen} producto${cartLen!==1?'s':''} vendido${cartLen!==1?'s':''} ✓`,'success');
   }catch(e){toast('Error: '+e.message,'error');}
   finally{btn.disabled=false;btn.textContent='✓ Registrar venta';}
+}
+
+// Guarda una venta (una o varias líneas) y descuenta el stock. La usan el carrito y la Carga rápida.
+// items: [{prodId, cant, tipoPrecio:'menor'|'mayorista'|'curva', pventa, pcosto}]
+window.guardarVentaItems=async function(items,cliente){
+  const fecha=Date.now();
+  const loteId=items.length>1?fecha.toString():null;
+  // Las líneas de tipo curva de una misma venta comparten curvaId (para poder borrarlas juntas)
+  const curvaId=items.filter(i=>i.tipoPrecio==='curva').length>1?fecha.toString():null;
+  const batch=writeBatch(db);
+  for(const item of items){
+    const p=state.stockData.find(x=>x.id===item.prodId);
+    batch.update(doc(db,'stock',item.prodId),{qty:increment(-item.cant)});
+    batch.set(doc(collection(db,'ventas')),{
+      prodId:item.prodId,cat:p.cat,modelo:p.modelo,color:p.color||'',talle:p.talle,
+      pventa:item.pventa,pcosto:item.pcosto||null,cant:item.cant,tipo:TIPO_VENTA[item.tipoPrecio],cliente:cliente||null,
+      ...(curvaId&&item.tipoPrecio==='curva'?{curvaId}:{}),...(loteId?{loteId}:{}),
+      fecha
+    });
+  }
+  await batch.commit();
+  return items.length;
 }
 
 async function registrarCuotaDesdeCarrito(){

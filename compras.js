@@ -77,32 +77,9 @@ window.guardarCompra=async function(){
   const notas=document.getElementById('cp-notas').value.trim();
   if(!fechaStr){toast('Ingresá la fecha de la compra.','error');return;}
   const fecha=new Date(fechaStr+'T12:00:00').getTime();
-  const totalMonto=state.cpItems.reduce((a,i)=>a+i.cant*i.pcosto_unit,0);
   const btn=document.getElementById('btn-guardar-compra'); btn.disabled=true; btn.textContent='Guardando...';
   try{
-    const batch=writeBatch(db);
-    for(const item of state.cpItems){
-      const updates={};
-      if(state.cpActualizaStock) updates.qty=increment(item.cant);
-      if(item.pcosto_unit>0){
-        updates.pcosto=item.pcosto_unit;
-        // F#4: guardar historial de precios de costo
-        const prod=state.stockData.find(x=>x.id===item.prodId);
-        const histEntry={precio:item.pcosto_unit,fecha:fecha};
-        if(prod?.historialCosto) updates.historialCosto=[...prod.historialCosto,histEntry].slice(-12); // máx 12 entradas
-        else updates.historialCosto=[histEntry];
-      }
-      if(Object.keys(updates).length>0)
-        batch.update(doc(db,'stock',item.prodId),updates);
-    }
-    // Guardar el pedido completo
-    batch.set(doc(collection(db,'compras')),{
-      proveedor:proveedor||'Sin especificar', fecha, notas,
-      actualizaStock:state.cpActualizaStock,
-      items:state.cpItems.map(i=>{const p=state.stockData.find(x=>x.id===i.prodId);return{prodId:i.prodId,cat:p?.cat||'',modelo:p?.modelo||'',color:p?.color||'',talle:p?.talle||'',cant:i.cant,pcosto_unit:i.pcosto_unit};}),
-      total:totalMonto, createdAt:Date.now()
-    });
-    await batch.commit();
+    await guardarCompraItems({items:state.cpItems,proveedor,fecha,notas,actualizaStock:state.cpActualizaStock});
     // Limpiar formulario
     state.cpItems=[];
     renderCpItems();
@@ -113,9 +90,53 @@ window.guardarCompra=async function(){
       ? `Compra registrada — stock actualizado ✓`
       : `Compra registrada — historial y costos guardados (stock sin cambios) ✓`
     ,'success');
-    await loadCompras();
   }catch(e){toast('Error: '+e.message,'error');}
   finally{btn.disabled=false;btn.textContent='📥 Registrar compra';}
+}
+
+// Guarda una compra: suma al stock, actualiza el costo (con historial) y registra el pedido.
+// La usan el formulario de Compras y la Carga rápida.
+// items: [{prodId, cant, pcosto_unit}]  o  [{nuevo:{cat,modelo,color,talle,pventa,pmayorista,pcurva}, cant, pcosto_unit}]
+window.guardarCompraItems=async function({items,proveedor,fecha,notas,actualizaStock=true}){
+  const batch=writeBatch(db);
+  const detalle=[];
+  for(const item of items){
+    let prodId=item.prodId, info;
+    if(item.nuevo){
+      const n=item.nuevo, ref=doc(collection(db,'stock'));
+      prodId=ref.id; info=n;
+      batch.set(ref,{
+        cat:n.cat,modelo:n.modelo,color:n.color||'',talle:n.talle,qty:actualizaStock?item.cant:0,
+        pventa:n.pventa||null,pmayorista:n.pmayorista||null,pcurva:n.pcurva||null,
+        pcosto:item.pcosto_unit>0?item.pcosto_unit:null,notas:null,createdAt:Date.now(),
+        ...(item.pcosto_unit>0?{historialCosto:[{precio:item.pcosto_unit,fecha}]}:{})
+      });
+    } else {
+      const prod=state.stockData.find(x=>x.id===prodId);
+      info=prod||{};
+      const updates={};
+      if(actualizaStock) updates.qty=increment(item.cant);
+      if(item.pcosto_unit>0){
+        updates.pcosto=item.pcosto_unit;
+        // F#4: guardar historial de precios de costo
+        const histEntry={precio:item.pcosto_unit,fecha:fecha};
+        if(prod?.historialCosto) updates.historialCosto=[...prod.historialCosto,histEntry].slice(-12); // máx 12 entradas
+        else updates.historialCosto=[histEntry];
+      }
+      if(Object.keys(updates).length>0)
+        batch.update(doc(db,'stock',prodId),updates);
+    }
+    detalle.push({prodId,cat:info.cat||'',modelo:info.modelo||'',color:info.color||'',talle:info.talle||'',cant:item.cant,pcosto_unit:item.pcosto_unit});
+  }
+  // Guardar el pedido completo
+  batch.set(doc(collection(db,'compras')),{
+    proveedor:proveedor||'Sin especificar', fecha, notas:notas||'',
+    actualizaStock,
+    items:detalle,
+    total:items.reduce((a,i)=>a+i.cant*(i.pcosto_unit||0),0), createdAt:Date.now()
+  });
+  await batch.commit();
+  await loadCompras();
 }
 
 window.setCompraFilter=function(f,btn){

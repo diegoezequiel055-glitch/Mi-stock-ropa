@@ -21,6 +21,7 @@ export const state = {
   uvTipoPrecio: 'menor', // precio por defecto para lo que se agrega al carrito: 'menor' | 'mayorista' | 'curva'
   uvModo: 'ahora', // 'ahora' | 'cuotas'
   filtroSinCosto: false, // lista de stock: mostrar solo productos sin costo
+  cr: null, // Carga rápida: resultado de la IA que se está revisando (ver carga-rapida.js)
 
   confirmCb: null,
   unsubStock: null, unsubVentas: null, unsubCompras: null, unsubGastos: null, unsubCuotas: null, unsubReservas: null,
