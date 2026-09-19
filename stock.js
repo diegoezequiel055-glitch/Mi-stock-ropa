@@ -189,6 +189,19 @@ window.exportCSV=function(){
   URL.revokeObjectURL(url); toast('CSV exportado ✓','success');
 }
 
+window.exportStockCSV=function(){
+  if(!state.stockData.length){toast('No hay productos para exportar.','error');return;}
+  const rows=[['Categoría','Modelo','Color','Talle','Cantidad','Precio venta','Precio mayorista','Precio costo','Notas']];
+  [...state.stockData]
+    .sort((a,b)=>a.cat.localeCompare(b.cat)||a.modelo.localeCompare(b.modelo)||String(a.talle).localeCompare(String(b.talle)))
+    .forEach(p=>rows.push([p.cat,p.modelo,p.color||'',p.talle,p.qty,p.pventa??'',p.pmayorista??'',p.pcosto??'',p.notas||'']));
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`stock-${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  URL.revokeObjectURL(url); toast('Stock exportado ✓','success');
+}
+
 // F#1: Dashboard diario — se actualiza cada vez que cambian ventas o stock
 window.toggleInventarioMode=function(){
   state.inventarioMode=!state.inventarioMode;
