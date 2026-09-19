@@ -2,6 +2,7 @@
   "name": "stockmgr-ia",
   "main": "src/index.js",
   "compatibility_date": "2025-09-01",
+  "workers_dev": true,
   "ai": { "binding": "AI" },
   "vars": {
     "FIREBASE_PROJECT_ID": "mi-stock-ropa",
