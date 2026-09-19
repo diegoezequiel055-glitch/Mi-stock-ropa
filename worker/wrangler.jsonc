@@ -1,0 +1,12 @@
+{
+  "name": "stockmgr-ia",
+  "main": "src/index.js",
+  "compatibility_date": "2025-09-01",
+  "ai": { "binding": "AI" },
+  "vars": {
+    "FIREBASE_PROJECT_ID": "mi-stock-ropa",
+    "ALLOWED_EMAILS": "diegoezequiel055@gmail.com",
+    "ALLOWED_ORIGINS": "https://diegoezequiel055-glitch.github.io,http://localhost:8080",
+    "MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+  }
+}
