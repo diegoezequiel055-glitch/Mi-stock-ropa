@@ -1,12 +1,13 @@
 // Función de IA de StockMGR (Cloudflare Worker).
-// Recibe el texto pegado de WhatsApp + un catálogo compacto del stock y devuelve una lista
-// interpretada. NO lee ni escribe Firestore: guarda la app, después de que el usuario confirma.
+// Recibe el texto pegado de WhatsApp (y la lista de categorías del negocio) y devuelve una lista
+// interpretada. NO recibe productos ni precios del stock: el emparejamiento con el stock lo hace la app.
+// NO lee ni escribe Firestore: guarda la app, después de que el usuario confirma.
 
 const JWKS_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
 let jwksCache = { keys: null, exp: 0 };
 
 const MAX_TEXTO = 6000;
-const MAX_CATALOGO = 800;
+const MAX_CATEGORIAS = 60;
 
 // ── utilidades ──
 const b64uToBytes = (s) => {
@@ -64,12 +65,13 @@ function validarEntrada(body) {
   const texto = typeof body.texto === 'string' ? body.texto.trim() : '';
   if (!texto) throw new Error('texto_vacio');
   if (texto.length > MAX_TEXTO) throw new Error('texto_muy_largo');
-  if (!Array.isArray(body.catalogo) || body.catalogo.length > MAX_CATALOGO) throw new Error('catalogo_invalido');
-  const limpio = (v, max) => String(v ?? '').replace(/[|\n\r]/g, ' ').trim().slice(0, max);
-  const catalogo = body.catalogo.map((c) => ({ k: limpio(c.k, 12), cat: limpio(c.cat, 40), modelo: limpio(c.modelo, 120), color: limpio(c.color, 60) })).filter((c) => c.k);
+  const categorias = (Array.isArray(body.categorias) ? body.categorias : [])
+    .slice(0, MAX_CATEGORIAS)
+    .map((c) => String(c ?? '').replace(/[\n\r,]/g, ' ').trim().slice(0, 40))
+    .filter(Boolean);
   const operacion = ['compra', 'venta', 'producto_nuevo'].includes(body.operacion) ? body.operacion : null;
   const modelo = typeof body.modelo === 'string' && /^@cf\/[\w.\-/]+$/.test(body.modelo) ? body.modelo : null;
-  return { texto, catalogo, operacion, modelo };
+  return { texto, categorias, operacion, modelo };
 }
 
 // ── prompt ──
@@ -80,12 +82,11 @@ REGLAS:
 2. tipo_precio (solo ventas): "mayorista", "curva" o "menor" (menor = minorista / por unidad / normal) si el texto lo dice; si no, "ninguno".
 3. Un item por cada combinación producto + talle. Un pack surtido NUNCA es un item "pack": se desglosa por talle. Notación abreviada: talle seguido de número = talle + cantidad. "S1 M1" son dos items (talle S cantidad 1, talle M cantidad 1); "L2" es talle L cantidad 2; también "M x2" o "2 L". Si un producto (equipo) va seguido de varios talles, repetí el producto en cada item. Talles: XS, S, M, L, XL, XXL, XXXL o numéricos (36, 38, 40, 42, 44...). "cantidad" es el número de unidades de ese item.
 4. Si no se aclara el talle, talle = "". Si no se aclara la cantidad, cantidad = 1.
-5. "producto": las palabras del equipo/modelo tal como las escribió el usuario (ej: "River", "Boca", "conjunto musculosa y short river"). "categoria": el tipo de prenda normalizado a una categoría del catálogo si se puede (remera / camiseta / camiseta de fútbol -> Camiseta; "musculosa y short" -> Conjunto; short -> Short). Si no se puede, "".
+5. "producto": las palabras del equipo/modelo tal como las escribió el usuario (ej: "River", "Boca", "conjunto musculosa y short river"). "categoria": el tipo de prenda, elegido de la lista de CATEGORÍAS DEL NEGOCIO si alguna corresponde (remera / camiseta / camiseta de fútbol -> Camiseta; "musculosa y short" -> Conjunto; short -> Short). Si ninguna corresponde, "".
 6. Precios (costo, mayorista, curva, menor): SOLO si el texto los trae explícitos con esa palabra ("costo 12000", "mayorista 18000", "curva 20000", "menor 25000" o "unidad 25000"). 12.000, 12000 y 12k significan 12000. Si no aparece, 0. NUNCA inventes precios.
 7. total_pack: si el texto da un precio total del pack o pedido (ej: "pack $120.000", "total 90000"), ponelo; si no, 0.
-8. candidatos: hasta 8 claves del CATÁLOGO cuyo modelo pueda corresponder al item (mismo equipo y tipo de prenda). Si hay dudas incluí TODOS los plausibles: no elijas uno solo si el texto no alcanza para distinguirlo. Usá SOLO claves que existan en el catálogo. Si ninguno corresponde, [].
-9. Todo fragmento que no puedas interpretar va textual en no_entendido.
-10. proveedor y cliente: solo si el texto los menciona; si no, "".`;
+8. Todo fragmento que no puedas interpretar va textual en no_entendido.
+9. proveedor y cliente: solo si el texto los menciona; si no, "".`;
 
 const ESQUEMA = {
   type: 'object',
@@ -100,7 +101,6 @@ const ESQUEMA = {
       items: {
         type: 'object',
         properties: {
-          texto: { type: 'string' },
           categoria: { type: 'string' },
           producto: { type: 'string' },
           color: { type: 'string' },
@@ -110,9 +110,8 @@ const ESQUEMA = {
           mayorista: { type: 'number' },
           curva: { type: 'number' },
           menor: { type: 'number' },
-          candidatos: { type: 'array', items: { type: 'string' } },
         },
-        required: ['texto', 'categoria', 'producto', 'color', 'talle', 'cantidad', 'costo', 'mayorista', 'curva', 'menor', 'candidatos'],
+        required: ['categoria', 'producto', 'color', 'talle', 'cantidad', 'costo', 'mayorista', 'curva', 'menor'],
       },
     },
     no_entendido: { type: 'array', items: { type: 'string' } },
@@ -120,9 +119,8 @@ const ESQUEMA = {
   required: ['operacion', 'tipo_precio', 'proveedor', 'cliente', 'total_pack', 'items', 'no_entendido'],
 };
 
-function armarUsuario({ texto, catalogo, operacion }) {
-  const lineas = catalogo.map((c) => `${c.k}|${c.cat}|${c.modelo}|${c.color}`).join('\n');
-  return `CATÁLOGO (clave|categoría|modelo|color):\n${lineas}\n\n${operacion ? `OPERACIÓN INDICADA POR EL USUARIO: ${operacion}\n\n` : ''}TEXTO:\n"""\n${texto}\n"""`;
+function armarUsuario({ texto, categorias, operacion }) {
+  return `CATEGORÍAS DEL NEGOCIO: ${categorias.join(', ') || '(sin datos)'}\n\n${operacion ? `OPERACIÓN INDICADA POR EL USUARIO: ${operacion}\n\n` : ''}TEXTO:\n"""\n${texto}\n"""`;
 }
 
 // ── IA ──
@@ -152,19 +150,17 @@ function extraerJSON(res) {
 }
 
 // ── salida ──
-function limpiarSalida(raw, claves) {
+function limpiarSalida(raw) {
   const num = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null; };
   const str = (v, max = 120) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
   const talle = (v) => str(v, 10).toUpperCase().replace(/\s+/g, '');
   const items = (Array.isArray(raw.items) ? raw.items : []).slice(0, 80).map((it) => ({
-    texto: str(it.texto, 200),
     categoria: str(it.categoria, 40) || null,
     producto: str(it.producto) || null,
     color: str(it.color, 60) || null,
     talle: talle(it.talle) || null,
     cantidad: Math.max(1, Math.min(999, parseInt(it.cantidad, 10) || 1)),
     precios: { costo: num(it.costo), mayorista: num(it.mayorista), curva: num(it.curva), menor: num(it.menor) },
-    candidatos: (Array.isArray(it.candidatos) ? it.candidatos : []).filter((k) => claves.has(k)).slice(0, 8),
   }));
   return {
     operacion: ['compra', 'venta', 'producto_nuevo'].includes(raw.operacion) ? raw.operacion : 'desconocida',
@@ -215,7 +211,7 @@ export default {
       let salida;
       try {
         const res = await llamarIA(env, modelo, armarUsuario(entrada));
-        salida = limpiarSalida(extraerJSON(res), new Set(entrada.catalogo.map((c) => c.k)));
+        salida = limpiarSalida(extraerJSON(res));
       } catch (e) {
         if (esCuotaAgotada(e)) return respuesta({ error: 'cuota_agotada' }, 429, cors);
         return respuesta({ error: 'ia_fallo', detalle: String(e?.message || e).slice(0, 300) }, 502, cors);
