@@ -38,14 +38,15 @@
   </div>
   <div class="hdr-stats">
     <div class="hdr-stat"><div class="v" id="h-unidades">—</div><div class="l">Unidades</div></div>
-    <div class="hdr-stat"><div class="v" id="h-ventas">—</div><div class="l">Ventas</div></div>
-    <div class="hdr-stat"><div class="v" id="h-gan">—</div><div class="l">Ganancia</div></div>
+    <div class="hdr-stat"><div class="v" id="h-ventas">—</div><div class="l" id="h-ventas-l">Ventas</div></div>
+    <div class="hdr-stat"><div class="v" id="h-gan">—</div><div class="l" id="h-gan-l">Ganancia</div></div>
   </div>
   <button class="btn btn-ghost btn-sm" onclick="doLogout()" title="Cerrar sesión" style="font-size:.72rem">⏻ Salir</button>
 </header>
 
 <nav>
-  <button class="tab active" onclick="showTab('stock',this)">📦 Stock</button>
+  <button class="tab active" onclick="showTab('dashboard',this)">📈 Dashboard</button>
+  <button class="tab" onclick="showTab('stock',this)">📦 Stock</button>
   <button class="tab" onclick="showTab('ventas',this)">🛒 Ventas</button>
   <button class="tab" onclick="showTab('carga',this)">⚡ Carga rápida</button>
   <button class="tab" onclick="showTab('cobros',this)">💳 Cobros</button>
@@ -57,8 +58,20 @@
 
 <main>
 
+<!-- ══ DASHBOARD ══ -->
+<div id="tab-dashboard" class="section active">
+  <div class="db-filtros" id="db-filtros">
+    <button class="date-btn active" data-k="mes" onclick="dbSetPeriodo('mes')">Este mes</button>
+    <button class="date-btn" data-k="mes_ant" onclick="dbSetPeriodo('mes_ant')">Mes anterior</button>
+    <button class="date-btn" data-k="3m" onclick="dbSetPeriodo('3m')">Últimos 3 meses</button>
+    <button class="date-btn" data-k="anio" onclick="dbSetPeriodo('anio')">Este año</button>
+    <button class="date-btn" data-k="todo" onclick="dbSetPeriodo('todo')">Todo</button>
+  </div>
+  <div id="db-body"><div class="empty"><p>Cargando datos…</p></div></div>
+</div>
+
 <!-- ══ STOCK ══ -->
-<div id="tab-stock" class="section active">
+<div id="tab-stock" class="section">
   <div id="dashboard-diario" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 22px;margin-bottom:20px">
     <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">📋 Resumen de hoy</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px" id="dashboard-grid"></div>

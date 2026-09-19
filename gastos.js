@@ -3,9 +3,9 @@ import { db, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, 
 
 window.loadGastos = async function(){
   try{
-    const snap=await getDocs(query(collection(db,'gastos'),orderBy('fecha','desc'),limit(200)));
+    const snap=await getDocs(query(collection(db,'gastos'),orderBy('fecha','desc')));
     state.gastosData=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderGastosKPI();
+    renderGastosKPI(); dbRefresh();
     if(document.getElementById('tab-gastos').classList.contains('active')) renderGastos();
   }catch(e){ console.error('Error cargando gastos:',e); }
 }

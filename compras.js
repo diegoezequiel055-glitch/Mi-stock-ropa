@@ -3,9 +3,9 @@ import { db, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, 
 
 window.loadCompras = async function(){
   try{
-    const snap=await getDocs(query(collection(db,'compras'),orderBy('fecha','desc'),limit(100)));
+    const snap=await getDocs(query(collection(db,'compras'),orderBy('fecha','desc')));
     state.comprasData=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderComprasKPI();
+    renderComprasKPI(); dbRefresh();
     if(document.getElementById('tab-compras').classList.contains('active')) renderCompras();
   }catch(e){ console.error('Error cargando compras:',e); }
 }

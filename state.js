@@ -23,6 +23,10 @@ export const state = {
   filtroSinCosto: false, // lista de stock: mostrar solo productos sin costo
   cr: null, // Carga rápida: resultado de la IA que se está revisando (ver carga-rapida.js)
 
+  dbPeriodo: 'mes', // Dashboard: 'mes' | 'mes_ant' | '3m' | 'anio' | 'todo'
+  dbTop: 'unidades', // Dashboard: ranking por 'unidades' | 'ganancia'
+  dbTabla: false, // Dashboard: ver la evolución como tabla
+
   confirmCb: null,
   unsubStock: null, unsubVentas: null, unsubCompras: null, unsubGastos: null, unsubCuotas: null, unsubReservas: null,
 

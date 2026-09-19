@@ -10,6 +10,7 @@ import './gastos.js';
 import './reservas.js';
 import './ganancias.js';
 import './carga-rapida.js';
+import './dashboard.js';
 
 // ── INITIAL STOCK ──
 const INITIAL = [
@@ -188,7 +189,7 @@ function startListeners() {
     updateHeader();
   },err=>{ toast('Error ventas: '+err.message,'error'); });
 
-  state.unsubCuotas = onSnapshot(query(collection(db,'cuotas'),orderBy('createdAt','desc'),limit(100)), snap=>{
+  state.unsubCuotas = onSnapshot(query(collection(db,'cuotas'),orderBy('createdAt','desc')), snap=>{
     state.cuotasData=snap.docs.map(d=>({id:d.id,...d.data()}));
     renderCobros(); renderCobrosKPI(); updateHeader(); renderDashboard(); updateCobrosTabBadge(); renderVentas();
     if(document.getElementById('tab-ganancias').classList.contains('active')) renderGanancias();
@@ -197,7 +198,7 @@ function startListeners() {
   if(state.unsubReservas) state.unsubReservas();
   state.unsubReservas = onSnapshot(query(collection(db,'reservas'),orderBy('createdAt','desc'),limit(100)), snap=>{
     state.reservasData=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderReservasKPI(); updateReservasTabBadge();
+    renderReservasKPI(); updateReservasTabBadge(); dbRefresh();
     if(document.getElementById('tab-reservas').classList.contains('active')) renderReservas();
     // Actualizar stock con cantidades reservadas
     renderStock();
@@ -209,16 +210,19 @@ function startListeners() {
   document.getElementById('loader').style.display='none';
 }
 // ── HEADER ──
-window.updateHeader = function() {
+// Ventas y ganancia del MES en curso: el día 1 vuelven solas a 0 (se calculan por fecha, no se guardan).
+// La cuenta es la misma del Dashboard (dashboard.js), así que los dos siempre coinciden.
+window.updateHeader = function(ahora = new Date()) {
   const unid = state.stockData.reduce((a,p)=>a+p.qty,0);
-  // Bug #8 + #10 fix: incluir cuotas cobradas en ganancia y contador de ventas
-  const ganVentas = state.ventasData.filter(v=>v.pcosto).reduce((a,v)=>a+(v.pventa-v.pcosto)*v.cant,0);
-  const ganCuotas = state.cuotasData.filter(c=>c.pcosto&&c.estado==='cobrado').reduce((a,c)=>a+(c.totalVenta-c.pcosto),0);
-  const gan = ganVentas + ganCuotas;
-  const totalVentas = state.ventasData.length + state.cuotasData.length;
+  const per = dbPeriodo('mes', ahora);
+  const r = dbResumen(per.desde, per.hasta);
+  const mes = ahora.toLocaleDateString('es-AR',{month:'short'}).replace('.','');
   document.getElementById('h-unidades').textContent = unid;
-  document.getElementById('h-ventas').textContent   = totalVentas;
-  document.getElementById('h-gan').textContent      = gan?'$'+fmt(Math.round(gan)):'—';
+  document.getElementById('h-ventas').textContent   = r.nVentas;
+  document.getElementById('h-gan').textContent      = (r.ganancia<0?'−$':'$')+fmt(Math.abs(Math.round(r.ganancia)));
+  document.getElementById('h-ventas-l').textContent = 'Ventas '+mes;
+  document.getElementById('h-gan-l').textContent    = 'Ganancia '+mes;
+  dbRefresh();
 }
 // ── TABS ──
 window.showTab=function(name,btn){
@@ -227,6 +231,7 @@ window.showTab=function(name,btn){
   document.getElementById('tab-'+name).classList.add('active');
   if(btn)btn.classList.add('active');
   // Bug #4 fix: lazy render para todas las tabs, no solo ganancias
+  if(name==='dashboard'){ dbRender(); }
   if(name==='ganancias'){ buildMesOptions(); renderFlujoCaja(); renderGanancias(); }
   if(name==='compras'){ renderComprasKPI(); renderCompras(); setCpStockMode(state.cpActualizaStock); }
   if(name==='gastos'){ renderGastosKPI(); renderGastos(); }
