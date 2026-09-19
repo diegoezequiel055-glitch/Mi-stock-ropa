@@ -39,3 +39,9 @@ window.confirmResolve=function(val){
   if(state.confirmCb){state.confirmCb(val);state.confirmCb=null;}
 }
 window.fmt = function(n){return Number(n).toLocaleString('es-AR');}
+
+// Fechas en hora local (no UTC): entre las 21:00 y las 24:00 de Argentina, UTC ya es "mañana".
+window.fechaAInput=function(ms){ const d=new Date(ms); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+window.hoyISO=function(){ return fechaAInput(Date.now()); }
+// Devuelve el momento a guardar: si es hoy, la hora actual; si es otro día, el mediodía de ese día.
+window.fechaDesdeInput=function(str){ if(!str||str===hoyISO()) return Date.now(); return new Date(str+'T12:00:00').getTime(); }

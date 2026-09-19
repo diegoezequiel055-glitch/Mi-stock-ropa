@@ -11,6 +11,7 @@ import './reservas.js';
 import './ganancias.js';
 import './carga-rapida.js';
 import './dashboard.js';
+import './corregir-fechas.js';
 
 // ── INITIAL STOCK ──
 const INITIAL = [
@@ -150,14 +151,15 @@ async function init() {
       await batch.commit();
     }
     // Setear fecha de hoy en formularios
-    const hoy = new Date().toISOString().slice(0,10);
+    const hoy = hoyISO();
     document.getElementById('cp-fecha').value = hoy;
     document.getElementById('ga-fecha').value = hoy;
     document.getElementById('uv-fecha1').value = hoy;
+    document.getElementById('uv-fecha').value = hoy;
     // Fecha default reserva: 7 días desde hoy
     const en7 = new Date(); en7.setDate(en7.getDate()+7);
     const resFecha = document.getElementById('res-fecha');
-    if (resFecha) resFecha.value = en7.toISOString().slice(0,10);
+    if (resFecha) resFecha.value = fechaAInput(en7.getTime());
     startListeners();
   } catch(err) {
     console.error(err);

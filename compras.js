@@ -85,7 +85,7 @@ window.guardarCompra=async function(){
     renderCpItems();
     document.getElementById('cp-proveedor').value='';
     document.getElementById('cp-notas').value='';
-    document.getElementById('cp-fecha').value=new Date().toISOString().slice(0,10);
+    document.getElementById('cp-fecha').value=hoyISO();
     toast(state.cpActualizaStock
       ? `Compra registrada — stock actualizado ✓`
       : `Compra registrada — historial y costos guardados (stock sin cambios) ✓`
@@ -196,7 +196,7 @@ window.openEditCompraModal=function(id){
   document.getElementById('ec-id').value=id;
   document.getElementById('ec-proveedor').value=c.proveedor||'';
   document.getElementById('ec-notas').value=c.notas||'';
-  document.getElementById('ec-fecha').value=new Date(c.fecha).toISOString().slice(0,10);
+  document.getElementById('ec-fecha').value=fechaAInput(c.fecha);
   document.getElementById('edit-compra-modal').classList.add('open');
 }
 window.closeEditCompraModal=function(){ document.getElementById('edit-compra-modal').classList.remove('open'); }

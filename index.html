@@ -192,6 +192,10 @@
           <label>Cliente <span id="uv-cliente-req" style="color:var(--muted);font-size:.7rem">— opcional</span></label>
           <input type="text" id="uv-cliente" placeholder="Ej: Juan García...">
         </div>
+        <div class="field">
+          <label>Fecha de la venta</label>
+          <input type="date" id="uv-fecha">
+        </div>
         <div class="field" id="uv-ncuotas-wrap" style="display:none">
           <label>Cantidad de cuotas</label>
           <select id="uv-ncuotas" onchange="calcUvCuotas()">
@@ -231,6 +235,7 @@
           <button class="date-btn" onclick="setDateFilter('week',this)">Esta semana</button>
           <button class="date-btn" onclick="setDateFilter('month',this)">Este mes</button>
         </div>
+        <button class="btn btn-outline btn-sm" onclick="openFechasModal()" style="font-size:.72rem" title="Mover ventas cargadas tarde a su fecha real">🗓 Corregir fechas</button>
       </div>
     </div>
     <div class="panel-body" id="ventas-list"></div>
@@ -640,6 +645,10 @@
         <label>Cliente</label>
         <input type="text" id="ev-cliente" placeholder="Nombre del cliente...">
       </div>
+      <div class="field">
+        <label>Fecha de la venta</label>
+        <input type="date" id="ev-fecha">
+      </div>
     </div>
     <div style="background:var(--surface2);border:1px solid var(--warning-dim);border-radius:8px;padding:10px 14px;font-size:.78rem;color:var(--warning);margin-top:14px">
       ⚠️ Editar una venta no modifica el stock. Solo corrige el registro financiero.
@@ -789,6 +798,29 @@
       <div class="modal-actions-right">
         <button class="btn btn-outline" onclick="closeProdModal()">Cancelar</button>
         <button class="btn btn-gold" id="pm-save-btn" onclick="saveProduct()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL CORREGIR FECHAS DE VENTAS ══ -->
+<div class="overlay" id="fechas-modal">
+  <div class="modal modal-wide">
+    <button class="modal-close" onclick="closeFechasModal()">✕</button>
+    <div class="modal-title">🗓 Corregir fechas de ventas</div>
+    <p style="font-size:.8rem;color:var(--muted);margin-bottom:12px">Si cargaste ventas de días anteriores, la app las anotó con el día en que las cargaste. Elegí los días que querés mover y a qué fecha pasarlas: cada venta conserva su hora y guarda su fecha original, así que se puede deshacer.</p>
+    <div id="fechas-lista" style="max-height:38vh;overflow-y:auto;border:1px solid var(--border);border-radius:8px"></div>
+    <div class="field" style="margin-top:14px">
+      <label>Pasarlas al día</label>
+      <input type="date" id="fechas-destino">
+    </div>
+    <div id="fechas-resumen" style="font-size:.8rem;color:var(--text2);margin-top:10px;min-height:1.2em"></div>
+    <div id="fechas-deshacer" style="margin-top:12px"></div>
+    <div class="modal-actions">
+      <div></div>
+      <div class="modal-actions-right">
+        <button class="btn btn-outline" onclick="closeFechasModal()">Cerrar</button>
+        <button class="btn btn-gold" id="fechas-btn" onclick="moverFechasVentas()" disabled>Mover ventas</button>
       </div>
     </div>
   </div>

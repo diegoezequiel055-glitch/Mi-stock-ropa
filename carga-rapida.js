@@ -9,7 +9,7 @@ const MAX_OPCIONES = 60;
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const precioTipo = (p, t) => (t === 'mayorista' ? p.pmayorista : t === 'curva' ? p.pcurva : p.pventa) || 0;
-const hoy = () => new Date().toISOString().slice(0, 10);
+const hoy = () => hoyISO();
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) && n > 0 ? n : null; };
 const el = (id) => document.getElementById(id);
 let opForzada = 'auto';
@@ -301,7 +301,7 @@ function crRender() {
 
   if (c.op === 'venta') {
     h += `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Precio a usar:</span>${Object.entries(TIPOS).map(([k, n]) => `<button class="date-btn${c.tipoPrecio === k ? ' active' : ''}" onclick="crSetTipoPrecio('${k}')">${n}</button>`).join('')}</div>`;
-    h += `<div style="margin-bottom:12px"><label style="font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Cliente (opcional)</label><input type="text" value="${esc(c.cliente)}" onchange="crCampo('cliente',this.value)" placeholder="Ej: Juan García" ${inp('width:100%;margin-top:3px')}></div>`;
+    h += `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"><div style="flex:1 1 160px"><label style="font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Cliente (opcional)</label><input type="text" value="${esc(c.cliente)}" onchange="crCampo('cliente',this.value)" placeholder="Ej: Juan García" ${inp('width:100%;margin-top:3px')}></div><div style="flex:0 1 150px"><label style="font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Fecha de la venta</label><input type="date" value="${esc(c.fecha)}" max="${hoy()}" onchange="crCampo('fecha',this.value)" ${inp('width:100%;margin-top:3px')}></div></div>`;
   } else if (c.op === 'compra') {
     h += `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"><div style="flex:1 1 160px"><label style="font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Proveedor</label><input type="text" value="${esc(c.proveedor)}" onchange="crCampo('proveedor',this.value)" placeholder="Opcional" ${inp('width:100%;margin-top:3px')}></div><div style="flex:0 1 150px"><label style="font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Fecha</label><input type="date" value="${esc(c.fecha)}" onchange="crCampo('fecha',this.value)" ${inp('width:100%;margin-top:3px')}></div></div>`;
   }
@@ -334,7 +334,8 @@ window.crConfirmar = async function () {
         if (previo) previo.cant += it.cantidad;
         else porFila.set(e.fila.id, { prodId: e.fila.id, cant: it.cantidad, tipoPrecio: e.tipo, pventa: e.precio, pcosto: e.fila.pcosto || 0 });
       });
-      const n = await guardarVentaItems([...porFila.values()], c.cliente.trim() || null);
+      if ((c.fecha || hoy()) > hoy()) { toast('La fecha de la venta no puede ser futura.', 'error'); c.busy = false; crRender(); return; }
+      const n = await guardarVentaItems([...porFila.values()], c.cliente.trim() || null, fechaDesdeInput(c.fecha));
       toast(`Venta registrada — ${n} producto${n !== 1 ? 's' : ''} ✓`, 'success');
     } else if (c.op === 'compra') {
       const existentes = new Map(), nuevos = new Map();

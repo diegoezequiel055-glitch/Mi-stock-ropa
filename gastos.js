@@ -40,7 +40,7 @@ window.guardarGasto=async function(){
     await addDoc(collection(db,'gastos'),{desc,monto,cat,sub,fecha,createdAt:Date.now()});
     document.getElementById('ga-desc').value='';
     document.getElementById('ga-monto').value='';
-    document.getElementById('ga-fecha').value=new Date().toISOString().slice(0,10);
+    document.getElementById('ga-fecha').value=hoyISO();
     toast('Gasto registrado ✓','success');
     await loadGastos();
   }catch(e){toast('Error: '+e.message,'error');}
@@ -113,7 +113,7 @@ window.openEditGastoModal=function(id){
   document.getElementById('eg-cat').value=g.cat||'negocio';
   updateEgSubcats();
   document.getElementById('eg-sub').value=g.sub||'otros';
-  document.getElementById('eg-fecha').value=new Date(g.fecha).toISOString().slice(0,10);
+  document.getElementById('eg-fecha').value=fechaAInput(g.fecha);
   document.getElementById('edit-gasto-modal').classList.add('open');
 }
 window.closeEditGastoModal=function(){ document.getElementById('edit-gasto-modal').classList.remove('open'); }

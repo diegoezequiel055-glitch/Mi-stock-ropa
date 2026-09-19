@@ -102,7 +102,7 @@ window.setUvModoCobro=function(modo){
   document.getElementById('uv-cliente-req').textContent=modo==='cuotas'?'— obligatorio':'— opcional';
   document.getElementById('btn-registrar-uv').textContent=modo==='cuotas'?'💳 Registrar venta en cuotas':'✓ Registrar venta';
   if(modo==='cuotas'){
-    if(!document.getElementById('uv-fecha1').value) document.getElementById('uv-fecha1').value=new Date().toISOString().slice(0,10);
+    if(!document.getElementById('uv-fecha1').value) document.getElementById('uv-fecha1').value=hoyISO();
     calcUvCuotas();
   } else {
     document.getElementById('uv-cuota-calc').style.display='none';
@@ -135,14 +135,18 @@ window.registrarVentaUnificada=async function(){
     if(!p||p.qty<item.cant){toast(`Stock insuficiente: ${p?.modelo||'?'} T.${p?.talle}`,'error');return;}
     if(!item.pventa||item.pventa<=0){toast(`Falta el precio ${TIPOS_PRECIO[item.tipoPrecio].toLowerCase()} de ${p.modelo} T.${p.talle}. Escribilo o cambiá el tipo.`,'error');return;}
   }
+  const fechaSel=document.getElementById('uv-fecha').value||hoyISO();
+  if(fechaSel>hoyISO()){toast('La fecha de la venta no puede ser futura.','error');return;}
   if(state.uvModo==='cuotas') return registrarCuotaDesdeCarrito();
 
   const btn=document.getElementById('btn-registrar-uv'); btn.disabled=true; btn.textContent='Registrando...';
   const cliente=document.getElementById('uv-cliente').value.trim()||null;
+  const fechaStr=document.getElementById('uv-fecha').value||hoyISO();
   try{
-    const cartLen=await guardarVentaItems(state.ventaCart,cliente);
+    const cartLen=await guardarVentaItems(state.ventaCart,cliente,fechaDesdeInput(fechaStr));
     state.ventaCart=[];
     document.getElementById('uv-cliente').value='';
+    document.getElementById('uv-fecha').value=hoyISO();
     renderUvItems();
     toast(`${cartLen} producto${cartLen!==1?'s':''} vendido${cartLen!==1?'s':''} ✓`,'success');
   }catch(e){toast('Error: '+e.message,'error');}
@@ -151,8 +155,8 @@ window.registrarVentaUnificada=async function(){
 
 // Guarda una venta (una o varias líneas) y descuenta el stock. La usan el carrito y la Carga rápida.
 // items: [{prodId, cant, tipoPrecio:'menor'|'mayorista'|'curva', pventa, pcosto}]
-window.guardarVentaItems=async function(items,cliente){
-  const fecha=Date.now();
+window.guardarVentaItems=async function(items,cliente,fechaVenta){
+  const fecha=fechaVenta||Date.now();
   const loteId=items.length>1?fecha.toString():null;
   // Las líneas de tipo curva de una misma venta comparten curvaId (para poder borrarlas juntas)
   const curvaId=items.filter(i=>i.tipoPrecio==='curva').length>1?fecha.toString():null;
@@ -198,12 +202,13 @@ async function registrarCuotaDesdeCarrito(){
       prodId:item.prodId,cat:p.cat,modelo:p.modelo,color:p.color||'',talle:p.talle,
       cliente,totalVenta:total,pcosto:costo,cuotas,
       estado:'pendiente', // pendiente | parcial | cobrado
-      createdAt:Date.now()
+      createdAt:fechaDesdeInput(document.getElementById('uv-fecha').value)
     });
     await batch.commit();
     state.ventaCart=[];
     document.getElementById('uv-cliente').value='';
     document.getElementById('uv-cuota-calc').style.display='none';
+    document.getElementById('uv-fecha').value=hoyISO();
     renderUvItems();
     toast(`Venta en ${n} cuotas registrada para ${cliente} ✓`,'success');
   }catch(e){toast('Error: '+e.message,'error');}
@@ -361,6 +366,8 @@ window.openEditVentaModal=function(id){
   document.getElementById('ev-precio').value=v.pventa||'';
   document.getElementById('ev-costo').value=v.pcosto||'';
   document.getElementById('ev-cant').value=v.cant||1;
+  document.getElementById('ev-cliente').value=v.cliente||'';
+  document.getElementById('ev-fecha').value=fechaAInput(v.fecha);
   document.getElementById('edit-venta-modal').classList.add('open');
 }
 window.closeEditVentaModal=function(){ document.getElementById('edit-venta-modal').classList.remove('open'); }
@@ -370,9 +377,19 @@ window.saveEditVenta=async function(){
   const pcosto=parseFloat(document.getElementById('ev-costo').value)||null;
   const cant=parseInt(document.getElementById('ev-cant').value)||1;
   if(!pventa||pventa<=0){toast('El precio debe ser mayor a 0.','error');return;}
+  const cliente=document.getElementById('ev-cliente').value.trim()||null;
+  const fechaStr=document.getElementById('ev-fecha').value;
+  if(fechaStr&&fechaStr>hoyISO()){toast('La fecha de la venta no puede ser futura.','error');return;}
+  const v=state.ventasData.find(x=>x.id===id);
+  const cambios={pventa,pcosto,cant,cliente};
+  // Si cambió el día, se guarda el nuevo (al mediodía) y se recuerda la fecha original.
+  if(v&&fechaStr&&fechaStr!==fechaAInput(v.fecha)){
+    cambios.fecha=fechaDesdeInput(fechaStr);
+    if(!v.fechaOriginal) cambios.fechaOriginal=v.fecha;
+  }
   const btn=document.getElementById('ev-save-btn'); btn.disabled=true; btn.textContent='Guardando...';
   try{
-    await updateDoc(doc(db,'ventas',id),{pventa,pcosto,cant});
+    await updateDoc(doc(db,'ventas',id),cambios);
     toast('Venta actualizada ✓','success');
     closeEditVentaModal();
   }catch(e){toast('Error: '+e.message,'error');}

@@ -77,7 +77,7 @@ window.openReservaModal=function(id){
   document.getElementById('rm-del-btn').style.display=r?'inline-flex':'none';
   // Set vencimiento default: 7 días desde hoy
   const def=r?new Date(r.vencimiento):new Date(Date.now()+7*24*60*60*1000);
-  document.getElementById('rm-vencimiento').value=def.toISOString().slice(0,10);
+  document.getElementById('rm-vencimiento').value=fechaAInput(def.getTime());
   // Si es edición, mostrar el producto
   const preview=document.getElementById('rm-preview');
   if(r){

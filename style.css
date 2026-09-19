@@ -427,3 +427,13 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
 }
 .db-lista>div>span:first-child{min-width:0;overflow-wrap:anywhere}
 .db-lista b{display:flex;gap:8px;align-items:center;white-space:nowrap;flex-shrink:0;font-weight:400}
+
+/* ── CORREGIR FECHAS ── */
+.fechas-fila{display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;font-size:.82rem}
+.fechas-fila:last-child{border-bottom:none}
+.fechas-fila:hover{background:var(--surface2)}
+.fechas-fila input{width:auto;flex-shrink:0}
+.fechas-dia{flex:1;min-width:0}
+.fechas-num{color:var(--text2);font-size:.76rem;white-space:nowrap}
+label.fechas-fila{text-transform:none;letter-spacing:0;color:var(--text);font-size:.84rem;margin:0}
+label.fechas-fila .fechas-num{color:var(--text2);font-size:.78rem}
