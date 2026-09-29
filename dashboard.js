@@ -161,6 +161,21 @@ function resumenStock() {
   };
 }
 
+// Plata parada: stock que hace rato no se vende (o que nunca se vendió).
+const UMBRAL_ESTANCADO_DIAS = 60;
+function stockEstancado(ahora) {
+  const t = ahora.getTime();
+  const ultimaVenta = new Map();
+  const marcar = (prodId, ts) => { if (!prodId || !(ts > 0)) return; const cur = ultimaVenta.get(prodId); if (!cur || ts > cur) ultimaVenta.set(prodId, ts); };
+  for (const v of state.ventasData) marcar(v.prodId, v.fecha);
+  for (const c of state.cuotasData) marcar(c.prodId, c.createdAt);
+  return state.stockData.filter((p) => p.qty > 0).map((p) => {
+    const ult = ultimaVenta.get(p.id);
+    const dias = Math.floor((t - (ult ?? p.createdAt ?? t)) / MS_DIA);
+    return { p, dias, nunca: ult == null };
+  }).filter((x) => x.dias >= UMBRAL_ESTANCADO_DIAS).sort((a, b) => b.dias - a.dias);
+}
+
 function cobros(ahora) {
   const t = ahora.getTime(), en7 = t + 7 * MS_DIA;
   let porCobrar = 0, vencido = 0, prox = 0, planes = 0, nVenc = 0;
@@ -280,7 +295,7 @@ window.dbRender = function (ahora = new Date()) {
   const prev = per.prev ? dbResumen(per.prev.desde, per.prev.hasta) : null;
   const pe = per.prev && per.prev.etiqueta;
   const dl = (k) => (prev ? delta(cur[k], { v: prev[k] }, pe) : '');
-  const st = resumenStock(), co = cobros(ahora);
+  const st = resumenStock(), co = cobros(ahora), est = stockEstancado(ahora);
   const en = enRango(per.desde, per.hasta);
 
   const compras = state.comprasData.filter((c) => en(c.fecha)).reduce((a, c) => a + (c.total || 0), 0);
@@ -295,6 +310,7 @@ window.dbRender = function (ahora = new Date()) {
   if (st.sinCosto) chips.push(`<button class="db-chip aviso" onclick="dbVerSinCosto()">💲 ${st.sinCosto} producto${st.sinCosto !== 1 ? 's' : ''} sin costo</button>`);
   const vencRes = state.reservasData.filter((r) => r.estado !== 'cancelada' && r.vencimiento < ahora.getTime()).length;
   if (vencRes) chips.push(`<button class="db-chip aviso" onclick="dbIr('reservas')">🔖 ${vencRes} reserva${vencRes !== 1 ? 's' : ''} vencida${vencRes !== 1 ? 's' : ''}</button>`);
+  if (est.length) chips.push(`<button class="db-chip aviso" onclick="dbIr('stock')">💤 ${est.length} producto${est.length !== 1 ? 's' : ''} sin vender hace más de ${UMBRAL_ESTANCADO_DIAS} días</button>`);
 
   // reponer: se vendió en el período y quedan 0 o 1
   const vendidosPorProd = new Map();
@@ -339,6 +355,7 @@ window.dbRender = function (ahora = new Date()) {
   h += `<div class="db-grid2">`;
   h += card('Stock', `<div class="db-mini">${tile('Unidades', entero(st.unidades))}${tile('Referencias', entero(st.referencias))}${tile('Valor a costo', dinero(st.valorCosto))}${tile('Valor a precio menor', dinero(st.valorVenta))}${tile('Última unidad', entero(st.ultima))}${tile('Agotados', entero(st.agotados))}${tile('Sin costo', entero(st.sinCosto))}${tile('Sin precio menor', entero(st.sinPrecio))}</div><h4>Unidades por categoría</h4>${barras(st.porCat.slice(0, 8).map((x) => ({ k: x.k, v: x.v })), { formato: (n) => entero(n) + ' u.' })}`);
   h += card('A reponer', reponer.length ? `<div class="db-lista">${reponer.slice(0, 8).map((x) => `<div><span>${esc(x.p.modelo)}${x.p.color ? ' · ' + esc(x.p.color) : ''} <em>T.${esc(x.p.talle)}</em></span><b>${x.p.qty === 0 ? '<span class="db-tag mal">Agotado</span>' : '<span class="db-tag aviso">Queda 1</span>'} <span class="db-mut">${x.vend} vendido${x.vend !== 1 ? 's' : ''}</span></b></div>`).join('')}</div>` : '<p class="db-vacio">Nada urgente: ningún producto vendido en este período está por agotarse.</p>', 'Productos que se vendieron en este período y quedan 0 o 1 unidad.');
+  h += card('Sin movimiento', est.length ? `<div class="db-lista">${est.slice(0, 8).map((x) => `<div><span>${esc(x.p.cat)} — ${esc(x.p.modelo)}${x.p.color ? ' · ' + esc(x.p.color) : ''} <em>T.${esc(x.p.talle)}</em></span><b>${x.nunca ? '<span class="db-tag mal">Nunca se vendió</span>' : `<span class="db-tag aviso">${x.dias} días</span>`} <span class="db-mut">${x.p.qty} u.</span></b></div>`).join('')}</div>` : '<p class="db-vacio">Todo tu stock tuvo alguna venta en los últimos ' + UMBRAL_ESTANCADO_DIAS + ' días.</p>', `Con stock y sin ninguna venta hace más de ${UMBRAL_ESTANCADO_DIAS} días: candidatos a liquidar o promocionar.`);
   h += `</div>`;
 
   h += `<div class="db-grid2">`;
