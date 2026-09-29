@@ -63,6 +63,7 @@
   <button class="tab" onclick="showTab('reservas',this)">🔖 Reservas</button>
   <button class="tab" onclick="showTab('compras',this)">📥 Compras</button>
   <button class="tab" onclick="showTab('gastos',this)">💸 Gastos</button>
+  <button class="tab" onclick="showTab('envios',this)">🚚 Envíos</button>
 </nav>
 
 <main>
@@ -417,6 +418,39 @@
       </div>
     </div>
     <div class="panel-body" id="gastos-list"></div>
+  </div>
+</div>
+
+<!-- ══ ENVÍOS ══ -->
+<div id="tab-envios" class="section">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>🚚 Motomensajería (Gran Buenos Aires)</h2>
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="envios-search" placeholder="Buscar localidad..." oninput="enviosBuscar(this.value)" style="width:170px">
+      </div>
+    </div>
+    <div class="panel-body">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+        <label style="margin:0;text-transform:none;letter-spacing:0;font-size:.8rem;color:var(--text2)">Si la motomensajería supera $</label>
+        <input type="number" id="envios-umbral" min="0" placeholder="20000" onchange="enviosSetUmbral(this.value)" style="width:110px">
+        <span style="font-size:.78rem;color:var(--muted)">avisar que conviene mirar Correo Argentino</span>
+        <button class="btn btn-outline btn-sm" onclick="enviosAgregarLocalidad()" style="margin-left:auto;font-size:.72rem">+ Agregar localidad</button>
+      </div>
+      <div id="envios-moto-body"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>📦 Correo Argentino (resto del país)</h2>
+      <button class="btn btn-outline btn-sm" onclick="enviosAgregarCorreo()" style="font-size:.72rem">+ Agregar fila</button>
+    </div>
+    <div class="panel-body">
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:12px">Cargala vos con los precios del cotizador público de <strong>correoargentino.com.ar</strong> (no hace falta cuenta ni API) por zona y rango de peso.</p>
+      <div id="envios-correo-body"></div>
+    </div>
   </div>
 </div>
 

@@ -12,6 +12,7 @@ import './carga-rapida.js';
 import './dashboard.js';
 import './corregir-fechas.js';
 import './catalogo.js';
+import './envios.js';
 
 // Habilita "Instalar app" / "Agregar a pantalla de inicio" (no guarda nada en caché).
 if('serviceWorker' in navigator){
@@ -182,6 +183,7 @@ function startListeners() {
   if(state.unsubVentas) state.unsubVentas();
   if(state.unsubCuotas) state.unsubCuotas();
   catalogoIniciar();
+  enviosIniciar();
 
   state.unsubStock = onSnapshot(collection(db,'stock'), snap=>{
     state.stockData=snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -244,4 +246,5 @@ window.showTab=function(name,btn){
   if(name==='gastos'){ renderGastosKPI(); renderGastos(); }
   if(name==='cobros'){ renderCobrosKPI(); renderCobros(); }
   if(name==='reservas'){ renderReservasKPI(); renderReservas(); }
+  if(name==='envios'){ renderEnvios(); }
 }
