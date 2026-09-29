@@ -124,6 +124,7 @@ window.openProductModal=function(id){
   document.getElementById('pm-pcurva').value=p?.pcurva||'';
   document.getElementById('pm-pcosto').value=p?.pcosto||'';
   document.getElementById('pm-notas').value=p?.notas||''; // F#3
+  document.getElementById('pm-catalogo').checked=!!p?.catalogo;
   // Historial de cada precio (costo, mayorista, curva, menor)
   Object.entries({pcosto:'pm-hist-costo',pmayorista:'pm-hist-mayorista',pcurva:'pm-hist-curva',pventa:'pm-hist-menor'}).forEach(([campo,elId])=>{
     const el=document.getElementById(elId);
@@ -154,7 +155,8 @@ window.saveProduct=async function(){
   const data={cat,modelo,color:document.getElementById('pm-color').value.trim(),talle,
     qty:parseInt(document.getElementById('pm-qty').value)||0,
     pventa,pcosto,pmayorista,pcurva,
-    notas:document.getElementById('pm-notas').value.trim()||null // F#3
+    notas:document.getElementById('pm-notas').value.trim()||null, // F#3
+    catalogo:document.getElementById('pm-catalogo').checked
   };
   const id=document.getElementById('pm-id').value;
   const prodActual=id?state.stockData.find(x=>x.id===id):null;

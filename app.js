@@ -11,6 +11,7 @@ import './reservas.js';
 import './carga-rapida.js';
 import './dashboard.js';
 import './corregir-fechas.js';
+import './catalogo.js';
 
 // Habilita "Instalar app" / "Agregar a pantalla de inicio" (no guarda nada en caché).
 if('serviceWorker' in navigator){
@@ -180,12 +181,14 @@ function startListeners() {
   if(state.unsubStock)  state.unsubStock();
   if(state.unsubVentas) state.unsubVentas();
   if(state.unsubCuotas) state.unsubCuotas();
+  catalogoIniciar();
 
   state.unsubStock = onSnapshot(collection(db,'stock'), snap=>{
     state.stockData=snap.docs.map(d=>({id:d.id,...d.data()}));
     renderStock(); populateCategoryFilter(); updateHeader();
     // Bug #19 fix: alerta de stock bajo al cargar o cambiar
     checkStockBajo();
+    catalogoRefresh();
   },err=>{ toast('Error stock: '+err.message,'error'); });
 
   state.unsubVentas = onSnapshot(query(collection(db,'ventas'),orderBy('fecha','desc')), snap=>{
@@ -206,6 +209,7 @@ function startListeners() {
     if(document.getElementById('tab-reservas').classList.contains('active')) renderReservas();
     // Actualizar stock con cantidades reservadas
     renderStock();
+    catalogoRefresh();
   },err=>{ toast('Error reservas: '+err.message,'error'); });
 
   // Bug #12 fix: compras y gastos se cargan una vez (no tiempo real — ahorra lecturas Firestore)

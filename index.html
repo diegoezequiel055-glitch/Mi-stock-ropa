@@ -759,6 +759,10 @@
         <label>Notas <span style="color:var(--muted);font-size:0.7rem">— opcional, uso interno</span></label>
         <textarea id="pm-notas" placeholder="Ej: defecto en costura, reservado para cliente, revisar..." style="height:60px;resize:vertical"></textarea>
       </div>
+      <div class="field" style="grid-column:1/-1">
+        <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.85rem;color:var(--text)"><input type="checkbox" id="pm-catalogo" style="width:auto"> 🛍️ Mostrar este talle en el catálogo público</label>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:4px">Se junta solo con los demás talles tildados del mismo modelo. Nunca se comparte costo ni precio mayorista/curva.</div>
+      </div>
     </div>
     <div class="modal-actions">
       <div><button class="btn btn-ghost" id="pm-del-btn" onclick="delProductFromModal()" style="color:var(--danger);border-color:var(--danger-dim);display:none">🗑 Eliminar</button></div>
