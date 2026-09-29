@@ -74,6 +74,7 @@ window.renderCobros=function(){
       <div class="cuota-footer">
         <div style="font-size:.75rem;color:var(--muted)">Tocá un círculo para marcar cuota cobrada</div>
         <div style="display:flex;gap:6px">
+          ${c.estado!=='cobrado'?`<button class="btn btn-outline btn-sm" onclick="recordarCuotaWhatsapp('${c.id}')" style="font-size:.7rem;color:var(--success);border-color:var(--success-dim)">📲 Recordar</button>`:''}
           <button class="btn btn-outline btn-sm" onclick="openCuotaModal('${c.id}')" style="font-size:.7rem">✏️ Editar</button>
           <button class="btn-ghost btn" onclick="delCuota('${c.id}','${c.prodId}',${c.estado!=='cobrado'})" style="font-size:.72rem">🗑</button>
         </div>
@@ -147,6 +148,22 @@ window.delCuota=async function(id,prodId,reponerStock){
     }
     await batch.commit(); toast('Plan eliminado y stock repuesto ✓','success');
   }catch(e){toast('Error: '+e.message,'error');}
+}
+
+// Arma un recordatorio de cobro y abre WhatsApp para elegir el contacto (no hace falta guardar el teléfono).
+window.recordarCuotaWhatsapp = function(id){
+  const c=state.cuotasData.find(x=>x.id===id); if(!c)return;
+  const pendientes=(c.cuotas||[]).filter(q=>!q.pagada).sort((a,b)=>a.vencimiento-b.vencimiento);
+  if(!pendientes.length){ toast('Este plan ya está cobrado completamente.'); return; }
+  const now=Date.now();
+  const vencidas=pendientes.filter(q=>q.vencimiento<now);
+  const q=vencidas[0]||pendientes[0];
+  const fecha=new Date(q.vencimiento).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const prod=`${c.cat} — ${c.modelo}${c.color?' ('+c.color+')':''}`;
+  const msg=vencidas.length
+    ? `Hola ${c.cliente}! Te escribo por la cuota ${q.nro}/${c.cuotas.length} de ${prod}, que venció el ${fecha} por $${fmt(q.monto)}. ¿Podemos coordinar el pago? Gracias!`
+    : `Hola ${c.cliente}! Te recuerdo que la cuota ${q.nro}/${c.cuotas.length} de ${prod} vence el ${fecha} por $${fmt(q.monto)}. Cualquier cosa avisame. Gracias!`;
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
 }
 
 window.updateCobrosTabBadge = function(){
