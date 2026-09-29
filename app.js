@@ -12,6 +12,11 @@ import './carga-rapida.js';
 import './dashboard.js';
 import './corregir-fechas.js';
 
+// Habilita "Instalar app" / "Agregar a pantalla de inicio" (no guarda nada en caché).
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+
 // ── INITIAL STOCK ──
 const INITIAL = [
   {cat:"Bermuda",modelo:"Jean (Liquidación)",color:"Jean claro con brillos",talle:"44",qty:1,pventa:null,pcosto:null,pmayorista:null},
