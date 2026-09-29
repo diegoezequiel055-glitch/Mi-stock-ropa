@@ -225,6 +225,11 @@ window.exportStockCSV=function(){
   URL.revokeObjectURL(url); toast('Stock exportado ✓','success');
 }
 
+// El botón hace dos cosas según el momento: arrancar el conteo, o confirmarlo al tocarlo de nuevo.
+window.toggleOrConfirmInventario=function(){
+  if(state.inventarioMode) confirmarInventario();
+  else toggleInventarioMode();
+}
 // F#1: Dashboard diario — se actualiza cada vez que cambian ventas o stock
 window.toggleInventarioMode=function(){
   state.inventarioMode=!state.inventarioMode;

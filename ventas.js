@@ -381,6 +381,12 @@ window.saveEditVenta=async function(){
   const fechaStr=document.getElementById('ev-fecha').value;
   if(fechaStr&&fechaStr>hoyISO()){toast('La fecha de la venta no puede ser futura.','error');return;}
   const v=state.ventasData.find(x=>x.id===id);
+  // Si cambia la cantidad, el stock tiene que moverse en sentido contrario (vender más = restar stock).
+  const diffCant=v?cant-v.cant:0;
+  if(diffCant>0&&v.prodId){
+    const prod=state.stockData.find(x=>x.id===v.prodId);
+    if(prod&&prod.qty<diffCant){toast(`Solo hay ${prod.qty} unidad${prod.qty!==1?'es':''} más en stock de ese producto.`,'error');return;}
+  }
   const cambios={pventa,pcosto,cant,cliente};
   // Si cambió el día, se guarda el nuevo (al mediodía) y se recuerda la fecha original.
   if(v&&fechaStr&&fechaStr!==fechaAInput(v.fecha)){
@@ -389,7 +395,10 @@ window.saveEditVenta=async function(){
   }
   const btn=document.getElementById('ev-save-btn'); btn.disabled=true; btn.textContent='Guardando...';
   try{
-    await updateDoc(doc(db,'ventas',id),cambios);
+    const batch=writeBatch(db);
+    batch.update(doc(db,'ventas',id),cambios);
+    if(diffCant!==0&&v.prodId) batch.update(doc(db,'stock',v.prodId),{qty:increment(-diffCant)});
+    await batch.commit();
     toast('Venta actualizada ✓','success');
     closeEditVentaModal();
   }catch(e){toast('Error: '+e.message,'error');}

@@ -8,7 +8,6 @@ import './cuotas.js';
 import './compras.js';
 import './gastos.js';
 import './reservas.js';
-import './resumen-dia.js';
 import './carga-rapida.js';
 import './dashboard.js';
 import './corregir-fechas.js';
@@ -186,13 +185,13 @@ function startListeners() {
 
   state.unsubVentas = onSnapshot(query(collection(db,'ventas'),orderBy('fecha','desc')), snap=>{
     state.ventasData=snap.docs.map(d=>{ const r=d.data(); return{id:d.id,...r,pventa:r.pventa??r.precio??0,cant:r.cant??r.cantidad??1,pcosto:r.pcosto??r.costo??null}; });
-    renderVentas(); renderComprasKPI(); renderResumenDia();
+    renderVentas(); renderComprasKPI();
     updateHeader();
   },err=>{ toast('Error ventas: '+err.message,'error'); });
 
   state.unsubCuotas = onSnapshot(query(collection(db,'cuotas'),orderBy('createdAt','desc')), snap=>{
     state.cuotasData=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderCobros(); renderCobrosKPI(); updateHeader(); renderResumenDia(); updateCobrosTabBadge(); renderVentas();
+    renderCobros(); renderCobrosKPI(); updateHeader(); updateCobrosTabBadge(); renderVentas();
   },err=>{ toast('Error cuotas: '+err.message,'error'); });
 
   if(state.unsubReservas) state.unsubReservas();
