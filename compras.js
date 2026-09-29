@@ -105,12 +105,12 @@ window.guardarCompraItems=async function({items,proveedor,fecha,notas,actualizaS
     if(item.nuevo){
       const n=item.nuevo, ref=doc(collection(db,'stock'));
       prodId=ref.id; info=n;
-      batch.set(ref,{
+      const nuevo={
         cat:n.cat,modelo:n.modelo,color:n.color||'',talle:n.talle,qty:actualizaStock?item.cant:0,
         pventa:n.pventa||null,pmayorista:n.pmayorista||null,pcurva:n.pcurva||null,
-        pcosto:item.pcosto_unit>0?item.pcosto_unit:null,notas:null,createdAt:Date.now(),
-        ...(item.pcosto_unit>0?{historialCosto:[{precio:item.pcosto_unit,fecha}]}:{})
-      });
+        pcosto:item.pcosto_unit>0?item.pcosto_unit:null,notas:null,createdAt:Date.now()
+      };
+      batch.set(ref,{...nuevo,...agregarHistorial(null,nuevo,fecha)});
     } else {
       const prod=state.stockData.find(x=>x.id===prodId);
       info=prod||{};
@@ -118,10 +118,7 @@ window.guardarCompraItems=async function({items,proveedor,fecha,notas,actualizaS
       if(actualizaStock) updates.qty=increment(item.cant);
       if(item.pcosto_unit>0){
         updates.pcosto=item.pcosto_unit;
-        // F#4: guardar historial de precios de costo
-        const histEntry={precio:item.pcosto_unit,fecha:fecha};
-        if(prod?.historialCosto) updates.historialCosto=[...prod.historialCosto,histEntry].slice(-12); // máx 12 entradas
-        else updates.historialCosto=[histEntry];
+        Object.assign(updates,agregarHistorial(prod,updates,fecha));
       }
       if(Object.keys(updates).length>0)
         batch.update(doc(db,'stock',prodId),updates);

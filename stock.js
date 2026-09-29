@@ -124,12 +124,13 @@ window.openProductModal=function(id){
   document.getElementById('pm-pcurva').value=p?.pcurva||'';
   document.getElementById('pm-pcosto').value=p?.pcosto||'';
   document.getElementById('pm-notas').value=p?.notas||''; // F#3
-  // F#4: mostrar historial de precio de costo
-  const histEl=document.getElementById('pm-hist-costo');
-  if(p?.historialCosto?.length){
-    const entries=p.historialCosto.slice(-5).reverse();
-    histEl.innerHTML='Historial: '+entries.map(h=>`$${fmt(h.precio)} (${new Date(h.fecha).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})})`).join(' → ');
-  } else { histEl.textContent=''; }
+  // Historial de cada precio (costo, mayorista, curva, menor)
+  Object.entries({pcosto:'pm-hist-costo',pmayorista:'pm-hist-mayorista',pcurva:'pm-hist-curva',pventa:'pm-hist-menor'}).forEach(([campo,elId])=>{
+    const el=document.getElementById(elId);
+    const key=window.HISTORIAL_CAMPOS[campo];
+    const hist=p?.[key];
+    el.innerHTML=hist?.length?'Historial: '+hist.slice(-5).reverse().map(h=>`$${fmt(h.precio)} (${new Date(h.fecha).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})})`).join(' → '):'';
+  });
   document.getElementById('pm-del-btn').style.display=p?'inline-flex':'none';
   document.getElementById('prod-modal').classList.add('open');
 }
@@ -155,11 +156,13 @@ window.saveProduct=async function(){
     pventa,pcosto,pmayorista,pcurva,
     notas:document.getElementById('pm-notas').value.trim()||null // F#3
   };
+  const id=document.getElementById('pm-id').value;
+  const prodActual=id?state.stockData.find(x=>x.id===id):null;
+  const hist=agregarHistorial(prodActual,data);
   const btn=document.getElementById('pm-save-btn'); btn.disabled=true; btn.textContent='Guardando...';
   try{
-    const id=document.getElementById('pm-id').value;
-    if(id){await updateDoc(doc(db,'stock',id),data);toast('Producto actualizado ✓'+avisos,'success');}
-    else{await addDoc(collection(db,'stock'),{...data,createdAt:Date.now()});toast('Producto agregado ✓'+avisos,'success');}
+    if(id){await updateDoc(doc(db,'stock',id),{...data,...hist});toast('Producto actualizado ✓'+avisos,'success');}
+    else{await addDoc(collection(db,'stock'),{...data,...hist,createdAt:Date.now()});toast('Producto agregado ✓'+avisos,'success');}
     closeProdModal();
   }catch(e){toast('Error: '+e.message,'error');}
   finally{btn.disabled=false;btn.textContent='Guardar';}
@@ -362,10 +365,12 @@ window.saveCargaMasiva=async function(){
         if(pmayorista) upd.pmayorista=pmayorista;
         if(pcurva) upd.pcurva=pcurva;
         if(pcosto) upd.pcosto=pcosto;
+        Object.assign(upd,agregarHistorial(existe,upd));
         batch.update(doc(db,'stock',existe.id),upd);
       } else {
         const ref=doc(collection(db,'stock'));
-        batch.set(ref,{cat,modelo,color,talle,qty,pventa,pmayorista,pcurva,pcosto,notas:null,createdAt:Date.now()});
+        const nuevo={cat,modelo,color,talle,qty,pventa,pmayorista,pcurva,pcosto,notas:null,createdAt:Date.now()};
+        batch.set(ref,{...nuevo,...agregarHistorial(null,nuevo)});
       }
     }
     await batch.commit();

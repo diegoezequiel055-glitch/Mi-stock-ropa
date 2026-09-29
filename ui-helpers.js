@@ -45,3 +45,19 @@ window.fechaAInput=function(ms){ const d=new Date(ms); return `${d.getFullYear()
 window.hoyISO=function(){ return fechaAInput(Date.now()); }
 // Devuelve el momento a guardar: si es hoy, la hora actual; si es otro día, el mediodía de ese día.
 window.fechaDesdeInput=function(str){ if(!str||str===hoyISO()) return Date.now(); return new Date(str+'T12:00:00').getTime(); }
+
+// Historial de precios: cada campo de precio guarda sus últimos 12 cambios, con fecha.
+window.HISTORIAL_CAMPOS={pcosto:'historialCosto',pmayorista:'historialMayorista',pcurva:'historialCurva',pventa:'historialMenor'};
+// prodActual: el producto tal como está antes del cambio (null si es nuevo). cambios: los valores nuevos a guardar.
+// Devuelve solo los campos de historial que corresponde actualizar (agregar a un updateDoc/set junto con "cambios").
+window.agregarHistorial=function(prodActual,cambios,fecha=Date.now()){
+  const extra={};
+  for(const campo in window.HISTORIAL_CAMPOS){
+    if(!(campo in cambios))continue;
+    const nuevo=cambios[campo];
+    if(!(nuevo>0)||nuevo===prodActual?.[campo])continue; // sin valor o sin cambio real
+    const key=window.HISTORIAL_CAMPOS[campo];
+    extra[key]=[...(prodActual?.[key]||[]),{precio:nuevo,fecha}].slice(-12);
+  }
+  return extra;
+}

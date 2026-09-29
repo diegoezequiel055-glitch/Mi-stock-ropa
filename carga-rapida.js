@@ -228,7 +228,7 @@ async function confirmarPrecios() {
   for (const p of plan) for (const f of p.modelo.filas) {
     const u = {};
     for (const x of p.cambios) if (f[x.campo] !== x.nuevo) u[x.campo] = x.nuevo;
-    if ('pcosto' in u) u.historialCosto = [...(f.historialCosto || []), { precio: u.pcosto, fecha: ahora }].slice(-12);
+    Object.assign(u, agregarHistorial(f, u, ahora));
     if (Object.keys(u).length) ops.push([f.id, u]);
   }
   if (!ops.length) { toast('No hay nada para cambiar.'); return; }
