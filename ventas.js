@@ -287,7 +287,10 @@ window.renderVentas=function(){
           ${ganProyectada!==null?`<div class="venta-gan" style="color:var(--muted)">gan proyec: $${fmt(Math.round(ganProyectada))}</div>`:''}
           <div style="font-size:.7rem;color:${montoCobrado>0?'var(--success)':'var(--muted)'}">cobrado $${fmt(Math.round(montoCobrado))}</div>
         </div>
-        <button class="btn btn-outline btn-sm" onclick="showTab('cobros',null)" style="flex-shrink:0">ver →</button>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+          <button class="btn btn-outline btn-sm" onclick="compartirComprobanteCuota('${c.id}')" style="font-size:.7rem;color:var(--success);border-color:var(--success-dim)">📲</button>
+          <button class="btn btn-outline btn-sm" onclick="showTab('cobros',null)" style="flex-shrink:0">ver →</button>
+        </div>
       </div>`;
     }
     const v=item;
@@ -312,11 +315,32 @@ window.renderVentas=function(){
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
         ${btnCurva}
+        <button class="btn btn-outline btn-sm" onclick="compartirComprobante('${v.id}')" style="font-size:.7rem;color:var(--success);border-color:var(--success-dim)">📲</button>
         <button class="btn btn-outline btn-sm" onclick="openEditVentaModal('${v.id}')" style="font-size:.7rem">✏️</button>
         <button class="btn-ghost btn" onclick="delVenta('${v.id}','${v.prodId||''}',${v.cant})">🗑</button>
       </div>
     </div>`;
   }).join('');
+}
+
+// Arma el comprobante de una venta (o de todo el lote, si se vendió junto con otros productos) y abre WhatsApp.
+window.compartirComprobante=function(id){
+  const v=state.ventasData.find(x=>x.id===id); if(!v)return;
+  const grupo=v.loteId?state.ventasData.filter(x=>x.loteId===v.loteId):[v];
+  const fecha=new Date(v.fecha).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const lineas=grupo.map(g=>`• ${g.cat} — ${g.modelo}${g.color?' ('+g.color+')':''} T.${g.talle} x${g.cant} = $${fmt(g.pventa*g.cant)}`).join('\n');
+  const total=grupo.reduce((a,g)=>a+g.pventa*g.cant,0);
+  const saludo=v.cliente?`Hola ${v.cliente}! `:'¡Hola! ';
+  const msg=`${saludo}Te paso el comprobante de tu compra (${fecha}):\n${lineas}\n\nTotal: $${fmt(total)}\n\n¡Gracias por tu compra! 🙌`;
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+window.compartirComprobanteCuota=function(id){
+  const c=state.cuotasData.find(x=>x.id===id); if(!c)return;
+  const fecha=new Date(c.createdAt).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const prod=`${c.cat} — ${c.modelo}${c.color?' ('+c.color+')':''} T.${c.talle}`;
+  const cuotasTxt=c.cuotas.map(q=>`Cuota ${q.nro}/${c.cuotas.length}: $${fmt(q.monto)} — vence ${new Date(q.vencimiento).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})}`).join('\n');
+  const msg=`Hola ${c.cliente}! Te paso el comprobante de tu compra en cuotas (${fecha}):\n${prod}\nTotal: $${fmt(c.totalVenta)}\n\n${cuotasTxt}\n\n¡Gracias por tu compra! 🙌`;
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
 }
 
 window.delVenta=async function(id,prodId,cant){
