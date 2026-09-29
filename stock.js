@@ -1,5 +1,6 @@
 import { state } from './state.js';
 import { db, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs, writeBatch, increment, getDoc, limit } from './firebase-config.js';
+import { claveModelo } from './matching.js';
 
 window.populateCategoryFilter = function() {
   const cats = [...new Set(state.stockData.map(p=>p.cat))].sort();
@@ -133,7 +134,32 @@ window.openProductModal=function(id){
     el.innerHTML=hist?.length?'Historial: '+hist.slice(-5).reverse().map(h=>`$${fmt(h.precio)} (${new Date(h.fecha).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})})`).join(' → '):'';
   });
   document.getElementById('pm-del-btn').style.display=p?'inline-flex':'none';
+  document.getElementById('pm-foto-estado').textContent='';
+  document.getElementById('pm-foto-input').value='';
+  actualizarFotoModal();
   document.getElementById('prod-modal').classList.add('open');
+}
+// La foto se comparte por modelo (cat+modelo+color), no por talle: la busca/guarda con esa clave.
+function claveModeloForm(){
+  return claveModelo({cat:document.getElementById('pm-cat').value.trim(),modelo:document.getElementById('pm-modelo').value.trim(),color:document.getElementById('pm-color').value.trim()});
+}
+window.actualizarFotoModal=function(){
+  const img=document.getElementById('pm-foto-preview'); if(!img)return;
+  const url=state.productoFotos[claveModeloForm()];
+  if(url){img.src=url;img.style.display='block';}else{img.style.display='none';img.removeAttribute('src');}
+}
+window.onFotoSeleccionada=async function(file){
+  if(!file)return;
+  const cat=document.getElementById('pm-cat').value.trim(), modelo=document.getElementById('pm-modelo').value.trim(), color=document.getElementById('pm-color').value.trim();
+  const input=document.getElementById('pm-foto-input'), estado=document.getElementById('pm-foto-estado');
+  if(!cat||!modelo){toast('Completá categoría y modelo antes de subir la foto.','error');input.value='';return;}
+  estado.style.color='var(--muted)';estado.textContent='Subiendo...';
+  try{
+    await subirFotoProducto({cat,modelo,color},file);
+    estado.style.color='var(--success)';estado.textContent='Foto subida ✓ — se usa en todos los talles de este modelo';
+    actualizarFotoModal();
+  }catch(e){estado.style.color='var(--danger)';estado.textContent=e.message;}
+  finally{input.value='';}
 }
 window.closeProdModal=function(){
   document.getElementById('prod-modal').classList.remove('open');

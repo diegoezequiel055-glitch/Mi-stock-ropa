@@ -797,6 +797,14 @@
         <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.85rem;color:var(--text)"><input type="checkbox" id="pm-catalogo" style="width:auto"> 🛍️ Mostrar este talle en el catálogo público</label>
         <div style="font-size:.7rem;color:var(--muted);margin-top:4px">Se junta solo con los demás talles tildados del mismo modelo. Nunca se comparte costo ni precio mayorista/curva.</div>
       </div>
+      <div class="field" style="grid-column:1/-1">
+        <label>Foto del catálogo <span style="color:var(--muted);font-size:0.7rem">— opcional, la comparten todos los talles de este modelo</span></label>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <img id="pm-foto-preview" style="display:none;width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid var(--border2)">
+          <input type="file" id="pm-foto-input" accept="image/*" onchange="onFotoSeleccionada(this.files[0])" style="flex:1 1 200px;padding:6px">
+        </div>
+        <div id="pm-foto-estado" style="font-size:.72rem;margin-top:4px;color:var(--muted)"></div>
+      </div>
     </div>
     <div class="modal-actions">
       <div><button class="btn btn-ghost" id="pm-del-btn" onclick="delProductFromModal()" style="color:var(--danger);border-color:var(--danger-dim);display:none">🗑 Eliminar</button></div>

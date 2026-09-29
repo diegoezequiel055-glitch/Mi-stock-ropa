@@ -21,11 +21,14 @@ const BLANDAS = new Set([...Object.keys(PALABRAS_CATEGORIA), 'musculosa']);
 
 const coincide = (hay, t) => hay.some((h) => h === t || (t.length >= 4 && h.length >= 4 && (h.startsWith(t) || t.startsWith(h))));
 
+// Clave de agrupamiento de un producto: mismo cat+modelo+color = mismo "modelo" (todos sus talles).
+export const claveModelo = (p) => [norm(p.cat), norm(p.modelo), norm(p.color)].join('|');
+
 // Agrupa las filas de stock (una por talle) en modelos: categoría + modelo + color.
 export function armarModelos(stock) {
   const mapa = new Map();
   for (const p of stock) {
-    const key = [norm(p.cat), norm(p.modelo), norm(p.color)].join('|');
+    const key = claveModelo(p);
     if (!mapa.has(key)) mapa.set(key, { key, cat: p.cat, modelo: p.modelo, color: p.color || '', catNorm: tokens(p.cat).join(' '), hay: [...tokens(p.modelo), ...tokens(p.color)], filas: [] });
     mapa.get(key).filas.push(p);
   }

@@ -39,4 +39,6 @@ export const state = {
   stockBajoAlertado: false,
 
   tallesSeleccionados: {}, // {talle: qty}
+
+  productoFotos: {}, // {claveModelo: url de Cloudinary} — foto compartida por todos los talles de un mismo modelo
 };
