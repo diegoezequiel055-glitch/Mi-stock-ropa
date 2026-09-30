@@ -18,18 +18,27 @@ let publicadosIds = new Set(); // ids que existen HOY en catalogo_publico (para 
 let escuchando = false;
 let timer = null;
 
+const leerComoDataURL = (file) => new Promise((resolve, reject) => {
+  const lector = new FileReader();
+  lector.onload = () => resolve(lector.result);
+  lector.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+  lector.readAsDataURL(file);
+});
+
 // Sube una foto a Cloudinary (directo desde el navegador) y la guarda como la foto
 // de ESE MODELO (todos sus talles la comparten). Devuelve la URL final.
+// El archivo se manda como texto (base64), no como binario: algunos celulares
+// (con algún filtro de seguridad o proxy del operador de por medio) corrompen el
+// formulario cuando lleva un archivo binario y pierden el campo del preset.
 window.subirFotoProducto = async function (prod, file) {
   if (!file) return null;
   if (!file.type.startsWith('image/')) throw new Error('El archivo tiene que ser una imagen.');
   if (file.size > 8 * 1024 * 1024) throw new Error('La imagen pesa más de 8 MB. Achicala e intentá de nuevo.');
   const key = claveModelo(prod);
+  const dataUrl = await leerComoDataURL(file);
   const fd = new FormData();
-  // El preset va ANTES que el archivo: algunos navegadores de celular arman mal el
-  // formulario si el campo de texto queda después del archivo, y Cloudinary lo recibe vacío.
   fd.append('upload_preset', CLOUDINARY_PRESET);
-  fd.append('file', file);
+  fd.append('file', dataUrl);
   const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method: 'POST', body: fd });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error?.message || 'No se pudo subir la foto.');
