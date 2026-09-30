@@ -26,8 +26,10 @@ window.subirFotoProducto = async function (prod, file) {
   if (file.size > 8 * 1024 * 1024) throw new Error('La imagen pesa más de 8 MB. Achicala e intentá de nuevo.');
   const key = claveModelo(prod);
   const fd = new FormData();
-  fd.append('file', file);
+  // El preset va ANTES que el archivo: algunos navegadores de celular arman mal el
+  // formulario si el campo de texto queda después del archivo, y Cloudinary lo recibe vacío.
   fd.append('upload_preset', CLOUDINARY_PRESET);
+  fd.append('file', file);
   const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method: 'POST', body: fd });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error?.message || 'No se pudo subir la foto.');
