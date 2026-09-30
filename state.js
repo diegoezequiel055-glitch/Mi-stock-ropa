@@ -41,4 +41,7 @@ export const state = {
   tallesSeleccionados: {}, // {talle: qty}
 
   productoFotos: {}, // {claveModelo: url de Cloudinary} — foto compartida por todos los talles de un mismo modelo
+  catalogoPublico: [], // copia local de la colección catalogo_publico, para la vista previa
+  catalogoBusqueda: '',
+  catalogoCat: '',
 };

@@ -64,6 +64,7 @@
   <button class="tab" onclick="showTab('compras',this)">📥 Compras</button>
   <button class="tab" onclick="showTab('gastos',this)">💸 Gastos</button>
   <button class="tab" onclick="showTab('envios',this)">🚚 Envíos</button>
+  <button class="tab" onclick="showTab('catalogo',this)">🛍️ Catálogo</button>
 </nav>
 
 <main>
@@ -450,6 +451,27 @@
     <div class="panel-body">
       <p style="font-size:.78rem;color:var(--muted);margin-bottom:12px">Cargala vos con los precios del cotizador público de <strong>correoargentino.com.ar</strong> (no hace falta cuenta ni API) por zona y rango de peso.</p>
       <div id="envios-correo-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ VISTA PREVIA DEL CATÁLOGO ══ -->
+<div id="tab-catalogo" class="section">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>🛍️ Catálogo — vista previa</h2>
+      <div class="filters">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="catalogo-search" placeholder="Buscar..." oninput="catalogoSetBusqueda(this.value)" style="width:150px">
+        </div>
+        <select id="catalogo-cat-sel" onchange="catalogoSetCat(this.value)" style="width:auto"><option value="">Todas las categorías</option></select>
+      </div>
+    </div>
+    <div class="panel-body">
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:4px">Esto es exactamente lo que va a ver un cliente en el catálogo público — solo vos la ves, no es una página pública todavía.</p>
+      <p id="catalogo-total" style="font-size:.78rem;color:var(--text2);margin-bottom:14px"></p>
+      <div id="catalogo-grid" class="catalogo-grid"></div>
     </div>
   </div>
 </div>

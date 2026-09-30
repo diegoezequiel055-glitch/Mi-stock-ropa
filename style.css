@@ -283,6 +283,18 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
 .mventa-item{display:grid;grid-template-columns:1fr 90px 100px auto auto;gap:8px;align-items:center;background:var(--surface2);border-radius:8px;padding:8px 12px;border:1px solid var(--border);margin-bottom:6px}
 .mventa-item input{padding:6px 10px;font-size:0.8rem}
 
+/* CATÁLOGO — vista previa */
+.catalogo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.catalogo-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column}
+.catalogo-card-foto{width:100%;aspect-ratio:1/1;background:var(--surface3);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.catalogo-card-foto img{width:100%;height:100%;object-fit:cover;display:block}
+.catalogo-sin-foto{font-size:.72rem;color:var(--muted);text-align:center;padding:10px}
+.catalogo-card-body{padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.catalogo-card-cat{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.catalogo-card-nombre{font-size:.85rem;font-weight:600;color:var(--text);line-height:1.25}
+.catalogo-card-precio{font-family:'Cormorant Garamond',serif;font-size:1.15rem;color:var(--accent)}
+.catalogo-card-talles{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+
 /* MISC */
 .empty{text-align:center;padding:48px 20px;color:var(--muted)}
 .empty-icon{font-size:2.2rem;margin-bottom:10px}
