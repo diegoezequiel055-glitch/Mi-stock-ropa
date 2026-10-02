@@ -54,13 +54,19 @@ function tallesDisponibles(modelo) {
   }).filter((t) => t.stock > 0);
 }
 
+// Diego pidió sumar mayorista y curva al sitio público (antes estaban excluidos a propósito).
+// Costo nunca se incluye acá, ni se lee en esta función.
 function armarFicha(modelo) {
   const precio = modelo.filas.find((f) => f.pventa > 0)?.pventa || null;
+  const precioMayorista = modelo.filas.find((f) => f.pmayorista > 0)?.pmayorista || null;
+  const precioCurva = modelo.filas.find((f) => f.pcurva > 0)?.pcurva || null;
   return {
     nombre: modelo.color ? `${modelo.modelo} (${modelo.color})` : modelo.modelo,
     categoria: modelo.cat,
     color: modelo.color || null,
     precio,
+    precioMayorista,
+    precioCurva,
     talles: tallesDisponibles(modelo),
     foto: state.productoFotos[modelo.key] || null,
     actualizado: Date.now(),
