@@ -83,6 +83,23 @@ window.enviosBorrarCorreo = async function (id) {
 // ── buscador ──
 window.enviosBuscar = function (v) { state.enviosBusqueda = v; renderEnvios(); };
 
+// ── sincroniza "envios_publico" (localidad + precio al cliente, NUNCA el costo) ──
+// Es lo único que puede leer el sitio de ventas. Corre sola cada vez que cambia la tabla.
+let enviosPublicadosIds = new Set();
+let enviosSyncTimer = null;
+async function enviosPublicoSync() {
+  const deseados = new Map(state.enviosMoto.map((m) => [m.id, { localidad: m.localidad, precio: m.precio || 0, estimado: !!m.estimado }]));
+  const batch = writeBatch(db);
+  let cambios = 0;
+  for (const [id, datos] of deseados) { batch.set(doc(db, 'envios_publico', id), datos); cambios++; }
+  for (const idViejo of enviosPublicadosIds) if (!deseados.has(idViejo)) { batch.delete(doc(db, 'envios_publico', idViejo)); cambios++; }
+  if (cambios) await batch.commit();
+}
+function enviosPublicoRefresh() {
+  clearTimeout(enviosSyncTimer);
+  enviosSyncTimer = setTimeout(() => { enviosPublicoSync().catch((e) => console.error('Error sincronizando envíos públicos:', e)); }, 500);
+}
+
 // ── dibujo ──
 const inp = (v, extra = '') => `style="background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:6px 8px;border-radius:6px;font-size:.8rem;font-family:inherit;${extra}"`;
 
@@ -130,6 +147,10 @@ window.enviosIniciar = function () {
   onSnapshot(collection(db, 'envios_motomensajeria'), (snap) => {
     state.enviosMoto = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     renderEnvios();
+    enviosPublicoRefresh();
+  }, () => {});
+  onSnapshot(collection(db, 'envios_publico'), (snap) => {
+    enviosPublicadosIds = new Set(snap.docs.map((d) => d.id));
   }, () => {});
   onSnapshot(collection(db, 'envios_correo_argentino'), (snap) => {
     state.enviosCorreo = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
