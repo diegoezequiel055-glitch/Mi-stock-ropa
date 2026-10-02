@@ -1,6 +1,6 @@
 import { state } from './state.js';
 import { auth, db, collection, doc, writeBatch } from './firebase-config.js';
-import { armarModelos, buscarModelos, eleccionAutomatica, filaPorTalle, etiquetaModelo, normTalle, norm, tokens, PRECIOS_CAMPOS, categoriasDeGrupo, palabrasDeGrupo, buscarGrupo, planificarPrecios } from './matching.js';
+import { armarModelos, buscarModelos, eleccionAutomatica, filaPorTalle, etiquetaModelo, normTalle, norm, tokens, PRECIOS_CAMPOS, categoriasDeGrupo, palabrasDeGrupo, buscarGrupo, planificarPrecios, compararTalles } from './matching.js';
 
 const WORKER_URL = 'https://stockmgr-ia.diegoezequiel055.workers.dev/interpretar';
 const TIPOS = { menor: 'Menor', mayorista: 'Mayorista', curva: 'Curva' };
@@ -173,7 +173,7 @@ function textoCambio(x) {
 
 function filaGrupoHTML(p, conCheck) {
   const m = p.modelo;
-  const talles = m.filas.slice().sort((a, b) => String(a.talle).localeCompare(String(b.talle), undefined, { numeric: true })).map((f) => `${esc(f.talle)}(${f.qty})`).join(' ');
+  const talles = m.filas.slice().sort((a, b) => compararTalles(a.talle, b.talle)).map((f) => `${esc(f.talle)}(${f.qty})`).join(' ');
   const borde = p.estado === 'conflicto' ? 'var(--danger)' : p.estado === 'igual' ? 'var(--border2)' : 'var(--success)';
   const check = conCheck ? `<input type="checkbox" data-k="${esc(m.key)}" ${marcado(p) ? 'checked' : ''} onchange="crMarcar(this.dataset.k,this.checked)" style="width:auto;margin-top:3px;flex-shrink:0">` : '';
   return `<label style="display:flex;gap:10px;align-items:flex-start;text-transform:none;letter-spacing:0;color:var(--text);font-size:.85rem;background:var(--surface2);border:1px solid var(--border);border-left:3px solid ${borde};border-radius:8px;padding:8px 12px;margin-bottom:6px;cursor:${conCheck ? 'pointer' : 'default'}">${check}<div style="min-width:0;flex:1"><div style="font-size:.85rem"><strong>${esc(m.cat)}</strong> — ${esc(m.modelo)}${m.color ? ' · ' + esc(m.color) : ''}</div><div style="font-size:.7rem;color:var(--muted);margin-top:2px">Talles (unidades): ${talles}</div><div style="font-size:.76rem;margin-top:4px;display:flex;gap:4px 14px;flex-wrap:wrap">${p.cambios.map(textoCambio).join('')}</div></div></label>`;
@@ -383,7 +383,7 @@ function filaHTML(it, i, e, modelos) {
     extra = fila(t('cat', 'Categoría', n.cat, '120px') + t('modelo', 'Modelo', n.modelo, '200px') + t('color', 'Color', n.color, '110px') + p('pmayorista', 'Mayorista', n.pmayorista) + p('pcurva', 'Curva', n.pcurva) + p('pventa', 'Menor', n.pventa));
   }
   const m = it.selKey && modelos.find((x) => x.key === it.selKey);
-  const chips = m ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center"><span style="font-size:.7rem;color:var(--muted)">Talles:</span>${m.filas.slice().sort((a, b) => String(a.talle).localeCompare(String(b.talle), undefined, { numeric: true })).map((f) => `<button class="date-btn${normTalle(f.talle) === normTalle(it.talle) ? ' active' : ''}" style="padding:3px 10px" onclick="crTalle(${i},'${esc(f.talle)}')">${esc(f.talle)} (${f.qty})</button>`).join('')}</div>` : '';
+  const chips = m ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center"><span style="font-size:.7rem;color:var(--muted)">Talles:</span>${m.filas.slice().sort((a, b) => compararTalles(a.talle, b.talle)).map((f) => `<button class="date-btn${normTalle(f.talle) === normTalle(it.talle) ? ' active' : ''}" style="padding:3px 10px" onclick="crTalle(${i},'${esc(f.talle)}')">${esc(f.talle)} (${f.qty})</button>`).join('')}</div>` : '';
   let ctrl = caja(talleBox) + caja(cantBox);
   if (c.op === 'compra') {
     ctrl += caja(`<label style="font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Costo unidad</label><input type="number" min="0" value="${it.costo || ''}" placeholder="0" onchange="crCosto(${i},this.value)" ${inp('width:100px')}>`);

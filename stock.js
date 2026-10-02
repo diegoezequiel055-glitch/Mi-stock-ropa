@@ -1,6 +1,11 @@
 import { state } from './state.js';
 import { db, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs, writeBatch, increment, getDoc, limit } from './firebase-config.js';
-import { claveModelo } from './matching.js';
+import { claveModelo, compararTalles } from './matching.js';
+
+window.toggleCatalogo=async function(id,checked){
+  try{ await updateDoc(doc(db,'stock',id),{catalogo:checked}); }
+  catch(e){ toast('Error: '+e.message,'error'); }
+}
 
 window.populateCategoryFilter = function() {
   const cats = [...new Set(state.stockData.map(p=>p.cat))].sort();
@@ -19,6 +24,8 @@ window.updateStockKPIs = function(){
   document.getElementById('k-sinprecio').textContent=state.stockData.filter(p=>!p.pventa).length;
   document.getElementById('k-sincosto').textContent=state.stockData.filter(p=>!p.pcosto).length;
   document.getElementById('kpi-sincosto').style.outline=state.filtroSinCosto?'2px solid var(--danger)':'none';
+  document.getElementById('k-catalogo').textContent=state.stockData.filter(p=>p.catalogo).length;
+  document.getElementById('kpi-catalogo').style.outline=state.filtroCatalogo?'2px solid var(--accent)':'none';
   document.getElementById('k-liq').textContent=state.stockData.filter(p=>p.modelo.toLowerCase().includes('liquidación')).reduce((a,p)=>a+p.qty,0);
   // F#1: valor del inventario
   const kVal=document.getElementById('k-valor');
@@ -28,7 +35,7 @@ window.renderStock = function() {
   const q    = (document.getElementById('s-search')?.value||'').toLowerCase();
   const cat  = document.getElementById('s-cat')?.value||'';
   const sort = document.getElementById('s-sort')?.value||'cat';
-  let filtered = state.stockData.filter(p=>{ const txt=[p.cat,p.modelo,p.color||'',p.talle].join(' ').toLowerCase(); return(!q||txt.includes(q))&&(!cat||p.cat===cat)&&(!state.filtroSinCosto||!p.pcosto); });
+  let filtered = state.stockData.filter(p=>{ const txt=[p.cat,p.modelo,p.color||'',p.talle].join(' ').toLowerCase(); return(!q||txt.includes(q))&&(!cat||p.cat===cat)&&(!state.filtroSinCosto||!p.pcosto)&&(!state.filtroCatalogo||p.catalogo); });
   filtered.sort((a,b)=>{
     if(sort==='cat') return a.cat.localeCompare(b.cat)||a.modelo.localeCompare(b.modelo);
     if(sort==='qty-asc') return a.qty-b.qty; if(sort==='qty-desc') return b.qty-a.qty;
@@ -36,7 +43,7 @@ window.renderStock = function() {
     return 0;
   });
   updateStockKPIs();
-  const renderKey = filtered.map(p=>`${p.id}:${p.qty}:${p.pventa}:${p.pcosto}:${p.pmayorista}:${p.pcurva}`).join('|')+'|'+q+'|'+cat+'|'+sort+'|'+state.filtroSinCosto;
+  const renderKey = filtered.map(p=>`${p.id}:${p.qty}:${p.pventa}:${p.pcosto}:${p.pmayorista}:${p.pcurva}:${!!p.catalogo}`).join('|')+'|'+q+'|'+cat+'|'+sort+'|'+state.filtroSinCosto+'|'+state.filtroCatalogo;
   if(!state.inventarioMode && renderKey === state.lastStockRenderKey) return;
   state.lastStockRenderKey = renderKey;
 
@@ -57,8 +64,9 @@ window.renderStock = function() {
       <td>${p.pcurva?'<span style="color:var(--teal)">$'+fmt(p.pcurva)+'</span>':'<span style="color:var(--muted)">—</span>'}</td>
       <td>${p.pventa?'$'+fmt(p.pventa):'<span style="color:var(--muted)">—</span>'}</td>
       <td><span class="badge ${badge}">${label}</span></td>
+      <td style="text-align:center"><input type="checkbox" ${p.catalogo?'checked':''} onchange="toggleCatalogo('${p.id}',this.checked)" title="Mostrar en catálogo"></td>
       <td>${state.inventarioMode?`<span style="font-size:.72rem;color:${state.inventarioCounts[p.id]!==undefined&&state.inventarioCounts[p.id]!==p.qty?'var(--accent)':'var(--muted)'}">${state.inventarioCounts[p.id]!==undefined&&state.inventarioCounts[p.id]!==p.qty?`era ${p.qty}`:''}</span>`:`<button class="btn btn-outline btn-sm" onclick="openProductModal('${p.id}')">✏️ Editar</button>`}</td>
-    </tr>`; }).join(''):`<tr><td colspan="11"><div class="empty"><div class="empty-icon">📦</div><p>No hay productos</p></div></td></tr>`;
+    </tr>`; }).join(''):`<tr><td colspan="12"><div class="empty"><div class="empty-icon">📦</div><p>No hay productos</p></div></td></tr>`;
 
   const cards=document.getElementById('stock-cards');
   cards.innerHTML=filtered.length?filtered.map(p=>{
@@ -79,7 +87,10 @@ window.renderStock = function() {
         <div style="display:flex;gap:14px;align-items:center">
           ${qtyMobile}
         </div>
-        ${state.inventarioMode?'':`<button class="btn btn-outline btn-sm" onclick="openProductModal('${p.id}')">✏️ Editar</button>`}
+        <div style="display:flex;gap:10px;align-items:center">
+          ${state.inventarioMode?'':`<label style="display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--muted);text-transform:none;letter-spacing:0;margin:0"><input type="checkbox" ${p.catalogo?'checked':''} onchange="toggleCatalogo('${p.id}',this.checked)">🛍️</label>`}
+          ${state.inventarioMode?'':`<button class="btn btn-outline btn-sm" onclick="openProductModal('${p.id}')">✏️ Editar</button>`}
+        </div>
       </div>
     </div>`; }).join(''):`<div class="empty"><div class="empty-icon">📦</div><p>No hay productos</p></div>`;
 }
@@ -144,9 +155,20 @@ function claveModeloForm(){
   return claveModelo({cat:document.getElementById('pm-cat').value.trim(),modelo:document.getElementById('pm-modelo').value.trim(),color:document.getElementById('pm-color').value.trim()});
 }
 window.actualizarFotoModal=function(){
-  const img=document.getElementById('pm-foto-preview'); if(!img)return;
-  const url=state.productoFotos[claveModeloForm()];
-  if(url){img.src=url;img.style.display='block';}else{img.style.display='none';img.removeAttribute('src');}
+  const cont=document.getElementById('pm-foto-galeria'); if(!cont)return;
+  const fotos=state.productoFotos[claveModeloForm()]||[];
+  cont.innerHTML=fotos.map((url,i)=>`<div style="position:relative;width:70px;height:70px;flex-shrink:0">
+    <img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid var(--border2)">
+    <button onclick="quitarFotoModal(${i})" title="Quitar" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:#fff;border:none;font-size:.65rem;cursor:pointer;line-height:1">✕</button>
+  </div>`).join('');
+  document.getElementById('pm-foto-input').style.display=fotos.length>=6?'none':'';
+}
+window.quitarFotoModal=async function(i){
+  const cat=document.getElementById('pm-cat').value.trim(), modelo=document.getElementById('pm-modelo').value.trim(), color=document.getElementById('pm-color').value.trim();
+  const fotos=state.productoFotos[claveModeloForm()]||[];
+  const url=fotos[i]; if(!url)return;
+  try{ await borrarFotoProducto({cat,modelo,color},url); actualizarFotoModal(); }
+  catch(e){ toast('Error: '+e.message,'error'); }
 }
 window.onFotoSeleccionada=async function(file){
   if(!file)return;
@@ -156,7 +178,7 @@ window.onFotoSeleccionada=async function(file){
   estado.style.color='var(--muted)';estado.textContent='Subiendo...';
   try{
     await subirFotoProducto({cat,modelo,color},file);
-    estado.style.color='var(--success)';estado.textContent='Foto subida ✓ — se usa en todos los talles de este modelo';
+    estado.style.color='var(--success)';estado.textContent='Foto agregada ✓ — se usa en todos los talles de este modelo';
     actualizarFotoModal();
   }catch(e){estado.style.color='var(--danger)';estado.textContent=e.message;}
   finally{input.value='';}
@@ -205,6 +227,10 @@ window.precioAvisos=function({pcosto,pmayorista,pcurva,pventa}){
 }
 window.toggleFiltroSinCosto=function(){
   state.filtroSinCosto=!state.filtroSinCosto;
+  renderStock();
+}
+window.toggleFiltroCatalogo=function(){
+  state.filtroCatalogo=!state.filtroCatalogo;
   renderStock();
 }
 window.delProductFromModal=async function(){
@@ -352,8 +378,7 @@ window.renderTallesRows = function(){
   const rows=document.getElementById('cm2-talles-rows');
   if(!keys.length){ config.style.display='none'; document.getElementById('cm2-resumen').textContent='Seleccioná al menos un talle'; return; }
   config.style.display='block';
-  const tallesOrder=['XS','S','M','L','XL','XXL','XXXL','36','38','40','42','44','46','48','50'];
-  const sorted=keys.sort((a,b)=>tallesOrder.indexOf(a)-tallesOrder.indexOf(b));
+  const sorted=keys.sort(compararTalles);
   rows.innerHTML=sorted.map(t=>`
     <div class="talle-chip-row active">
       <span style="font-weight:600;font-size:.9rem">Talle ${t}</span>

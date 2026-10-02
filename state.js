@@ -21,6 +21,7 @@ export const state = {
   uvTipoPrecio: 'menor', // precio por defecto para lo que se agrega al carrito: 'menor' | 'mayorista' | 'curva'
   uvModo: 'ahora', // 'ahora' | 'cuotas'
   filtroSinCosto: false, // lista de stock: mostrar solo productos sin costo
+  filtroCatalogo: false, // lista de stock: mostrar solo lo marcado para el catálogo
   cr: null, // Carga rápida: resultado de la IA que se está revisando (ver carga-rapida.js)
 
   dbPeriodo: 'mes', // Dashboard: 'mes' | 'mes_ant' | '3m' | 'anio' | 'todo'
@@ -40,7 +41,7 @@ export const state = {
 
   tallesSeleccionados: {}, // {talle: qty}
 
-  productoFotos: {}, // {claveModelo: url de Cloudinary} — foto compartida por todos los talles de un mismo modelo
+  productoFotos: {}, // {claveModelo: [urls de Cloudinary]} — galería compartida por todos los talles de un mismo modelo
   catalogoPublico: [], // copia local de la colección catalogo_publico, para la vista previa
   catalogoBusqueda: '',
   catalogoCat: '',

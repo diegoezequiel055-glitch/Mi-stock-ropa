@@ -9,6 +9,17 @@ export const tokens = (s) => norm(s).split(' ').filter(Boolean).map(singular);
 
 export const normTalle = (t) => String(t ?? '').toUpperCase().replace(/\s+/g, '');
 
+// Orden de talle (chico a grande); talles numéricos (pantalón/calzado) se ordenan entre sí al final.
+const ORDEN_TALLES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+export function compararTalles(a, b) {
+  const A = normTalle(a), B = normTalle(b);
+  const ia = ORDEN_TALLES.indexOf(A), ib = ORDEN_TALLES.indexOf(B);
+  if (ia !== -1 || ib !== -1) return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib) || A.localeCompare(B);
+  const na = parseFloat(A), nb = parseFloat(B);
+  if (!isNaN(na) && !isNaN(nb)) return na - nb;
+  return A.localeCompare(B);
+}
+
 // Palabras de "tipo de prenda" → categorías del stock (ya normalizadas) a las que pueden referirse.
 const PALABRAS_CATEGORIA = {
   remera: ['camiseta', 'remera'], camiseta: ['camiseta'], camisa: ['camiseta'], conjunto: ['conjunto'],

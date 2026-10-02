@@ -90,6 +90,7 @@
     <div class="kpi red"><div class="v" id="k-sinprecio">—</div><div class="l">Sin precio menor</div></div>
     <div class="kpi purple"><div class="v" id="k-liq">—</div><div class="l">Liquidación</div></div>
     <div class="kpi teal"><div class="v" id="k-valor">—</div><div class="l">Valor inventario</div></div>
+    <div class="kpi gold" id="kpi-catalogo" onclick="toggleFiltroCatalogo()" style="cursor:pointer" title="Tocá para ver solo lo marcado para el catálogo"><div class="v" id="k-catalogo">—</div><div class="l">🛍️ En catálogo · tocá para filtrar</div></div>
   </div>
   <div class="panel">
     <div class="panel-head">
@@ -116,7 +117,7 @@
     </div>
     <div class="table-wrap-desktop table-scroll">
       <table>
-        <thead><tr><th>Categoría</th><th>Modelo</th><th>Color</th><th>Talle</th><th>Stock</th><th>P. Costo</th><th>P. Mayor</th><th>P. Curva</th><th>P. Menor</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Categoría</th><th>Modelo</th><th>Color</th><th>Talle</th><th>Stock</th><th>P. Costo</th><th>P. Mayor</th><th>P. Curva</th><th>P. Menor</th><th>Estado</th><th title="Mostrar en catálogo">🛍️</th><th>Acciones</th></tr></thead>
         <tbody id="stock-tbody"></tbody>
       </table>
     </div>
@@ -820,11 +821,9 @@
         <div style="font-size:.7rem;color:var(--muted);margin-top:4px">Se junta solo con los demás talles tildados del mismo modelo. Nunca se comparte costo ni precio mayorista/curva.</div>
       </div>
       <div class="field" style="grid-column:1/-1">
-        <label>Foto del catálogo <span style="color:var(--muted);font-size:0.7rem">— opcional, la comparten todos los talles de este modelo</span></label>
-        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-          <img id="pm-foto-preview" style="display:none;width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid var(--border2)">
-          <input type="file" id="pm-foto-input" accept="image/*" onchange="onFotoSeleccionada(this.files[0])" style="flex:1 1 200px;padding:6px">
-        </div>
+        <label>Fotos del catálogo <span style="color:var(--muted);font-size:0.7rem">— opcional, hasta 6, las comparten todos los talles de este modelo</span></label>
+        <div id="pm-foto-galeria" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px"></div>
+        <input type="file" id="pm-foto-input" accept="image/*" onchange="onFotoSeleccionada(this.files[0])" style="width:100%;padding:6px">
         <div id="pm-foto-estado" style="font-size:.72rem;margin-top:4px;color:var(--muted)"></div>
       </div>
     </div>
