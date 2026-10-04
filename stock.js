@@ -94,9 +94,9 @@ window.renderStock = function() {
         <div style="display:flex;gap:14px;align-items:center">
           ${qtyMobile}
         </div>
-        <div style="display:flex;gap:10px;align-items:center">
-          ${state.inventarioMode?'':`<label style="display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--muted);text-transform:none;letter-spacing:0;margin:0"><input type="checkbox" ${p.catalogo?'checked':''} onchange="toggleCatalogo('${p.id}',this.checked)">🛍️</label>`}
-          ${state.inventarioMode?'':`<label style="display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--muted);text-transform:none;letter-spacing:0;margin:0"><input type="checkbox" ${p.destacado?'checked':''} onchange="toggleDestacado('${p.id}',this.checked)">⭐</label>`}
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          ${state.inventarioMode?'':`<label class="stock-card-flag"><input type="checkbox" ${p.catalogo?'checked':''} onchange="toggleCatalogo('${p.id}',this.checked)"> 🛍️</label>`}
+          ${state.inventarioMode?'':`<label class="stock-card-flag"><input type="checkbox" ${p.destacado?'checked':''} onchange="toggleDestacado('${p.id}',this.checked)"> ⭐</label>`}
           ${state.inventarioMode?'':`<button class="btn btn-outline btn-sm" onclick="openProductModal('${p.id}')">✏️ Editar</button>`}
         </div>
       </div>

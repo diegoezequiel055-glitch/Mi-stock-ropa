@@ -15,6 +15,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;min-height:100vh;font-size:15px}
+input[type="checkbox"]{width:17px;height:17px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;margin:0}
 
 /* LOADER */
 #loader{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
@@ -253,8 +254,9 @@ label{display:block;font-size:0.7rem;color:var(--muted);text-transform:uppercase
 .stock-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px}
 .stock-card-title{font-weight:500;font-size:0.9rem}
 .stock-card-sub{font-size:0.75rem;color:var(--muted);margin-top:2px}
-.stock-card-row{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.stock-card-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;row-gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
 .stock-card-actions{display:flex;gap:10px}
+.stock-card-flag{display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--muted);text-transform:none;letter-spacing:0;margin:0;white-space:nowrap}
 .qty-ctrl{display:flex;align-items:center;gap:6px}
 .qty-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border2);background:var(--surface3);color:var(--text);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;font-family:'Outfit',sans-serif}
 .qty-btn:hover{border-color:var(--accent);color:var(--accent)}

@@ -27,18 +27,14 @@ const leerComoDataURL = (file) => new Promise((resolve, reject) => {
 
 const MAX_FOTOS = 6; // por modelo
 
-// Sube una foto a Cloudinary (directo desde el navegador) y la AGREGA a la galería
-// de ESE MODELO (todos sus talles la comparten). Devuelve la URL final.
+// Sube una foto a Cloudinary (directo desde el navegador) y devuelve la URL final.
 // El archivo se manda como texto (base64), no como binario: algunos celulares
 // (con algún filtro de seguridad o proxy del operador de por medio) corrompen el
 // formulario cuando lleva un archivo binario y pierden el campo del preset.
-window.subirFotoProducto = async function (prod, file) {
-  if (!file) return null;
+async function subirACloudinary(file) {
+  if (!file) throw new Error('Elegí un archivo.');
   if (!file.type.startsWith('image/')) throw new Error('El archivo tiene que ser una imagen.');
   if (file.size > 8 * 1024 * 1024) throw new Error('La imagen pesa más de 8 MB. Achicala e intentá de nuevo.');
-  const key = claveModelo(prod);
-  const actuales = state.productoFotos[key] || [];
-  if (actuales.length >= MAX_FOTOS) throw new Error(`Ya tiene ${MAX_FOTOS} fotos, el máximo por producto. Borrá alguna para agregar otra.`);
   const dataUrl = await leerComoDataURL(file);
   const fd = new FormData();
   fd.append('upload_preset', CLOUDINARY_PRESET);
@@ -46,8 +42,19 @@ window.subirFotoProducto = async function (prod, file) {
   const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method: 'POST', body: fd });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error?.message || 'No se pudo subir la foto.');
-  await setDoc(doc(db, 'producto_fotos', key), { fotos: [...actuales, j.secure_url], actualizado: Date.now() });
   return j.secure_url;
+}
+// Para fotos sueltas que no pertenecen a ningún modelo (ej: las del inicio del sitio).
+window.subirFotoGenerica = subirACloudinary;
+
+// Sube y AGREGA la foto a la galería de ESE MODELO (todos sus talles la comparten).
+window.subirFotoProducto = async function (prod, file) {
+  const key = claveModelo(prod);
+  const actuales = state.productoFotos[key] || [];
+  if (actuales.length >= MAX_FOTOS) throw new Error(`Ya tiene ${MAX_FOTOS} fotos, el máximo por producto. Borrá alguna para agregar otra.`);
+  const url = await subirACloudinary(file);
+  await setDoc(doc(db, 'producto_fotos', key), { fotos: [...actuales, url], actualizado: Date.now() });
+  return url;
 };
 
 // Saca una foto de la galería de un modelo (no borra nada en Cloudinary, solo deja de usarla).
@@ -159,17 +166,30 @@ window.renderVistaCatalogo = function () {
     return;
   }
   cont.innerHTML = filtrados.map((x) => {
-    const i = x.ficha, foto = (i.fotos || [])[0];
-    return `<div class="catalogo-card" onclick="abrirFotoModal('${escHtml(x.modelo.key)}')" style="cursor:pointer" title="Tocá para agregar o sacar fotos">
-      <div class="catalogo-card-foto">${foto ? `<img src="${escHtml(foto)}" loading="lazy" alt="${escHtml(i.nombre)}" onerror="this.outerHTML='<div class=&quot;catalogo-sin-foto&quot;>📷 Sin foto — tocá para agregar</div>'">` : '<div class="catalogo-sin-foto">📷 Sin foto — tocá para agregar</div>'}</div>
-      <div class="catalogo-card-body">
-        <div class="catalogo-card-cat">${escHtml(i.categoria)}</div>
-        <div class="catalogo-card-nombre">${escHtml(i.nombre)}</div>
-        <div class="catalogo-card-precio">${i.precio ? '$' + fmt(i.precio) : '<span style="color:var(--muted)">Sin precio cargado</span>'}</div>
-        <div class="catalogo-card-talles">${i.talles.length ? i.talles.map((t) => `<span class="badge b-ok" style="font-size:.65rem">${escHtml(t.talle)} · ${t.stock}</span>`).join('') : '<span style="font-size:.7rem;color:var(--danger)">Sin stock disponible</span>'}</div>
+    const i = x.ficha, foto = (i.fotos || [])[0], key = escHtml(x.modelo.key);
+    return `<div class="catalogo-card">
+      <div onclick="abrirFotoModal('${key}')" style="cursor:pointer" title="Tocá para agregar o sacar fotos">
+        <div class="catalogo-card-foto">${foto ? `<img src="${escHtml(foto)}" loading="lazy" alt="${escHtml(i.nombre)}" onerror="this.outerHTML='<div class=&quot;catalogo-sin-foto&quot;>📷 Sin foto — tocá para agregar</div>'">` : '<div class="catalogo-sin-foto">📷 Sin foto — tocá para agregar</div>'}</div>
+        <div class="catalogo-card-body">
+          <div class="catalogo-card-cat">${escHtml(i.categoria)}</div>
+          <div class="catalogo-card-nombre">${escHtml(i.nombre)}</div>
+          <div class="catalogo-card-precio">${i.precio ? '$' + fmt(i.precio) : '<span style="color:var(--muted)">Sin precio cargado</span>'}</div>
+          <div class="catalogo-card-talles">${i.talles.length ? i.talles.map((t) => `<span class="badge b-ok" style="font-size:.65rem">${escHtml(t.talle)} · ${t.stock}</span>`).join('') : '<span style="font-size:.7rem;color:var(--danger)">Sin stock disponible</span>'}</div>
+        </div>
       </div>
+      <label class="stock-card-flag" style="padding:8px 12px;border-top:1px solid var(--border)"><input type="checkbox" ${i.destacado ? 'checked' : ''} onchange="toggleDestacadoDesdeCatalogo('${key}',this.checked)"> ⭐ Destacado (inicio del sitio)</label>
     </div>`;
   }).join('');
+};
+
+// Marca/desmarca "destacado" en todos los talles que arman esta ficha del catálogo.
+window.toggleDestacadoDesdeCatalogo = async function (key, checked) {
+  const x = modelosVista.find((v) => v.modelo.key === key); if (!x) return;
+  try {
+    const batch = writeBatch(db);
+    x.modelo.filas.forEach((f) => batch.update(doc(db, 'stock', f.id), { destacado: checked }));
+    await batch.commit();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
 };
 
 // ══════════════════════════════════════════

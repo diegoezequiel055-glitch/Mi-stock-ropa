@@ -486,6 +486,10 @@
           <label>Mensaje del botón flotante de WhatsApp <span style="color:var(--muted);font-size:0.7rem">— lo que ya viene escrito cuando alguien lo toca para consultar</span></label>
           <input type="text" id="cfg-whatsapp-mensaje" placeholder="¡Hola! Quería hacer una consulta." maxlength="200">
         </div>
+        <div class="field" style="grid-column:1/-1">
+          <label>Fotos del inicio (las 3 de arriba de todo) <span style="color:var(--muted);font-size:0.7rem">— las elegís vos, no se arman solas. Las 3 se muestran del mismo tamaño en el sitio.</span></label>
+          <div id="cfg-hero-fotos" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px"></div>
+        </div>
       </div>
       <div style="display:flex;align-items:center;gap:12px;margin-top:18px">
         <button class="btn btn-gold" onclick="guardarConfigSitio()" id="cfg-guardar-btn">💾 Guardar cambios</button>
