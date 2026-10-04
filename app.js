@@ -249,6 +249,5 @@ window.showTab=function(name,btn){
   if(name==='cobros'){ renderCobrosKPI(); renderCobros(); }
   if(name==='reservas'){ renderReservasKPI(); renderReservas(); }
   if(name==='envios'){ renderEnvios(); }
-  if(name==='catalogo'){ renderVistaCatalogo(); }
-  if(name==='config'){ renderConfigSitio(); }
+  if(name==='catalogo'){ renderVistaCatalogo(); renderConfigSitio(); }
 }

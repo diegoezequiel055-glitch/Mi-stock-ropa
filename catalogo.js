@@ -114,6 +114,8 @@ window.catalogoIniciar = function () {
   onSnapshot(collection(db, 'producto_fotos'), (snap) => {
     state.productoFotos = Object.fromEntries(snap.docs.map((d) => [d.id, d.data().fotos || []]));
     if (document.getElementById('prod-modal')?.classList.contains('open')) actualizarFotoModal();
+    if (document.getElementById('foto-modal')?.classList.contains('open')) renderFotoModalGaleria();
+    if (document.getElementById('tab-catalogo')?.classList.contains('active')) renderVistaCatalogo();
     catalogoRefresh();
   }, () => {});
 };
@@ -121,28 +123,34 @@ window.catalogoIniciar = function () {
 // ══════════════════════════════════════════
 // VISTA PREVIA — solo para Diego, logueado. Muestra exactamente lo que va a ver
 // un cliente en el catálogo público (mismos campos, ningún precio de costo).
+// Se arma directo desde el stock (no desde la copia pública) para que cada
+// ficha tenga a mano cat/modelo/color y así poder agregar fotos con un toque.
 // ══════════════════════════════════════════
 const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+let modelosVista = []; // [{modelo, ficha}] — lo último que se dibujó, para abrir el modal de fotos
 
 window.catalogoSetBusqueda = function (v) { state.catalogoBusqueda = v; renderVistaCatalogo(); };
 window.catalogoSetCat = function (v) { state.catalogoCat = v; renderVistaCatalogo(); };
 
 window.renderVistaCatalogo = function () {
   const cont = document.getElementById('catalogo-grid'); if (!cont) return;
-  const items = state.catalogoPublico;
-  const cats = [...new Set(items.map((i) => i.categoria))].sort();
+  const marcados = state.stockData.filter((p) => p.catalogo === true);
+  modelosVista = armarModelos(marcados).map((modelo) => ({ modelo, ficha: armarFicha(modelo) }));
+
+  const cats = [...new Set(modelosVista.map((x) => x.ficha.categoria))].sort();
   const selCat = document.getElementById('catalogo-cat-sel');
   if (selCat && selCat.innerHTML.split('<option').length - 1 !== cats.length + 1) {
     selCat.innerHTML = '<option value="">Todas las categorías</option>' + cats.map((c) => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
     selCat.value = state.catalogoCat;
   }
-  document.getElementById('catalogo-total').textContent = `${items.length} producto${items.length !== 1 ? 's' : ''} en el catálogo`;
+  document.getElementById('catalogo-total').textContent = `${modelosVista.length} producto${modelosVista.length !== 1 ? 's' : ''} en el catálogo`;
 
   const q = state.catalogoBusqueda.toLowerCase().trim();
-  const filtrados = items.filter((i) => (!q || i.nombre.toLowerCase().includes(q)) && (!state.catalogoCat || i.categoria === state.catalogoCat))
-    .sort((a, b) => a.categoria.localeCompare(b.categoria, 'es') || a.nombre.localeCompare(b.nombre, 'es'));
+  const filtrados = modelosVista.filter((x) => (!q || x.ficha.nombre.toLowerCase().includes(q)) && (!state.catalogoCat || x.ficha.categoria === state.catalogoCat))
+    .sort((a, b) => a.ficha.categoria.localeCompare(b.ficha.categoria, 'es') || a.ficha.nombre.localeCompare(b.ficha.nombre, 'es'));
 
-  if (!items.length) {
+  if (!modelosVista.length) {
     cont.innerHTML = `<div class="empty" style="padding:30px"><div class="empty-icon">🛍️</div><p>Todavía no marcaste ningún producto para el catálogo.<br>Andá a Stock → Editar producto → "Mostrar en catálogo".</p></div>`;
     return;
   }
@@ -150,13 +158,61 @@ window.renderVistaCatalogo = function () {
     cont.innerHTML = `<div class="empty" style="padding:24px"><p>Ningún producto coincide con la búsqueda.</p></div>`;
     return;
   }
-  cont.innerHTML = filtrados.map((i) => `<div class="catalogo-card">
-    <div class="catalogo-card-foto">${i.foto ? `<img src="${escHtml(i.foto)}" loading="lazy" alt="${escHtml(i.nombre)}" onerror="this.outerHTML='<div class=&quot;catalogo-sin-foto&quot;>📷 Sin foto</div>'">` : '<div class="catalogo-sin-foto">📷 Sin foto</div>'}</div>
-    <div class="catalogo-card-body">
-      <div class="catalogo-card-cat">${escHtml(i.categoria)}</div>
-      <div class="catalogo-card-nombre">${escHtml(i.nombre)}</div>
-      <div class="catalogo-card-precio">${i.precio ? '$' + fmt(i.precio) : '<span style="color:var(--muted)">Sin precio cargado</span>'}</div>
-      <div class="catalogo-card-talles">${i.talles.length ? i.talles.map((t) => `<span class="badge b-ok" style="font-size:.65rem">${escHtml(t.talle)} · ${t.stock}</span>`).join('') : '<span style="font-size:.7rem;color:var(--danger)">Sin stock disponible</span>'}</div>
-    </div>
+  cont.innerHTML = filtrados.map((x) => {
+    const i = x.ficha, foto = (i.fotos || [])[0];
+    return `<div class="catalogo-card" onclick="abrirFotoModal('${escHtml(x.modelo.key)}')" style="cursor:pointer" title="Tocá para agregar o sacar fotos">
+      <div class="catalogo-card-foto">${foto ? `<img src="${escHtml(foto)}" loading="lazy" alt="${escHtml(i.nombre)}" onerror="this.outerHTML='<div class=&quot;catalogo-sin-foto&quot;>📷 Sin foto — tocá para agregar</div>'">` : '<div class="catalogo-sin-foto">📷 Sin foto — tocá para agregar</div>'}</div>
+      <div class="catalogo-card-body">
+        <div class="catalogo-card-cat">${escHtml(i.categoria)}</div>
+        <div class="catalogo-card-nombre">${escHtml(i.nombre)}</div>
+        <div class="catalogo-card-precio">${i.precio ? '$' + fmt(i.precio) : '<span style="color:var(--muted)">Sin precio cargado</span>'}</div>
+        <div class="catalogo-card-talles">${i.talles.length ? i.talles.map((t) => `<span class="badge b-ok" style="font-size:.65rem">${escHtml(t.talle)} · ${t.stock}</span>`).join('') : '<span style="font-size:.7rem;color:var(--danger)">Sin stock disponible</span>'}</div>
+      </div>
+    </div>`;
+  }).join('');
+};
+
+// ══════════════════════════════════════════
+// MODAL DE FOTOS — se abre tocando una ficha del catálogo, sin pasar por Stock.
+// Reutiliza subirFotoProducto/borrarFotoProducto (mismo storage por modelo).
+// ══════════════════════════════════════════
+let fotoModalTarget = null; // {cat, modelo, color, key} del modelo que está abierto
+
+window.abrirFotoModal = function (key) {
+  const x = modelosVista.find((v) => v.modelo.key === key); if (!x) return;
+  fotoModalTarget = x.modelo;
+  document.getElementById('fm-titulo').textContent = x.ficha.nombre;
+  document.getElementById('fm-input').value = '';
+  document.getElementById('fm-estado').textContent = '';
+  renderFotoModalGaleria();
+  document.getElementById('foto-modal').classList.add('open');
+};
+window.cerrarFotoModal = function () {
+  document.getElementById('foto-modal').classList.remove('open');
+  fotoModalTarget = null;
+};
+window.renderFotoModalGaleria = function () {
+  const cont = document.getElementById('fm-galeria'); if (!cont || !fotoModalTarget) return;
+  const fotos = state.productoFotos[fotoModalTarget.key] || [];
+  cont.innerHTML = fotos.map((url) => `<div style="position:relative;width:70px;height:70px;flex-shrink:0">
+    <img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid var(--border2)">
+    <button onclick="fotoModalQuitar('${url}')" title="Quitar" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:#fff;border:none;font-size:.65rem;cursor:pointer;line-height:1">✕</button>
   </div>`).join('');
+  document.getElementById('fm-input').style.display = fotos.length >= MAX_FOTOS ? 'none' : '';
+};
+window.fotoModalSeleccionada = async function (file) {
+  if (!file || !fotoModalTarget) return;
+  const input = document.getElementById('fm-input'), estado = document.getElementById('fm-estado');
+  estado.style.color = 'var(--muted)'; estado.textContent = 'Subiendo...';
+  try {
+    await subirFotoProducto(fotoModalTarget, file);
+    estado.style.color = 'var(--success)'; estado.textContent = 'Foto agregada ✓';
+    renderFotoModalGaleria();
+  } catch (e) { estado.style.color = 'var(--danger)'; estado.textContent = e.message; }
+  finally { input.value = ''; }
+};
+window.fotoModalQuitar = async function (url) {
+  if (!fotoModalTarget) return;
+  try { await borrarFotoProducto(fotoModalTarget, url); renderFotoModalGaleria(); }
+  catch (e) { toast('Error: ' + e.message, 'error'); }
 };

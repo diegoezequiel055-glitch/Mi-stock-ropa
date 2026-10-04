@@ -19,7 +19,7 @@ const CAMPOS = {
 window.configIniciar = function () {
   onSnapshot(doc(db, 'config_sitio', 'config'), (snap) => {
     state.configSitio = snap.exists() ? snap.data() : {};
-    if (document.getElementById('tab-config')?.classList.contains('active')) renderConfigSitio();
+    if (document.getElementById('tab-catalogo')?.classList.contains('active')) renderConfigSitio();
   }, () => {});
 };
 

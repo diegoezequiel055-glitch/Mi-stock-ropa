@@ -64,8 +64,7 @@
   <button class="tab" onclick="showTab('compras',this)">📥 Compras</button>
   <button class="tab" onclick="showTab('gastos',this)">💸 Gastos</button>
   <button class="tab" onclick="showTab('envios',this)">🚚 Envíos</button>
-  <button class="tab" onclick="showTab('catalogo',this)">🛍️ Catálogo</button>
-  <button class="tab" onclick="showTab('config',this)">⚙️ Config. del sitio</button>
+  <button class="tab" onclick="showTab('catalogo',this)">🛍️ Catálogo y sitio</button>
 </nav>
 
 <main>
@@ -458,35 +457,14 @@
   </div>
 </div>
 
-<!-- ══ VISTA PREVIA DEL CATÁLOGO ══ -->
+<!-- ══ CATÁLOGO Y SITIO PÚBLICO (todo en un solo lugar) ══ -->
 <div id="tab-catalogo" class="section">
-  <div class="panel">
-    <div class="panel-head">
-      <h2>🛍️ Catálogo — vista previa</h2>
-      <div class="filters">
-        <div class="search-wrap">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="catalogo-search" placeholder="Buscar..." oninput="catalogoSetBusqueda(this.value)" style="width:150px">
-        </div>
-        <select id="catalogo-cat-sel" onchange="catalogoSetCat(this.value)" style="width:auto"><option value="">Todas las categorías</option></select>
-      </div>
-    </div>
-    <div class="panel-body">
-      <p style="font-size:.78rem;color:var(--muted);margin-bottom:4px">Esto es exactamente lo que va a ver un cliente en el catálogo público — solo vos la ves, no es una página pública todavía.</p>
-      <p id="catalogo-total" style="font-size:.78rem;color:var(--text2);margin-bottom:14px"></p>
-      <div id="catalogo-grid" class="catalogo-grid"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ══ CONFIGURACIÓN DEL SITIO PÚBLICO ══ -->
-<div id="tab-config" class="section">
   <div class="panel">
     <div class="panel-head">
       <h2>⚙️ Configuración del sitio (tiendapremium)</h2>
     </div>
     <div class="panel-body">
-      <p style="font-size:.78rem;color:var(--muted);margin-bottom:18px">Estos textos se ven en tu tienda pública. Al guardar se actualizan solos ahí — no hace falta tocar nada más. Las fotos y los productos "Destacados" se manejan desde la pestaña Stock (tildando ⭐).</p>
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:18px">Estos textos se ven en tu tienda pública. Al guardar se actualizan solos ahí — no hace falta tocar nada más.</p>
       <div class="form-grid">
         <div class="field" style="grid-column:1/-1">
           <label>Título principal (hero)</label>
@@ -515,9 +493,43 @@
       </div>
     </div>
   </div>
+
+  <div class="panel" style="margin-top:18px">
+    <div class="panel-head">
+      <h2>🛍️ Catálogo — vista previa</h2>
+      <div class="filters">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="catalogo-search" placeholder="Buscar..." oninput="catalogoSetBusqueda(this.value)" style="width:150px">
+        </div>
+        <select id="catalogo-cat-sel" onchange="catalogoSetCat(this.value)" style="width:auto"><option value="">Todas las categorías</option></select>
+      </div>
+    </div>
+    <div class="panel-body">
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:4px">Esto es lo que ve un cliente en la tienda pública. Tocá una ficha para agregarle o sacarle fotos.</p>
+      <p id="catalogo-total" style="font-size:.78rem;color:var(--text2);margin-bottom:14px"></p>
+      <div id="catalogo-grid" class="catalogo-grid"></div>
+    </div>
+  </div>
 </div>
 
 </main>
+
+<!-- ══ MODAL FOTOS (desde el catálogo, sin pasar por Stock) ══ -->
+<div class="overlay" id="foto-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="cerrarFotoModal()">✕</button>
+    <div class="modal-title" id="fm-titulo">Fotos del producto</div>
+    <div class="form-grid">
+      <div class="field" style="grid-column:1/-1">
+        <div id="fm-galeria" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px"></div>
+        <input type="file" id="fm-input" accept="image/*" onchange="fotoModalSeleccionada(this.files[0])" style="width:100%;padding:6px">
+        <div id="fm-estado" style="font-size:.72rem;margin-top:4px;color:var(--muted)"></div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:8px">Hasta 6 fotos, las comparten todos los talles de este modelo.</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ══ MODAL EDITAR CUOTA ══ -->
 <div class="overlay" id="cuota-modal">
