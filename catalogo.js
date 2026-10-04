@@ -80,6 +80,7 @@ function armarFicha(modelo) {
     precioCurva,
     talles: tallesDisponibles(modelo),
     fotos: state.productoFotos[modelo.key] || [],
+    destacado: modelo.filas.some((f) => f.destacado === true),
     actualizado: Date.now(),
   };
 }

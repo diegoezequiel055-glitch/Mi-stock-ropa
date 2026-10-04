@@ -22,6 +22,7 @@ export const state = {
   uvModo: 'ahora', // 'ahora' | 'cuotas'
   filtroSinCosto: false, // lista de stock: mostrar solo productos sin costo
   filtroCatalogo: false, // lista de stock: mostrar solo lo marcado para el catálogo
+  filtroDestacado: false, // lista de stock: mostrar solo lo marcado como destacado
   cr: null, // Carga rápida: resultado de la IA que se está revisando (ver carga-rapida.js)
 
   dbPeriodo: 'mes', // Dashboard: 'mes' | 'mes_ant' | '3m' | 'anio' | 'todo'
@@ -45,4 +46,6 @@ export const state = {
   catalogoPublico: [], // copia local de la colección catalogo_publico, para la vista previa
   catalogoBusqueda: '',
   catalogoCat: '',
+
+  configSitio: {}, // copia local de config_sitio/config (textos editables del sitio público)
 };

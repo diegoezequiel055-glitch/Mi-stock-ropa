@@ -6,6 +6,10 @@ window.toggleCatalogo=async function(id,checked){
   try{ await updateDoc(doc(db,'stock',id),{catalogo:checked}); }
   catch(e){ toast('Error: '+e.message,'error'); }
 }
+window.toggleDestacado=async function(id,checked){
+  try{ await updateDoc(doc(db,'stock',id),{destacado:checked}); }
+  catch(e){ toast('Error: '+e.message,'error'); }
+}
 
 window.populateCategoryFilter = function() {
   const cats = [...new Set(state.stockData.map(p=>p.cat))].sort();
@@ -26,6 +30,8 @@ window.updateStockKPIs = function(){
   document.getElementById('kpi-sincosto').style.outline=state.filtroSinCosto?'2px solid var(--danger)':'none';
   document.getElementById('k-catalogo').textContent=state.stockData.filter(p=>p.catalogo).length;
   document.getElementById('kpi-catalogo').style.outline=state.filtroCatalogo?'2px solid var(--accent)':'none';
+  document.getElementById('k-destacado').textContent=state.stockData.filter(p=>p.destacado).length;
+  document.getElementById('kpi-destacado').style.outline=state.filtroDestacado?'2px solid var(--accent)':'none';
   document.getElementById('k-liq').textContent=state.stockData.filter(p=>p.modelo.toLowerCase().includes('liquidación')).reduce((a,p)=>a+p.qty,0);
   // F#1: valor del inventario
   const kVal=document.getElementById('k-valor');
@@ -35,7 +41,7 @@ window.renderStock = function() {
   const q    = (document.getElementById('s-search')?.value||'').toLowerCase();
   const cat  = document.getElementById('s-cat')?.value||'';
   const sort = document.getElementById('s-sort')?.value||'cat';
-  let filtered = state.stockData.filter(p=>{ const txt=[p.cat,p.modelo,p.color||'',p.talle].join(' ').toLowerCase(); return(!q||txt.includes(q))&&(!cat||p.cat===cat)&&(!state.filtroSinCosto||!p.pcosto)&&(!state.filtroCatalogo||p.catalogo); });
+  let filtered = state.stockData.filter(p=>{ const txt=[p.cat,p.modelo,p.color||'',p.talle].join(' ').toLowerCase(); return(!q||txt.includes(q))&&(!cat||p.cat===cat)&&(!state.filtroSinCosto||!p.pcosto)&&(!state.filtroCatalogo||p.catalogo)&&(!state.filtroDestacado||p.destacado); });
   filtered.sort((a,b)=>{
     if(sort==='cat') return a.cat.localeCompare(b.cat)||a.modelo.localeCompare(b.modelo);
     if(sort==='qty-asc') return a.qty-b.qty; if(sort==='qty-desc') return b.qty-a.qty;
@@ -43,7 +49,7 @@ window.renderStock = function() {
     return 0;
   });
   updateStockKPIs();
-  const renderKey = filtered.map(p=>`${p.id}:${p.qty}:${p.pventa}:${p.pcosto}:${p.pmayorista}:${p.pcurva}:${!!p.catalogo}`).join('|')+'|'+q+'|'+cat+'|'+sort+'|'+state.filtroSinCosto+'|'+state.filtroCatalogo;
+  const renderKey = filtered.map(p=>`${p.id}:${p.qty}:${p.pventa}:${p.pcosto}:${p.pmayorista}:${p.pcurva}:${!!p.catalogo}:${!!p.destacado}`).join('|')+'|'+q+'|'+cat+'|'+sort+'|'+state.filtroSinCosto+'|'+state.filtroCatalogo+'|'+state.filtroDestacado;
   if(!state.inventarioMode && renderKey === state.lastStockRenderKey) return;
   state.lastStockRenderKey = renderKey;
 
@@ -65,8 +71,9 @@ window.renderStock = function() {
       <td>${p.pventa?'$'+fmt(p.pventa):'<span style="color:var(--muted)">—</span>'}</td>
       <td><span class="badge ${badge}">${label}</span></td>
       <td style="text-align:center"><input type="checkbox" ${p.catalogo?'checked':''} onchange="toggleCatalogo('${p.id}',this.checked)" title="Mostrar en catálogo"></td>
+      <td style="text-align:center"><input type="checkbox" ${p.destacado?'checked':''} onchange="toggleDestacado('${p.id}',this.checked)" title="Destacado en el inicio del sitio"></td>
       <td>${state.inventarioMode?`<span style="font-size:.72rem;color:${state.inventarioCounts[p.id]!==undefined&&state.inventarioCounts[p.id]!==p.qty?'var(--accent)':'var(--muted)'}">${state.inventarioCounts[p.id]!==undefined&&state.inventarioCounts[p.id]!==p.qty?`era ${p.qty}`:''}</span>`:`<button class="btn btn-outline btn-sm" onclick="openProductModal('${p.id}')">✏️ Editar</button>`}</td>
-    </tr>`; }).join(''):`<tr><td colspan="12"><div class="empty"><div class="empty-icon">📦</div><p>No hay productos</p></div></td></tr>`;
+    </tr>`; }).join(''):`<tr><td colspan="13"><div class="empty"><div class="empty-icon">📦</div><p>No hay productos</p></div></td></tr>`;
 
   const cards=document.getElementById('stock-cards');
   cards.innerHTML=filtered.length?filtered.map(p=>{
@@ -89,6 +96,7 @@ window.renderStock = function() {
         </div>
         <div style="display:flex;gap:10px;align-items:center">
           ${state.inventarioMode?'':`<label style="display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--muted);text-transform:none;letter-spacing:0;margin:0"><input type="checkbox" ${p.catalogo?'checked':''} onchange="toggleCatalogo('${p.id}',this.checked)">🛍️</label>`}
+          ${state.inventarioMode?'':`<label style="display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--muted);text-transform:none;letter-spacing:0;margin:0"><input type="checkbox" ${p.destacado?'checked':''} onchange="toggleDestacado('${p.id}',this.checked)">⭐</label>`}
           ${state.inventarioMode?'':`<button class="btn btn-outline btn-sm" onclick="openProductModal('${p.id}')">✏️ Editar</button>`}
         </div>
       </div>
@@ -137,6 +145,7 @@ window.openProductModal=function(id){
   document.getElementById('pm-pcosto').value=p?.pcosto||'';
   document.getElementById('pm-notas').value=p?.notas||''; // F#3
   document.getElementById('pm-catalogo').checked=!!p?.catalogo;
+  document.getElementById('pm-destacado').checked=!!p?.destacado;
   // Historial de cada precio (costo, mayorista, curva, menor)
   Object.entries({pcosto:'pm-hist-costo',pmayorista:'pm-hist-mayorista',pcurva:'pm-hist-curva',pventa:'pm-hist-menor'}).forEach(([campo,elId])=>{
     const el=document.getElementById(elId);
@@ -204,7 +213,8 @@ window.saveProduct=async function(){
     qty:parseInt(document.getElementById('pm-qty').value)||0,
     pventa,pcosto,pmayorista,pcurva,
     notas:document.getElementById('pm-notas').value.trim()||null, // F#3
-    catalogo:document.getElementById('pm-catalogo').checked
+    catalogo:document.getElementById('pm-catalogo').checked,
+    destacado:document.getElementById('pm-destacado').checked
   };
   const id=document.getElementById('pm-id').value;
   const prodActual=id?state.stockData.find(x=>x.id===id):null;
@@ -231,6 +241,10 @@ window.toggleFiltroSinCosto=function(){
 }
 window.toggleFiltroCatalogo=function(){
   state.filtroCatalogo=!state.filtroCatalogo;
+  renderStock();
+}
+window.toggleFiltroDestacado=function(){
+  state.filtroDestacado=!state.filtroDestacado;
   renderStock();
 }
 window.delProductFromModal=async function(){
