@@ -88,6 +88,8 @@ function armarFicha(modelo) {
     talles: tallesDisponibles(modelo),
     fotos: state.productoFotos[modelo.key] || [],
     destacado: modelo.filas.some((f) => f.destacado === true),
+    // Fecha real de alta (no se toca al editar precio/stock) — para "Nuevos ingresos" en el sitio.
+    creadoEn: Math.min(...modelo.filas.map((f) => f.createdAt || 0)),
     actualizado: Date.now(),
   };
 }
