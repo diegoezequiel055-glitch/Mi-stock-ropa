@@ -1,6 +1,7 @@
 import { state } from './state.js';
 import { db, collection, doc, setDoc, writeBatch, onSnapshot } from './firebase-config.js';
 import { armarModelos, claveModelo, compararTalles } from './matching.js';
+import { UMBRAL_STOCK_BAJO } from './datos-negocio.js';
 
 // ══════════════════════════════════════════
 // CATÁLOGO PÚBLICO — sincroniza sola la colección "catalogo_publico" con los
@@ -77,18 +78,25 @@ function tallesDisponibles(modelo) {
 // por WhatsApp), simplemente ya no viajan a catalogo_publico ni a la vista previa.
 function armarFicha(modelo) {
   const precio = modelo.filas.find((f) => f.pventa > 0)?.pventa || null;
-  return {
+  const talles = tallesDisponibles(modelo);
+  const stockTotal = talles.reduce((a, t) => a + t.stock, 0);
+  const ficha = {
     nombre: modelo.color ? `${modelo.modelo} (${modelo.color})` : modelo.modelo,
     categoria: modelo.cat,
     color: modelo.color || null,
     precio,
-    talles: tallesDisponibles(modelo),
+    talles,
     fotos: state.productoFotos[modelo.key] || [],
     destacado: modelo.filas.some((f) => f.destacado === true),
     // Fecha real de alta (no se toca al editar precio/stock) — para "Nuevos ingresos" en el sitio.
     creadoEn: Math.min(...modelo.filas.map((f) => f.createdAt || 0)),
     actualizado: Date.now(),
   };
+  // Aviso de poco stock: solo se guarda el número si es bajo. Si sube de nuevo
+  // (se repone o se corrige), el campo desaparece solo en la próxima sincronización
+  // (armarFicha arma el documento entero de nuevo, no hay que borrar nada a mano).
+  if (stockTotal > 0 && stockTotal <= UMBRAL_STOCK_BAJO) ficha.stockBajo = stockTotal;
+  return ficha;
 }
 
 // Para que un producto se publique necesita: al menos 1 foto, precio por menor
