@@ -72,19 +72,16 @@ function tallesDisponibles(modelo) {
   }).filter((t) => t.stock > 0).sort((a, b) => compararTalles(a.talle, b.talle));
 }
 
-// Diego pidió sumar mayorista y curva al sitio público (antes estaban excluidos a propósito).
-// Costo nunca se incluye acá, ni se lee en esta función.
+// Solo precio por menor: nunca se arma ni se manda mayorista, curva ni costo.
+// Esos precios se siguen cargando y viendo en Stock (para cotizar mayorista a mano
+// por WhatsApp), simplemente ya no viajan a catalogo_publico ni a la vista previa.
 function armarFicha(modelo) {
   const precio = modelo.filas.find((f) => f.pventa > 0)?.pventa || null;
-  const precioMayorista = modelo.filas.find((f) => f.pmayorista > 0)?.pmayorista || null;
-  const precioCurva = modelo.filas.find((f) => f.pcurva > 0)?.pcurva || null;
   return {
     nombre: modelo.color ? `${modelo.modelo} (${modelo.color})` : modelo.modelo,
     categoria: modelo.cat,
     color: modelo.color || null,
     precio,
-    precioMayorista,
-    precioCurva,
     talles: tallesDisponibles(modelo),
     fotos: state.productoFotos[modelo.key] || [],
     destacado: modelo.filas.some((f) => f.destacado === true),
@@ -94,10 +91,23 @@ function armarFicha(modelo) {
   };
 }
 
+// Para que un producto se publique necesita: al menos 1 foto, precio por menor
+// cargado (>0) y al menos un talle con stock disponible. Si le falta algo, no se
+// publica (y si ya estaba publicado y deja de cumplir, se despublica solo).
+function motivosNoPublicable(ficha) {
+  const motivos = [];
+  if (!ficha.fotos?.length) motivos.push('foto');
+  if (!(ficha.precio > 0)) motivos.push('precio');
+  if (!ficha.talles?.length) motivos.push('stock');
+  return motivos;
+}
+function esPublicable(ficha) { return motivosNoPublicable(ficha).length === 0; }
+
 window.catalogoSync = async function () {
   const marcados = state.stockData.filter((p) => p.catalogo === true);
   const modelos = armarModelos(marcados); // agrupa por cat+modelo+color, como el resto de la app
-  const deseados = new Map(modelos.map((m) => [m.key, armarFicha(m)]));
+  const fichas = modelos.map((m) => [m.key, armarFicha(m)]);
+  const deseados = new Map(fichas.filter(([, ficha]) => esPublicable(ficha)));
 
   const batch = writeBatch(db);
   let cambios = 0;
@@ -167,8 +177,11 @@ window.renderVistaCatalogo = function () {
     cont.innerHTML = `<div class="empty" style="padding:24px"><p>Ningún producto coincide con la búsqueda.</p></div>`;
     return;
   }
+  const NOMBRE_MOTIVO = { foto: 'foto', precio: 'precio', stock: 'stock' };
   cont.innerHTML = filtrados.map((x) => {
     const i = x.ficha, foto = (i.fotos || [])[0], key = escHtml(x.modelo.key);
+    const motivos = motivosNoPublicable(i);
+    const aviso = motivos.length ? `<div style="padding:7px 12px;background:var(--danger-dim);color:var(--danger);font-size:.68rem;font-weight:600;border-top:1px solid var(--border)">⚠ No se publica: falta ${motivos.map((m) => NOMBRE_MOTIVO[m]).join(' / ')}</div>` : '';
     return `<div class="catalogo-card">
       <div onclick="abrirFotoModal('${key}')" style="cursor:pointer" title="Tocá para agregar o sacar fotos">
         <div class="catalogo-card-foto">${foto ? `<img src="${escHtml(foto)}" loading="lazy" alt="${escHtml(i.nombre)}" onerror="this.outerHTML='<div class=&quot;catalogo-sin-foto&quot;>📷 Sin foto — tocá para agregar</div>'">` : '<div class="catalogo-sin-foto">📷 Sin foto — tocá para agregar</div>'}</div>
@@ -179,6 +192,7 @@ window.renderVistaCatalogo = function () {
           <div class="catalogo-card-talles">${i.talles.length ? i.talles.map((t) => `<span class="badge b-ok" style="font-size:.65rem">${escHtml(t.talle)} · ${t.stock}</span>`).join('') : '<span style="font-size:.7rem;color:var(--danger)">Sin stock disponible</span>'}</div>
         </div>
       </div>
+      ${aviso}
       <label class="stock-card-flag" style="padding:8px 12px;border-top:1px solid var(--border)"><input type="checkbox" ${i.destacado ? 'checked' : ''} onchange="toggleDestacadoDesdeCatalogo('${key}',this.checked)"> ⭐ Destacado (inicio del sitio)</label>
     </div>`;
   }).join('');
