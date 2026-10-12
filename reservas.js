@@ -57,13 +57,11 @@ window.updateReservasTabBadge = function(){
   const vencidas=state.reservasData.filter(r=>r.estado!=='cancelada'&&r.vencimiento<now).length;
   const proximas=state.reservasData.filter(r=>r.estado!=='cancelada'&&r.vencimiento>=now&&r.vencimiento<=now+3*24*60*60*1000).length;
   const count=vencidas+proximas;
-  document.querySelectorAll('.tab').forEach(t=>{
-    if(t.getAttribute('onclick')?.includes('reservas')){
-      t.innerHTML=count
-        ?`🔖 Reservas <span style="background:${vencidas?'var(--danger)':'var(--warning)'};color:#fff;border-radius:10px;padding:1px 6px;font-size:.65rem;margin-left:2px">${count}</span>`
-        :'🔖 Reservas';
-    }
-  });
+  const t=document.querySelector('[data-tab="reservas"]');
+  if(t) t.innerHTML=count
+    ?`🔖 Reservas <span style="background:${vencidas?'var(--danger)':'var(--warning)'};color:#fff;border-radius:10px;padding:1px 6px;font-size:.65rem;margin-left:2px">${count}</span>`
+    :'🔖 Reservas';
+  if(window.updateMasBadge) updateMasBadge();
 }
 window.openReservaModal=function(id){
   const r=id?state.reservasData.find(x=>x.id===id):null;
@@ -168,7 +166,7 @@ window.confirmarVentaReserva=async function(id){
   const r=state.reservasData.find(x=>x.id===id); if(!r)return;
   // Eliminar la reserva y llevar al usuario a registrar la venta
   await deleteDoc(doc(db,'reservas',id));
-  showTab('ventas', document.querySelector('[onclick*="ventas"]'));
+  showTab('ventas');
   if(!state.ventaCart.find(x=>x.prodId===r.prodId)){
     addToUv(r.prodId);
     const idx=state.ventaCart.findIndex(x=>x.prodId===r.prodId);
