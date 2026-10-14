@@ -1,9 +1,10 @@
 import { state } from './state.js';
+import { categoriasUnicas } from './categorias.js';
 import { db, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs, writeBatch, increment, getDoc, limit } from './firebase-config.js';
 
 window.acFilter=function(inputId,listId){
   const val=document.getElementById(inputId).value.toLowerCase();
-  const cats=[...new Set(state.stockData.map(p=>p.cat))].sort();
+  const cats=categoriasUnicas(state.stockData.map(p=>p.cat));
   const matches=val?cats.filter(c=>c.toLowerCase().includes(val)):cats;
   const list=document.getElementById(listId);
   if(!matches.length){list.classList.remove('open');return;}

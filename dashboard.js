@@ -1,4 +1,5 @@
 import { state } from './state.js';
+import { claveCat, catPlural } from './categorias.js';
 
 // ══════════════════════════════════════════
 // DASHBOARD — cálculos por período y dibujo
@@ -132,7 +133,7 @@ function porTipo(desde, hasta) {
 
 function agrupar(desde, hasta, clave) {
   const en = enRango(desde, hasta), g = new Map();
-  const get = (o) => { const k = clave(o); if (!g.has(k)) g.set(k, { k, cat: o.cat, modelo: o.modelo, color: o.color || '', unid: 0, ing: 0, gan: 0 }); return g.get(k); };
+  const get = (o) => { const k = clave(o); if (!g.has(k)) g.set(k, { k, cat: catPlural(o.cat), modelo: o.modelo, color: o.color || '', unid: 0, ing: 0, gan: 0 }); return g.get(k); };
   for (const v of state.ventasData) if (en(v.fecha)) { const x = get(v); x.unid += v.cant; x.ing += v.pventa * v.cant; if (v.pcosto) x.gan += (v.pventa - v.pcosto) * v.cant; }
   for (const c of state.cuotasData) if (en(c.createdAt)) get(c).unid += c.cant || 1;
   for (const p of cuotasCobradas(desde, hasta)) { const x = get(p.c); x.ing += p.q.monto; if (p.gan != null) x.gan += p.gan; }
@@ -150,7 +151,7 @@ function clientes(desde, hasta) {
 function resumenStock() {
   const s = state.stockData;
   const porCat = new Map();
-  s.forEach((p) => porCat.set(p.cat, (porCat.get(p.cat) || 0) + p.qty));
+  s.forEach((p) => porCat.set(catPlural(p.cat), (porCat.get(catPlural(p.cat)) || 0) + p.qty));
   return {
     unidades: s.reduce((a, p) => a + p.qty, 0), referencias: s.length,
     valorCosto: s.filter((p) => p.pcosto && p.qty > 0).reduce((a, p) => a + p.pcosto * p.qty, 0),
@@ -323,11 +324,11 @@ window.dbRender = function (ahora = new Date()) {
   evo = { b: s.buckets };
   const gran = { dia: 'por día', semana: 'por semana', mes: 'por mes' }[s.gran];
 
-  const top = agrupar(per.desde, per.hasta, (o) => [o.cat, o.modelo, o.color || ''].join('|'));
+  const top = agrupar(per.desde, per.hasta, (o) => [claveCat(o.cat), o.modelo, o.color || ''].join('|'));
   const modoTop = state.dbTop === 'ganancia' ? 'gan' : 'unid';
   const topP = top.sort((a, b) => b[modoTop] - a[modoTop]).filter((x) => x[modoTop] > 0).slice(0, 10)
     .map((x) => ({ k: `${x.modelo}${x.color ? ' · ' + x.color : ''}`, sub: x.cat, v: x[modoTop] }));
-  const cats = agrupar(per.desde, per.hasta, (o) => o.cat).sort((a, b) => b.ing - a.ing).filter((x) => x.ing > 0).slice(0, 8).map((x) => ({ k: x.cat, v: x.ing }));
+  const cats = agrupar(per.desde, per.hasta, (o) => claveCat(o.cat)).sort((a, b) => b.ing - a.ing).filter((x) => x.ing > 0).slice(0, 8).map((x) => ({ k: x.cat, v: x.ing }));
   const tipos = porTipo(per.desde, per.hasta).map((t) => ({ k: t.k, sub: t.unid ? `${entero(t.unid)} u.` : '', v: t.ing }));
   const clis = clientes(per.desde, per.hasta).slice(0, 6).map((c) => ({ k: c.nombre, sub: `${c.veces} compra${c.veces !== 1 ? 's' : ''}`, v: c.monto }));
   const gastosSub = new Map();
@@ -353,14 +354,14 @@ window.dbRender = function (ahora = new Date()) {
 
   let pro = card(`Lo que más se vende <span class="db-tog"><button class="date-btn${modoTop === 'unid' ? ' active' : ''}" onclick="dbSetTop('unidades')">Por unidades</button><button class="date-btn${modoTop === 'gan' ? ' active' : ''}" onclick="dbSetTop('ganancia')">Por ganancia</button></span>`, barras(topP, { formato: modoTop === 'unid' ? (n) => entero(n) + ' u.' : dinero, vacio: 'Todavía no hay ventas en este período.' }), 'Top 10 modelos (todos los talles juntos).');
 
-  const menos = agrupar(per.desde, per.hasta, (o) => [o.cat, o.modelo, o.color || ''].join('|')).filter((x) => x.unid > 0)
+  const menos = agrupar(per.desde, per.hasta, (o) => [claveCat(o.cat), o.modelo, o.color || ''].join('|')).filter((x) => x.unid > 0)
     .sort((a, b) => a.unid - b.unid).slice(0, 10).map((x) => ({ k: `${x.modelo}${x.color ? ' · ' + x.color : ''}`, sub: x.cat, v: x.unid }));
   pro += card('Lo que menos se vende', barras(menos, { formato: (n) => entero(n) + ' u.', vacio: 'Todavía no hay ventas en este período.' }), 'Los 10 modelos con menos unidades vendidas (solo los que vendieron algo).');
 
   pro += `<div class="db-grid2">`;
   pro += card('Stock', `<div class="db-mini">${tile('Unidades', entero(st.unidades))}${tile('Referencias', entero(st.referencias))}${tile('Valor a costo', dinero(st.valorCosto))}${tile('Valor a precio menor', dinero(st.valorVenta))}${tile('Última unidad', entero(st.ultima))}${tile('Agotados', entero(st.agotados))}${tile('Sin costo', entero(st.sinCosto))}${tile('Sin precio menor', entero(st.sinPrecio))}</div><h4>Unidades por categoría</h4>${barras(st.porCat.slice(0, 8).map((x) => ({ k: x.k, v: x.v })), { formato: (n) => entero(n) + ' u.' })}`);
   pro += card('A reponer', reponer.length ? `<div class="db-lista">${reponer.slice(0, 8).map((x) => `<div><span>${esc(x.p.modelo)}${x.p.color ? ' · ' + esc(x.p.color) : ''} <em>T.${esc(x.p.talle)}</em></span><b>${x.p.qty === 0 ? '<span class="db-tag mal">Agotado</span>' : '<span class="db-tag aviso">Queda 1</span>'} <span class="db-mut">${x.vend} vendido${x.vend !== 1 ? 's' : ''}</span></b></div>`).join('')}</div>` : '<p class="db-vacio">Nada urgente: ningún producto vendido en este período está por agotarse.</p>', 'Productos que se vendieron en este período y quedan 0 o 1 unidad.');
-  pro += card('Sin movimiento', est.length ? `<div class="db-lista">${est.slice(0, 8).map((x) => `<div><span>${esc(x.p.cat)} — ${esc(x.p.modelo)}${x.p.color ? ' · ' + esc(x.p.color) : ''} <em>T.${esc(x.p.talle)}</em></span><b>${x.nunca ? '<span class="db-tag mal">Nunca se vendió</span>' : `<span class="db-tag aviso">${x.dias} días</span>`} <span class="db-mut">${x.p.qty} u.</span></b></div>`).join('')}</div>` : '<p class="db-vacio">Todo tu stock tuvo alguna venta en los últimos ' + UMBRAL_ESTANCADO_DIAS + ' días.</p>', `Con stock y sin ninguna venta hace más de ${UMBRAL_ESTANCADO_DIAS} días: candidatos a liquidar o promocionar.`);
+  pro += card('Sin movimiento', est.length ? `<div class="db-lista">${est.slice(0, 8).map((x) => `<div><span>${esc(catPlural(x.p.cat))} — ${esc(x.p.modelo)}${x.p.color ? ' · ' + esc(x.p.color) : ''} <em>T.${esc(x.p.talle)}</em></span><b>${x.nunca ? '<span class="db-tag mal">Nunca se vendió</span>' : `<span class="db-tag aviso">${x.dias} días</span>`} <span class="db-mut">${x.p.qty} u.</span></b></div>`).join('')}</div>` : '<p class="db-vacio">Todo tu stock tuvo alguna venta en los últimos ' + UMBRAL_ESTANCADO_DIAS + ' días.</p>', `Con stock y sin ninguna venta hace más de ${UMBRAL_ESTANCADO_DIAS} días: candidatos a liquidar o promocionar.`);
   pro += `</div>`;
 
   const cobrosCard = card('Cobros en cuotas', `<div class="db-mini">${tile('Por cobrar', dinero(co.porCobrar))}${tile('Vencido', dinero(co.vencido), co.nVenc ? `<span class="db-tag mal">${co.nVenc} plan${co.nVenc !== 1 ? 'es' : ''}</span>` : '')}${tile('Próx. 7 días', dinero(co.prox))}${tile('Planes activos', entero(co.planes))}</div>`, 'Estado actual, no depende del período elegido.');

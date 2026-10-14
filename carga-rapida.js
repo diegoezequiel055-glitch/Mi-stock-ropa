@@ -1,4 +1,5 @@
 import { state } from './state.js';
+import { claveCat, catCanonica, categoriasUnicas } from './categorias.js';
 import { auth, db, collection, doc, writeBatch } from './firebase-config.js';
 import { armarModelos, buscarModelos, eleccionAutomatica, filaPorTalle, etiquetaModelo, normTalle, norm, tokens, PRECIOS_CAMPOS, categoriasDeGrupo, palabrasDeGrupo, buscarGrupo, planificarPrecios, compararTalles } from './matching.js';
 
@@ -39,7 +40,7 @@ window.crInterpretar = async function () {
   est.style.color = 'var(--muted)'; est.textContent = '';
   try {
     const token = await auth.currentUser.getIdToken();
-    const categorias = [...new Set(state.stockData.map((p) => p.cat).filter(Boolean))];
+    const categorias = categoriasUnicas(state.stockData.map((p) => p.cat));
     const r = await fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
@@ -182,7 +183,7 @@ function filaGrupoHTML(p, conCheck) {
 function preciosHTML() {
   const c = cr(), g = c.grupo;
   const modelos = armarModelos(state.stockData);
-  const cats = [...new Set(state.stockData.map((p) => p.cat).filter(Boolean))].sort();
+  const cats = categoriasUnicas(state.stockData.map((p) => p.cat));
   const lab = 'font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px';
   let h = `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px">
     <div style="${lab}">1 · ¿A qué productos?</div>
@@ -270,7 +271,7 @@ function evaluarItem(it, idx, filasUsadas) {
     if (!n.cat || !n.modelo) return pend('Completá categoría y modelo');
     if (!it.talle) return pend('Falta el talle');
     if (!(it.costo > 0)) return bad('El precio de costo es obligatorio');
-    const existe = state.stockData.find((p) => norm(p.cat) === norm(n.cat) && norm(p.modelo) === norm(n.modelo) && norm(p.color || '') === norm(n.color || '') && normTalle(p.talle) === normTalle(it.talle));
+    const existe = state.stockData.find((p) => claveCat(p.cat) === claveCat(n.cat) && norm(p.modelo) === norm(n.modelo) && norm(p.color || '') === norm(n.color || '') && normTalle(p.talle) === normTalle(it.talle));
     if (existe) return bad('Ya existe en tu stock: para sumar unidades usá "Compra"');
     const faltan = [['Mayorista', n.pmayorista], ['Curva', n.pcurva], ['Menor', n.pventa]].filter(([, v]) => !v).map(([k]) => k);
     return faltan.length ? aviso('Faltan precios (recomendado): ' + faltan.join(', ')) : ok();
@@ -281,7 +282,7 @@ function evaluarItem(it, idx, filasUsadas) {
     if (!n.cat || !n.modelo) return pend('Completá categoría y modelo del producto nuevo');
     if (!it.talle) return pend('Falta el talle');
     if (!(it.costo > 0)) return bad('Un producto nuevo necesita costo');
-    const existe = state.stockData.find((p) => norm(p.cat) === norm(n.cat) && norm(p.modelo) === norm(n.modelo) && norm(p.color || '') === norm(n.color || '') && normTalle(p.talle) === normTalle(it.talle));
+    const existe = state.stockData.find((p) => claveCat(p.cat) === claveCat(n.cat) && norm(p.modelo) === norm(n.modelo) && norm(p.color || '') === norm(n.color || '') && normTalle(p.talle) === normTalle(it.talle));
     if (existe) return bad('Ya existe en tu stock: elegilo de la lista');
     return aviso('Se creará como producto nuevo', { crear: 'nuevo' });
   }
@@ -401,7 +402,7 @@ function crRender() {
   const c = cr();
   const body = el('cr-revision-body');
   const modelos = armarModelos(state.stockData);
-  el('cr-cats').innerHTML = [...new Set(state.stockData.map((p) => p.cat).filter(Boolean))].sort().map((k) => `<option value="${esc(k)}">`).join('');
+  el('cr-cats').innerHTML = categoriasUnicas(state.stockData.map((p) => p.cat)).map((k) => `<option value="${esc(k)}">`).join('');
   let h = `<div style="font-size:.78rem;color:var(--success);margin-bottom:12px">🔒 Nada se guardó todavía. Revisá y corregí lo que haga falta.</div>`;
   h += `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px"><span style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Es una:</span>${Object.entries(OPS).map(([k, n]) => `<button class="date-btn${c.op === k ? ' active' : ''}" onclick="crSetOp('${k}')">${n}</button>`).join('')}</div>`;
   if (!c.op) h += `<div style="font-size:.82rem;color:var(--warning);margin-bottom:12px">⚠ No pude saber si es compra, venta o producto nuevo. Elegí una arriba.</div>`;
@@ -459,7 +460,7 @@ window.crConfirmar = async function () {
           else existentes.set(e.fila.id, { prodId: e.fila.id, cant: it.cantidad, pcosto_unit: it.costo || 0 });
         } else {
           const base = it.nuevo ? { ...it.nuevo } : { cat: e.modelo.cat, modelo: e.modelo.modelo, color: e.modelo.color, ...siblingPrecios(e.modelo) };
-          const clave = [norm(base.cat), norm(base.modelo), norm(base.color), normTalle(it.talle)].join('|');
+          const clave = [claveCat(base.cat), norm(base.modelo), norm(base.color), normTalle(it.talle)].join('|');
           const p = nuevos.get(clave);
           if (p) p.cant += it.cantidad;
           else nuevos.set(clave, { nuevo: { ...base, talle: normTalle(it.talle) }, cant: it.cantidad, pcosto_unit: it.costo || 0 });
@@ -473,7 +474,7 @@ window.crConfirmar = async function () {
       c.items.forEach((it) => {
         const n = it.nuevo;
         batch.set(doc(collection(db, 'stock')), {
-          cat: n.cat.trim(), modelo: n.modelo.trim(), color: (n.color || '').trim(), talle: normTalle(it.talle), qty: it.cantidad,
+          cat: catCanonica(n.cat), modelo: n.modelo.trim(), color: (n.color || '').trim(), talle: normTalle(it.talle), qty: it.cantidad,
           pventa: n.pventa || null, pmayorista: n.pmayorista || null, pcurva: n.pcurva || null, pcosto: it.costo,
           notas: null, createdAt: Date.now(),
         });

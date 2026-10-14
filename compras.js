@@ -1,4 +1,5 @@
 import { state } from './state.js';
+import { catCanonica } from './categorias.js';
 import { db, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs, writeBatch, increment, getDoc, limit } from './firebase-config.js';
 
 window.loadCompras = async function(){
@@ -106,7 +107,7 @@ window.guardarCompraItems=async function({items,proveedor,fecha,notas,actualizaS
       const n=item.nuevo, ref=doc(collection(db,'stock'));
       prodId=ref.id; info=n;
       const nuevo={
-        cat:n.cat,modelo:n.modelo,color:n.color||'',talle:n.talle,qty:actualizaStock?item.cant:0,
+        cat:catCanonica(n.cat),modelo:n.modelo,color:n.color||'',talle:n.talle,qty:actualizaStock?item.cant:0,
         pventa:n.pventa||null,pmayorista:n.pmayorista||null,pcurva:n.pcurva||null,
         pcosto:item.pcosto_unit>0?item.pcosto_unit:null,notas:null,createdAt:Date.now()
       };
