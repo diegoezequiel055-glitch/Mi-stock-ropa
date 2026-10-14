@@ -1,6 +1,7 @@
 import { state } from './state.js';
 import { db, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs, writeBatch, increment, getDoc, limit } from './firebase-config.js';
 import { claveModelo, compararTalles } from './matching.js';
+import { claveCat, catCanonica, categoriasUnicas } from './categorias.js';
 
 window.toggleCatalogo=async function(id,checked){
   try{ await updateDoc(doc(db,'stock',id),{catalogo:checked}); }
@@ -12,7 +13,7 @@ window.toggleDestacado=async function(id,checked){
 }
 
 window.populateCategoryFilter = function() {
-  const cats = [...new Set(state.stockData.map(p=>p.cat))].sort();
+  const cats = categoriasUnicas(state.stockData.map(p=>p.cat));
   const key  = cats.join(',');
   if(key===state.lastCatList) return;
   state.lastCatList=key;
@@ -41,7 +42,7 @@ window.renderStock = function() {
   const q    = (document.getElementById('s-search')?.value||'').toLowerCase();
   const cat  = document.getElementById('s-cat')?.value||'';
   const sort = document.getElementById('s-sort')?.value||'cat';
-  let filtered = state.stockData.filter(p=>{ const txt=[p.cat,p.modelo,p.color||'',p.talle].join(' ').toLowerCase(); return(!q||txt.includes(q))&&(!cat||p.cat===cat)&&(!state.filtroSinCosto||!p.pcosto)&&(!state.filtroCatalogo||p.catalogo)&&(!state.filtroDestacado||p.destacado); });
+  let filtered = state.stockData.filter(p=>{ const txt=[p.cat,p.modelo,p.color||'',p.talle].join(' ').toLowerCase(); return(!q||txt.includes(q))&&(!cat||claveCat(p.cat)===claveCat(cat))&&(!state.filtroSinCosto||!p.pcosto)&&(!state.filtroCatalogo||p.catalogo)&&(!state.filtroDestacado||p.destacado); });
   filtered.sort((a,b)=>{
     if(sort==='cat') return a.cat.localeCompare(b.cat)||a.modelo.localeCompare(b.modelo);
     if(sort==='qty-asc') return a.qty-b.qty; if(sort==='qty-desc') return b.qty-a.qty;
@@ -198,7 +199,7 @@ window.closeProdModal=function(){
   state.currentEditId=null;
 }
 window.saveProduct=async function(){
-  const cat=document.getElementById('pm-cat').value.trim();
+  const cat=catCanonica(document.getElementById('pm-cat').value.trim());
   const modelo=document.getElementById('pm-modelo').value.trim();
   const talle=document.getElementById('pm-talle').value.trim();
   if(!cat||!modelo||!talle){toast('Completá categoría, modelo y talle.','error');return;}
@@ -407,7 +408,7 @@ window.updateCm2Resumen = function(){
   document.getElementById('cm2-resumen').textContent=`${n} talle${n!==1?'s':''} · ${total} unidad${total!==1?'es':''}`;
 }
 window.saveCargaMasiva=async function(){
-  const cat=document.getElementById('cm2-cat').value.trim();
+  const cat=catCanonica(document.getElementById('cm2-cat').value.trim());
   const modelo=document.getElementById('cm2-modelo').value.trim();
   const color=document.getElementById('cm2-color').value.trim();
   const pventa=parseFloat(document.getElementById('cm2-pventa').value)||null;
@@ -425,7 +426,7 @@ window.saveCargaMasiva=async function(){
     for(const talle of keys){
       const qty=state.tallesSeleccionados[talle]||1;
       // Verificar si ya existe ese talle en stock para sumar en lugar de duplicar
-      const existe=state.stockData.find(p=>p.cat===cat&&p.modelo===modelo&&(p.color||'')===(color||'')&&p.talle===talle);
+      const existe=state.stockData.find(p=>claveCat(p.cat)===claveCat(cat)&&p.modelo===modelo&&(p.color||'')===(color||'')&&p.talle===talle);
       if(existe){
         const upd={qty:existe.qty+qty};
         if(pventa) upd.pventa=pventa;

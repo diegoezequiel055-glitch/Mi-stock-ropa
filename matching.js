@@ -1,3 +1,5 @@
+import { claveCat } from './categorias.js';
+
 // Emparejamiento de lo que interpretó la IA contra el stock real.
 // Reglas exactas, sin IA: nunca elige un producto si hay más de una opción posible.
 
@@ -33,7 +35,9 @@ const BLANDAS = new Set([...Object.keys(PALABRAS_CATEGORIA), 'musculosa']);
 const coincide = (hay, t) => hay.some((h) => h === t || (t.length >= 4 && h.length >= 4 && (h.startsWith(t) || t.startsWith(h))));
 
 // Clave de agrupamiento de un producto: mismo cat+modelo+color = mismo "modelo" (todos sus talles).
-export const claveModelo = (p) => [norm(p.cat), norm(p.modelo), norm(p.color)].join('|');
+// ATENCIÓN: esta clave es el ID de catalogo_publico y producto_fotos. La categoría entra por claveCat (categorias.js)
+// para que "Camiseta" y "Camisetas" den el mismo ID y no se rompan links ni fotos.
+export const claveModelo = (p) => [claveCat(p.cat), norm(p.modelo), norm(p.color)].join('|');
 
 // Agrupa las filas de stock (una por talle) en modelos: categoría + modelo + color.
 export function armarModelos(stock) {
