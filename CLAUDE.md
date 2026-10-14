@@ -17,4 +17,10 @@ App de stock/ventas en HTML + JS modular (ES modules, sin build), Firestore proy
 - El panel del menú es `position:fixed` (el `nav` tiene scroll horizontal y recortaría un menú absoluto). El botón "Más" es `sticky` a la derecha para que siempre se vea.
 
 ## Backups
-- Hoy NO hay backup automático configurado en el repo (ver informe de la tarea `menu-mas-backups`).
+- El backup diario vive en otro repo privado: `mi-stock-ropa-backups` (GitHub Action a las 03:00 hora Argentina). Su rama `backup-completo` (todas las colecciones + `restaurar.mjs`) está pendiente de aprobación y merge.
+
+## Carpetas (Desktop de Windows)
+- **Carpeta canónica de este proyecto:** `C:\Users\Nicol\Desktop\Stock Ropa` (repo `Mi-stock-ropa`). Trabajar solo acá.
+- La rama `menu-mas-backups` está solo local (no subida a GitHub) hasta que se apruebe.
+- `Desktop\stock-ropa-backup-pre-menu`: copia previa al menú "Más". No borrar hasta confirmar que el menú anda en `main`.
+- Backups: `Desktop\Mi-stock-ropa-backups` (repo `mi-stock-ropa-backups`). Las copias viejas de la tienda están en `Documents\Archivo-proyectos\tienda-premium-backups`.
