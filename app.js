@@ -10,6 +10,7 @@ import './gastos.js';
 import './reservas.js';
 import './carga-rapida.js';
 import './dashboard.js';
+import './dashboard-tabs.js';
 import './corregir-fechas.js';
 import './catalogo.js';
 import './envios.js';

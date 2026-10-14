@@ -210,7 +210,7 @@ const card = (titulo, cuerpo, nota = '') => `<section class="db-card"><h3>${titu
 function barras(filas, { formato = dinero, vacio = 'Sin datos en este período.', sub } = {}) {
   if (!filas.length) return `<p class="db-vacio">${vacio}</p>`;
   const max = Math.max(...filas.map((f) => f.v), 1);
-  return `<div class="db-bars">${filas.map((f) => `<div class="db-row"><div class="db-row-l" title="${esc(f.k)}">${esc(f.k)}${f.sub ? `<span>${esc(f.sub)}</span>` : ''}</div><div class="db-track"><div class="db-fill" style="width:${Math.max(2, f.v / max * 100)}%"></div></div><div class="db-row-v">${formato(f.v)}</div></div>`).join('')}</div>`;
+  return `<div class="db-bars">${filas.map((f) => `<div class="db-row"><div class="db-row-l" title="${esc(f.k)}${f.sub ? ' · ' + esc(f.sub) : ''}"><div class="db-row-n">${esc(f.k)}</div>${f.sub ? `<span>${esc(f.sub)}</span>` : ''}</div><div class="db-track"><div class="db-fill" style="width:${Math.max(2, f.v / max * 100)}%"></div></div><div class="db-row-v">${formato(f.v)}</div></div>`).join('')}</div>`;
 }
 
 // ── gráfico de evolución (SVG) ──
@@ -255,7 +255,7 @@ function tablaEvolucion(b) {
 let evo = { b: [] };
 function pintarEvolucion() {
   const cont = $('db-evo');
-  if (!cont) return;
+  if (!cont || !cont.offsetParent) return;
   if (state.dbTabla) { cont.innerHTML = tablaEvolucion(evo.b); return; }
   const W = Math.max(280, cont.clientWidth || 600);
   cont.innerHTML = svgEvolucion(evo.b, W) + '<div id="db-tip" class="db-tip" style="display:none"></div>';
@@ -277,6 +277,7 @@ function pintarEvolucion() {
   });
   svg.addEventListener('mouseleave', () => { tip.style.display = 'none'; hov.style.display = 'none'; });
 }
+window.dbPintarEvolucion = pintarEvolucion;
 window.dbToggleTabla = function () { state.dbTabla = !state.dbTabla; $('db-btn-tabla').textContent = state.dbTabla ? '📊 Ver gráfico' : '📋 Ver como tabla'; pintarEvolucion(); };
 
 // ── armado de la pantalla ──
@@ -337,37 +338,41 @@ window.dbRender = function (ahora = new Date()) {
   const hoyStr = ahora.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' });
   const notaComp = per.prev ? (per.kind === 'mes' || per.kind === 'anio' || per.kind === '3m' ? `Comparado con el mismo tramo de ${esc(pe)}.` : `Comparado con ${esc(pe)}.`) : '';
   const notaHasta = per.hasta > ahora.getTime() ? `Datos hasta hoy, ${esc(hoyStr)}. ` : '';
-  let h = `<div class="db-titulo"><div><h2>${esc(per.etiqueta)}</h2><p class="db-nota">${notaHasta}${notaComp}</p></div></div>`;
+  const titulo = `<div class="db-titulo"><div><h2>${esc(per.etiqueta)}</h2><p class="db-nota">${notaHasta}${notaComp}</p></div></div>`;
 
-  h += `<div class="db-hero"><div class="db-hero-l">Ganancia</div><div class="db-hero-v ${cur.ganancia < 0 ? 'neg' : ''}">${dinero(cur.ganancia)}</div><div class="db-hero-x">${delta(cur.ganancia, prev && { v: prev.ganancia }, pe) || ''} <span class="db-mut">Margen ${cur.margen.toFixed(0)} %</span> ${prev ? delta(cur.margen, { v: prev.margen }, pe, true) : ''}</div></div>`;
-  h += `<div class="db-tiles">${tile('Ingresos', dinero(cur.ingresos), dl('ingresos') + `<span class="db-mut">Ventas ${dinero(cur.ingV)} · Cuotas ${dinero(cur.ingC)}</span>`)}${tile('Ventas', entero(cur.nVentas), dl('nVentas'))}${tile('Unidades vendidas', entero(cur.unidades), dl('unidades'))}${tile('Ticket promedio', dinero(cur.ticket), dl('ticket'))}</div>`;
-  if (chips.length) h += `<div class="db-chips">${chips.join('')}</div>`;
+  let res = `<div class="db-hero"><div class="db-hero-l">Ganancia</div><div class="db-hero-v ${cur.ganancia < 0 ? 'neg' : ''}">${dinero(cur.ganancia)}</div><div class="db-hero-x">${delta(cur.ganancia, prev && { v: prev.ganancia }, pe) || ''} <span class="db-mut">Margen ${cur.margen.toFixed(0)} %</span> ${prev ? delta(cur.margen, { v: prev.margen }, pe, true) : ''}</div></div>`;
+  res += `<div class="db-tiles">${tile('Ingresos', dinero(cur.ingresos), dl('ingresos') + `<span class="db-mut">Ventas ${dinero(cur.ingV)} · Cuotas ${dinero(cur.ingC)}</span>`)}${tile('Ventas', entero(cur.nVentas), dl('nVentas'))}${tile('Unidades vendidas', entero(cur.unidades), dl('unidades'))}${tile('Ticket promedio', dinero(cur.ticket), dl('ticket'))}</div>`;
+  if (chips.length) res += `<div class="db-chips">${chips.join('')}</div>`;
 
-  h += `<section class="db-card"><div class="db-card-h"><h3>Evolución ${gran}</h3><button class="date-btn" id="db-btn-tabla" onclick="dbToggleTabla()">${state.dbTabla ? '📊 Ver gráfico' : '📋 Ver como tabla'}</button></div><div class="db-leyenda"><span><i class="k1"></i>Ingresos</span><span><i class="k3l"></i>Ganancia</span></div><div id="db-evo" class="db-evo"></div></section>`;
+  let ven = `<section class="db-card"><div class="db-card-h"><h3>Evolución ${gran}</h3><button class="date-btn" id="db-btn-tabla" onclick="dbToggleTabla()">${state.dbTabla ? '📊 Ver gráfico' : '📋 Ver como tabla'}</button></div><div class="db-leyenda"><span><i class="k1"></i>Ingresos</span><span><i class="k3l"></i>Ganancia</span></div><div id="db-evo" class="db-evo"></div></section>`;
 
-  h += `<div class="db-grid2">`;
-  h += card('Ventas por tipo', barras(tipos), 'Ingresos del período según el tipo de precio usado.');
-  h += card('Categorías', barras(cats), 'Ingresos por categoría de producto.');
-  h += `</div>`;
+  ven += `<div class="db-grid2">`;
+  ven += card('Ventas por tipo', barras(tipos), 'Ingresos del período según el tipo de precio usado.');
+  ven += card('Categorías', barras(cats), 'Ingresos por categoría de producto.');
+  ven += `</div>`;
 
-  h += card(`Lo que más se vende <span class="db-tog"><button class="date-btn${modoTop === 'unid' ? ' active' : ''}" onclick="dbSetTop('unidades')">Por unidades</button><button class="date-btn${modoTop === 'gan' ? ' active' : ''}" onclick="dbSetTop('ganancia')">Por ganancia</button></span>`, barras(topP, { formato: modoTop === 'unid' ? (n) => entero(n) + ' u.' : dinero, vacio: 'Todavía no hay ventas en este período.' }), 'Top 10 modelos (todos los talles juntos).');
+  let pro = card(`Lo que más se vende <span class="db-tog"><button class="date-btn${modoTop === 'unid' ? ' active' : ''}" onclick="dbSetTop('unidades')">Por unidades</button><button class="date-btn${modoTop === 'gan' ? ' active' : ''}" onclick="dbSetTop('ganancia')">Por ganancia</button></span>`, barras(topP, { formato: modoTop === 'unid' ? (n) => entero(n) + ' u.' : dinero, vacio: 'Todavía no hay ventas en este período.' }), 'Top 10 modelos (todos los talles juntos).');
 
-  h += `<div class="db-grid2">`;
-  h += card('Stock', `<div class="db-mini">${tile('Unidades', entero(st.unidades))}${tile('Referencias', entero(st.referencias))}${tile('Valor a costo', dinero(st.valorCosto))}${tile('Valor a precio menor', dinero(st.valorVenta))}${tile('Última unidad', entero(st.ultima))}${tile('Agotados', entero(st.agotados))}${tile('Sin costo', entero(st.sinCosto))}${tile('Sin precio menor', entero(st.sinPrecio))}</div><h4>Unidades por categoría</h4>${barras(st.porCat.slice(0, 8).map((x) => ({ k: x.k, v: x.v })), { formato: (n) => entero(n) + ' u.' })}`);
-  h += card('A reponer', reponer.length ? `<div class="db-lista">${reponer.slice(0, 8).map((x) => `<div><span>${esc(x.p.modelo)}${x.p.color ? ' · ' + esc(x.p.color) : ''} <em>T.${esc(x.p.talle)}</em></span><b>${x.p.qty === 0 ? '<span class="db-tag mal">Agotado</span>' : '<span class="db-tag aviso">Queda 1</span>'} <span class="db-mut">${x.vend} vendido${x.vend !== 1 ? 's' : ''}</span></b></div>`).join('')}</div>` : '<p class="db-vacio">Nada urgente: ningún producto vendido en este período está por agotarse.</p>', 'Productos que se vendieron en este período y quedan 0 o 1 unidad.');
-  h += card('Sin movimiento', est.length ? `<div class="db-lista">${est.slice(0, 8).map((x) => `<div><span>${esc(x.p.cat)} — ${esc(x.p.modelo)}${x.p.color ? ' · ' + esc(x.p.color) : ''} <em>T.${esc(x.p.talle)}</em></span><b>${x.nunca ? '<span class="db-tag mal">Nunca se vendió</span>' : `<span class="db-tag aviso">${x.dias} días</span>`} <span class="db-mut">${x.p.qty} u.</span></b></div>`).join('')}</div>` : '<p class="db-vacio">Todo tu stock tuvo alguna venta en los últimos ' + UMBRAL_ESTANCADO_DIAS + ' días.</p>', `Con stock y sin ninguna venta hace más de ${UMBRAL_ESTANCADO_DIAS} días: candidatos a liquidar o promocionar.`);
-  h += `</div>`;
+  const menos = agrupar(per.desde, per.hasta, (o) => [o.cat, o.modelo, o.color || ''].join('|')).filter((x) => x.unid > 0)
+    .sort((a, b) => a.unid - b.unid).slice(0, 10).map((x) => ({ k: `${x.modelo}${x.color ? ' · ' + x.color : ''}`, sub: x.cat, v: x.unid }));
+  pro += card('Lo que menos se vende', barras(menos, { formato: (n) => entero(n) + ' u.', vacio: 'Todavía no hay ventas en este período.' }), 'Los 10 modelos con menos unidades vendidas (solo los que vendieron algo).');
 
-  h += `<div class="db-grid2">`;
-  h += card('Cobros en cuotas', `<div class="db-mini">${tile('Por cobrar', dinero(co.porCobrar))}${tile('Vencido', dinero(co.vencido), co.nVenc ? `<span class="db-tag mal">${co.nVenc} plan${co.nVenc !== 1 ? 'es' : ''}</span>` : '')}${tile('Próx. 7 días', dinero(co.prox))}${tile('Planes activos', entero(co.planes))}</div>`, 'Estado actual, no depende del período elegido.');
-  h += card('Reservas', `<div class="db-mini">${tile('Activas', entero(resAct.length))}${tile('Vencidas', entero(vencRes), vencRes ? '<span class="db-tag aviso">Revisar</span>' : '')}${tile('Unidades reservadas', entero(resAct.reduce((a, r) => a + (r.cant || 1), 0)))}</div>`, 'Estado actual.');
-  h += `</div>`;
+  pro += `<div class="db-grid2">`;
+  pro += card('Stock', `<div class="db-mini">${tile('Unidades', entero(st.unidades))}${tile('Referencias', entero(st.referencias))}${tile('Valor a costo', dinero(st.valorCosto))}${tile('Valor a precio menor', dinero(st.valorVenta))}${tile('Última unidad', entero(st.ultima))}${tile('Agotados', entero(st.agotados))}${tile('Sin costo', entero(st.sinCosto))}${tile('Sin precio menor', entero(st.sinPrecio))}</div><h4>Unidades por categoría</h4>${barras(st.porCat.slice(0, 8).map((x) => ({ k: x.k, v: x.v })), { formato: (n) => entero(n) + ' u.' })}`);
+  pro += card('A reponer', reponer.length ? `<div class="db-lista">${reponer.slice(0, 8).map((x) => `<div><span>${esc(x.p.modelo)}${x.p.color ? ' · ' + esc(x.p.color) : ''} <em>T.${esc(x.p.talle)}</em></span><b>${x.p.qty === 0 ? '<span class="db-tag mal">Agotado</span>' : '<span class="db-tag aviso">Queda 1</span>'} <span class="db-mut">${x.vend} vendido${x.vend !== 1 ? 's' : ''}</span></b></div>`).join('')}</div>` : '<p class="db-vacio">Nada urgente: ningún producto vendido en este período está por agotarse.</p>', 'Productos que se vendieron en este período y quedan 0 o 1 unidad.');
+  pro += card('Sin movimiento', est.length ? `<div class="db-lista">${est.slice(0, 8).map((x) => `<div><span>${esc(x.p.cat)} — ${esc(x.p.modelo)}${x.p.color ? ' · ' + esc(x.p.color) : ''} <em>T.${esc(x.p.talle)}</em></span><b>${x.nunca ? '<span class="db-tag mal">Nunca se vendió</span>' : `<span class="db-tag aviso">${x.dias} días</span>`} <span class="db-mut">${x.p.qty} u.</span></b></div>`).join('')}</div>` : '<p class="db-vacio">Todo tu stock tuvo alguna venta en los últimos ' + UMBRAL_ESTANCADO_DIAS + ' días.</p>', `Con stock y sin ninguna venta hace más de ${UMBRAL_ESTANCADO_DIAS} días: candidatos a liquidar o promocionar.`);
+  pro += `</div>`;
 
-  h += card('Dinero del período', `<div class="db-mini">${tile('Ingresos', dinero(cur.ingresos))}${tile('Compras', dinero(compras))}${tile('Gastos del negocio', dinero(gNeg))}${tile('Gastos personales', dinero(gPer))}${tile('Ganancia neta', dinero(cur.ganancia - gNeg), '<span class="db-mut">ganancia − gastos del negocio</span>')}${tile('Saldo de caja', dinero(cur.ingresos - compras - gNeg - gPer), '<span class="db-mut">ingresos − compras − gastos</span>')}</div><h4>Gastos por rubro</h4>${barras(gastosTop, { vacio: 'No hay gastos en este período.' })}`);
-  h += card('Mejores clientes', barras(clis, { vacio: 'Todavía no hay clientes cargados en este período. Las ventas nuevas guardan el cliente si lo completás.' }), 'Ventas con cliente y cuotas cobradas.');
+  const cobrosCard = card('Cobros en cuotas', `<div class="db-mini">${tile('Por cobrar', dinero(co.porCobrar))}${tile('Vencido', dinero(co.vencido), co.nVenc ? `<span class="db-tag mal">${co.nVenc} plan${co.nVenc !== 1 ? 'es' : ''}</span>` : '')}${tile('Próx. 7 días', dinero(co.prox))}${tile('Planes activos', entero(co.planes))}</div>`, 'Estado actual, no depende del período elegido.');
+  res += card('Reservas', `<div class="db-mini">${tile('Activas', entero(resAct.length))}${tile('Vencidas', entero(vencRes), vencRes ? '<span class="db-tag aviso">Revisar</span>' : '')}${tile('Unidades reservadas', entero(resAct.reduce((a, r) => a + (r.cant || 1), 0)))}</div>`, 'Estado actual.');
 
-  body.innerHTML = h;
-  pintarEvolucion();
+  let fin = card('Dinero del período', `<div class="db-mini">${tile('Ingresos', dinero(cur.ingresos))}${tile('Compras', dinero(compras))}${tile('Gastos del negocio', dinero(gNeg))}${tile('Gastos personales', dinero(gPer))}${tile('Ganancia neta', dinero(cur.ganancia - gNeg), '<span class="db-mut">ganancia − gastos del negocio</span>')}${tile('Margen', cur.margen.toFixed(0) + ' %', '<span class="db-mut">ganancia sobre ventas con costo</span>')}${tile('Saldo de caja', dinero(cur.ingresos - compras - gNeg - gPer), '<span class="db-mut">ingresos − compras − gastos</span>')}</div><h4>Gastos por rubro</h4>${barras(gastosTop, { vacio: 'No hay gastos en este período.' })}`);
+  fin += cobrosCard;
+  ven += card('Mejores clientes', barras(clis, { vacio: 'Todavía no hay clientes cargados en este período. Las ventas nuevas guardan el cliente si lo completás.' }), 'Ventas con cliente y cuotas cobradas.');
+
+  const pane = (k, c) => `<div class="db-pane" data-pane="${k}">${c}</div>`;
+  body.innerHTML = titulo + pane('resumen', res) + pane('ventas', ven) + pane('productos', pro) + pane('finanzas', fin);
+  if (window.dbAplicarPestana) dbAplicarPestana(); else pintarEvolucion();
 };
 
 window.dbIr = function (tab) { showTab(tab); };

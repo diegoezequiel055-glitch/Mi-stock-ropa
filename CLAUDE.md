@@ -24,3 +24,10 @@ App de stock/ventas en HTML + JS modular (ES modules, sin build), Firestore proy
 - La rama `menu-mas-backups` está solo local (no subida a GitHub) hasta que se apruebe.
 - `Desktop\stock-ropa-backup-pre-menu`: copia previa al menú "Más". No borrar hasta confirmar que el menú anda en `main`.
 - Backups: `Desktop\Mi-stock-ropa-backups` (repo `mi-stock-ropa-backups`). Las copias viejas de la tienda están en `Documents\Archivo-proyectos\tienda-premium-backups`.
+
+## Dashboard en sub-pestañas
+- Debajo de los filtros de período hay 4 sub-pestañas: **Resumen** (ganancia, ingresos/ventas/unidades/ticket, alertas, Reservas), **Ventas** (evolución + tabla, Ventas por tipo, Categorías, Mejores clientes), **Productos** (más y menos vendidos, Stock, A reponer, Sin movimiento) y **Finanzas** (Dinero del período con Margen, Cobros en cuotas).
+- `dashboard.js` arma los 4 paneles (`.db-pane[data-pane]`) dentro de `#db-body`; `dashboard-tabs.js` solo elige cuál se ve (`display` block/none), recuerda la pestaña en localStorage (`stockmgr_db_pestana`, con try/catch) y achica la letra de los montos que no entren (nunca se parten en 2 líneas).
+- El período vive en `state.dbPeriodo`: no cambia al cambiar de pestaña. El gráfico de evolución solo se dibuja con la pestaña Ventas visible (oculto mide 0 de ancho).
+- No existen datos de "medio de pago" ni "canal" en las ventas (se guarda `tipo`: minorista/mayorista/curva): por eso no hay esos bloques.
+- Nombres en rankings: hasta 2 líneas, y en celular el nombre ocupa todo el ancho sobre la barra.
