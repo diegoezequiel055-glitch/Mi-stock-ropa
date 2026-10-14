@@ -55,17 +55,20 @@
 </header>
 
 <nav>
-  <button class="tab active" onclick="showTab('dashboard',this)">📈 Dashboard</button>
-  <button class="tab" onclick="showTab('stock',this)">📦 Stock</button>
-  <button class="tab" onclick="showTab('ventas',this)">🛒 Ventas</button>
-  <button class="tab" onclick="showTab('carga',this)">⚡ Carga rápida</button>
-  <button class="tab" onclick="showTab('cobros',this)">💳 Cobros</button>
-  <button class="tab" onclick="showTab('reservas',this)">🔖 Reservas</button>
-  <button class="tab" onclick="showTab('compras',this)">📥 Compras</button>
-  <button class="tab" onclick="showTab('gastos',this)">💸 Gastos</button>
-  <button class="tab" onclick="showTab('envios',this)">🚚 Envíos</button>
-  <button class="tab" onclick="showTab('catalogo',this)">🛍️ Catálogo y sitio</button>
+  <button class="tab active" data-tab="dashboard" onclick="showTab('dashboard',this)">📈 Dashboard</button>
+  <button class="tab" data-tab="stock" onclick="showTab('stock',this)">📦 Stock</button>
+  <button class="tab" data-tab="ventas" onclick="showTab('ventas',this)">🛒 Ventas</button>
+  <button class="tab" data-tab="carga" onclick="showTab('carga',this)">⚡ Carga rápida</button>
+  <button class="tab" data-tab="compras" onclick="showTab('compras',this)">📥 Compras</button>
+  <button class="tab" data-tab="gastos" onclick="showTab('gastos',this)">💸 Gastos</button>
+  <button class="tab tab-mas" id="tab-mas-btn" aria-haspopup="true" aria-expanded="false" onclick="toggleMasMenu(event)">⋯ Más<span class="mas-badge" id="mas-badge" style="display:none"></span></button>
 </nav>
+<div class="mas-menu" id="mas-menu" role="menu" style="display:none">
+  <button class="mas-item" role="menuitem" data-tab="cobros" onclick="showTab('cobros',this)">💳 Cobros</button>
+  <button class="mas-item" role="menuitem" data-tab="reservas" onclick="showTab('reservas',this)">🔖 Reservas</button>
+  <button class="mas-item" role="menuitem" data-tab="envios" onclick="showTab('envios',this)">🚚 Envíos</button>
+  <button class="mas-item" role="menuitem" data-tab="catalogo" onclick="showTab('catalogo',this)">🛍️ Catálogo y sitio</button>
+</div>
 
 <main>
 

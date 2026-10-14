@@ -168,12 +168,9 @@ window.recordarCuotaWhatsapp = function(id){
 
 window.updateCobrosTabBadge = function(){
   const vencidas=state.cuotasData.filter(c=>Array.isArray(c.cuotas)&&c.cuotas.some(q=>!q.pagada&&q.vencimiento<Date.now())).length;
-  const tabs=document.querySelectorAll('.tab');
-  tabs.forEach(t=>{
-    if(t.textContent.includes('Cobros')||t.getAttribute('onclick')?.includes('cobros')){
-      t.innerHTML=vencidas?`💳 Cobros <span style="background:var(--danger);color:#fff;border-radius:10px;padding:1px 6px;font-size:.65rem;margin-left:2px">${vencidas}</span>`:'💳 Cobros';
-    }
-  });
+  const t=document.querySelector('[data-tab="cobros"]');
+  if(t) t.innerHTML=vencidas?`💳 Cobros <span style="background:var(--danger);color:#fff;border-radius:10px;padding:1px 6px;font-size:.65rem;margin-left:2px">${vencidas}</span>`:'💳 Cobros';
+  if(window.updateMasBadge) updateMasBadge();
 }
 
 // UX#3: limpiar búsqueda historial ventas

@@ -13,6 +13,7 @@ import './dashboard.js';
 import './corregir-fechas.js';
 import './catalogo.js';
 import './envios.js';
+import './menu-mas.js';
 import './config.js';
 
 // Habilita "Instalar app" / "Agregar a pantalla de inicio" (no guarda nada en caché).
@@ -239,9 +240,12 @@ window.updateHeader = function(ahora = new Date()) {
 // ── TABS ──
 window.showTab=function(name,btn){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab, .mas-item').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
-  if(btn)btn.classList.add('active');
+  // Se marca por data-tab (no por 'btn'): funciona venga de la barra, del menú "Más" o de un atajo
+  const item=document.querySelector('[data-tab="'+name+'"]');
+  if(item)item.classList.add('active');
+  syncMasMenu(name);
   // Render diferido: cada pestaña se dibuja al abrirla
   if(name==='dashboard'){ dbRender(); }
   if(name==='compras'){ renderComprasKPI(); renderCompras(); setCpStockMode(state.cpActualizaStock); }

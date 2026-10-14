@@ -370,7 +370,7 @@ window.dbRender = function (ahora = new Date()) {
   pintarEvolucion();
 };
 
-window.dbIr = function (tab) { showTab(tab, document.querySelector(`nav .tab[onclick*="'${tab}'"]`)); };
+window.dbIr = function (tab) { showTab(tab); };
 window.dbVerSinCosto = function () { dbIr('stock'); state.filtroSinCosto = true; renderStock(); };
 
 // ── refresco automático ──
