@@ -44,7 +44,7 @@ function renderHeroFotos() {
       <div style="width:100px;height:125px;border-radius:8px;overflow:hidden;background:var(--surface3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center">
         ${url ? `<img src="${url}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:.65rem;color:var(--muted);text-align:center;padding:4px">Foto ${i + 1}</span>`}
       </div>
-      <input type="file" accept="image/*" id="cfg-hero-foto-input-${i}" onchange="heroFotoSeleccionada(${i},this.files[0])" style="width:100px;font-size:.6rem">
+      <label class="btn btn-outline btn-sm" style="display:block;width:100px;box-sizing:border-box;text-align:center;font-size:.68rem;padding:6px 4px;white-space:nowrap;cursor:pointer">${url ? '📷 Cambiar foto' : '📷 Elegir foto'}<input type="file" accept="image/*" id="cfg-hero-foto-input-${i}" onchange="heroFotoSeleccionada(${i},this.files[0])" style="display:none"></label>
       ${url ? `<button class="btn btn-ghost btn-sm" onclick="heroFotoQuitar(${i})" style="font-size:.65rem;padding:3px 8px">Quitar</button>` : ''}
       <span id="cfg-hero-foto-estado-${i}" style="font-size:.6rem;color:var(--muted);text-align:center"></span>
     </div>`;

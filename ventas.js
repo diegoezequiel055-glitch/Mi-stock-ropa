@@ -54,6 +54,7 @@ window.setUvTipoPrecio=function(tipo){
   renderUvItems();
 }
 function renderUvItems(){
+  if(window.mpPreviewCarrito)mpPreviewCarrito(); // medio de pago (medio-pago-ui.js)
   const cont=document.getElementById('uv-items');
   if(!state.ventaCart.length){
     cont.innerHTML=`<div class="empty" style="padding:20px"><div class="empty-icon">🛒</div><p>Buscá productos para agregar a la venta</p></div>`;
@@ -95,6 +96,7 @@ window.setUvModoCobro=function(modo){
     return;
   }
   state.uvModo=modo;
+  if(window.mpModoCobro)mpModoCobro(modo); // el medio de pago solo aplica a ventas "pagar ahora"
   document.getElementById('uv-modo-ahora').className='tipo-btn'+(modo==='ahora'?' active-min':'');
   document.getElementById('uv-modo-cuotas').className='tipo-btn'+(modo==='cuotas'?' active-cuo':'');
   document.getElementById('uv-ncuotas-wrap').style.display=modo==='cuotas'?'block':'none';
@@ -143,8 +145,9 @@ window.registrarVentaUnificada=async function(){
   const cliente=document.getElementById('uv-cliente').value.trim()||null;
   const fechaStr=document.getElementById('uv-fecha').value||hoyISO();
   try{
-    const cartLen=await guardarVentaItems(state.ventaCart,cliente,fechaDesdeInput(fechaStr));
+    const cartLen=await guardarVentaItems(state.ventaCart,cliente,fechaDesdeInput(fechaStr),{medioPago:window.mpMedioCarrito?mpMedioCarrito():undefined});
     state.ventaCart=[];
+    if(window.mpReiniciarCarrito)mpReiniciarCarrito(); // vuelve a Transferencia
     document.getElementById('uv-cliente').value='';
     document.getElementById('uv-fecha').value=hoyISO();
     renderUvItems();
@@ -155,7 +158,8 @@ window.registrarVentaUnificada=async function(){
 
 // Guarda una venta (una o varias líneas) y descuenta el stock. La usan el carrito y la Carga rápida.
 // items: [{prodId, cant, tipoPrecio:'menor'|'mayorista'|'curva', pventa, pcosto}]
-window.guardarVentaItems=async function(items,cliente,fechaVenta){
+// extra: {medioPago} — cada venta guarda medioPago (por defecto Transferencia) y, con Tarjeta, cobradoTarjeta (informativo).
+window.guardarVentaItems=async function(items,cliente,fechaVenta,extra={}){
   const fecha=fechaVenta||Date.now();
   const loteId=items.length>1?fecha.toString():null;
   // Las líneas de tipo curva de una misma venta comparten curvaId (para poder borrarlas juntas)
@@ -168,6 +172,7 @@ window.guardarVentaItems=async function(items,cliente,fechaVenta){
       prodId:item.prodId,cat:p.cat,modelo:p.modelo,color:p.color||'',talle:p.talle,
       pventa:item.pventa,pcosto:item.pcosto||null,cant:item.cant,tipo:TIPO_VENTA[item.tipoPrecio],cliente:cliente||null,
       ...(curvaId&&item.tipoPrecio==='curva'?{curvaId}:{}),...(loteId?{loteId}:{}),
+      ...(window.mpCamposVenta?mpCamposVenta(item,p,extra.medioPago):{}),
       fecha
     });
   }
@@ -392,6 +397,7 @@ window.openEditVentaModal=function(id){
   document.getElementById('ev-cant').value=v.cant||1;
   document.getElementById('ev-cliente').value=v.cliente||'';
   document.getElementById('ev-fecha').value=fechaAInput(v.fecha);
+  if(window.mpMostrarEnEdicion)mpMostrarEnEdicion(v);
   document.getElementById('edit-venta-modal').classList.add('open');
 }
 window.closeEditVentaModal=function(){ document.getElementById('edit-venta-modal').classList.remove('open'); }
@@ -412,6 +418,7 @@ window.saveEditVenta=async function(){
     if(prod&&prod.qty<diffCant){toast(`Solo hay ${prod.qty} unidad${prod.qty!==1?'es':''} más en stock de ese producto.`,'error');return;}
   }
   const cambios={pventa,pcosto,cant,cliente};
+  if(v&&window.mpCambiosEdicion)Object.assign(cambios,mpCambiosEdicion(v,{pventa,cant,medio:document.getElementById('ev-medio').value}));
   // Si cambió el día, se guarda el nuevo (al mediodía) y se recuerda la fecha original.
   if(v&&fechaStr&&fechaStr!==fechaAInput(v.fecha)){
     cambios.fecha=fechaDesdeInput(fechaStr);

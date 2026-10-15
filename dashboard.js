@@ -1,5 +1,6 @@
 import { state } from './state.js';
 import { claveCat, catPlural } from './categorias.js';
+import { resumenPorMedio, totalParaFacturar } from './medio-pago.js';
 
 // ══════════════════════════════════════════
 // DASHBOARD — cálculos por período y dibujo
@@ -350,6 +351,15 @@ window.dbRender = function (ahora = new Date()) {
   ven += `<div class="db-grid2">`;
   ven += card('Ventas por tipo', barras(tipos), 'Ingresos del período según el tipo de precio usado.');
   ven += card('Categorías', barras(cats), 'Ingresos por categoría de producto.');
+  ven += `</div>`;
+
+  // Medio de pago (medio-pago.js): ventas a precio de venta; el total para facturar suma Transferencia + lo cobrado con Tarjeta
+  const pm = resumenPorMedio(state.ventasData, per.desde, per.hasta);
+  const fa = totalParaFacturar(state.ventasData, per.desde, per.hasta);
+  const plural = (n) => `${entero(n)} venta${n !== 1 ? 's' : ''}`;
+  ven += `<div class="db-grid2">`;
+  ven += card('Ventas por medio de pago', barras(pm.filas.map((f) => ({ k: f.medio, sub: plural(f.n), v: f.monto }))), 'Ventas del período, a precio de venta (efectivo/transferencia). No incluye los planes en cuotas. "Sin dato" son ventas anteriores al registro del medio de pago.');
+  ven += card('Total para facturar', `<div class="db-mini">${tile('Transferencia', dinero(fa.transferencia.monto), `<span class="db-mut">${plural(fa.transferencia.n)} · a precio de venta</span>`)}${tile('Tarjeta (cobrado)', dinero(fa.tarjeta.cobrado), `<span class="db-mut">${plural(fa.tarjeta.n)} · con el recargo de tarjeta</span>`)}${tile('Total para facturar', dinero(fa.total))}</div>${fa.tarjetaSinCobrado ? `<p class="db-nota">${entero(fa.tarjetaSinCobrado)} venta${fa.tarjetaSinCobrado !== 1 ? 's' : ''} con tarjeta sin el dato de lo cobrado: se cuentan a precio de venta.</p>` : ''}`, 'Transferencia (a precio de venta) + Tarjeta (lo cobrado con tarjeta). El efectivo y las ventas "Sin dato" NO se incluyen. Ingresos y ganancia no cambian: siguen a precio de efectivo/transferencia.');
   ven += `</div>`;
 
   let pro = card(`Lo que más se vende <span class="db-tog"><button class="date-btn${modoTop === 'unid' ? ' active' : ''}" onclick="dbSetTop('unidades')">Por unidades</button><button class="date-btn${modoTop === 'gan' ? ' active' : ''}" onclick="dbSetTop('ganancia')">Por ganancia</button></span>`, barras(topP, { formato: modoTop === 'unid' ? (n) => entero(n) + ' u.' : dinero, vacio: 'Todavía no hay ventas en este período.' }), 'Top 10 modelos (todos los talles juntos).');

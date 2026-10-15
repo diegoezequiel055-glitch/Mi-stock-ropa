@@ -49,6 +49,7 @@ window.crInterpretar = async function () {
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.ok) throw new Error(mensajeError(r.status, j.error, j.detalle));
     cargarResultado(j.resultado);
+    if (window.mpDesdeTexto) mpDesdeTexto(texto); // medio de pago y subtotal del mensaje (medio-pago-ui.js)
   } catch (e) {
     est.style.color = 'var(--danger)';
     est.textContent = e instanceof TypeError ? 'No pude conectar con la función de IA. Revisá tu conexión.' : e.message;
@@ -420,6 +421,7 @@ function crRender() {
 
   const t = evaluarTodo();
   h += c.items.length ? c.items.map((it, i) => filaHTML(it, i, t.ev[i], modelos)).join('') : `<div class="empty" style="padding:20px"><p>No quedó ningún ítem. Descartá y pegá el texto de nuevo.</p></div>`;
+  if (c.op === 'venta' && c.items.length && window.mpCrHtml) h += mpCrHtml(c, t); // medio de pago (medio-pago-ui.js)
 
   const unidades = c.items.reduce((a, i) => a + i.cantidad, 0);
   let total = '';
@@ -448,7 +450,7 @@ window.crConfirmar = async function () {
         else porFila.set(e.fila.id, { prodId: e.fila.id, cant: it.cantidad, tipoPrecio: e.tipo, pventa: e.precio, pcosto: e.fila.pcosto || 0 });
       });
       if ((c.fecha || hoy()) > hoy()) { toast('La fecha de la venta no puede ser futura.', 'error'); c.busy = false; crRender(); return; }
-      const n = await guardarVentaItems([...porFila.values()], c.cliente.trim() || null, fechaDesdeInput(c.fecha));
+      const n = await guardarVentaItems([...porFila.values()], c.cliente.trim() || null, fechaDesdeInput(c.fecha), { medioPago: window.mpMedioCarga ? mpMedioCarga() : undefined });
       toast(`Venta registrada — ${n} producto${n !== 1 ? 's' : ''} ✓`, 'success');
     } else if (c.op === 'compra') {
       const existentes = new Map(), nuevos = new Map();
