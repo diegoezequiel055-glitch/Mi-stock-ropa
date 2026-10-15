@@ -559,7 +559,7 @@
 
 <!-- ══ MODAL FOTOS (desde el catálogo, sin pasar por Stock) ══ -->
 <div class="overlay" id="foto-modal">
-  <div class="modal">
+  <div class="modal" style="padding-bottom:90px">
     <button class="modal-close" onclick="cerrarFotoModal()">✕</button>
     <div class="modal-title" id="fm-titulo">Fotos del producto</div>
     <div class="form-grid">
@@ -570,8 +570,23 @@
         <div style="font-size:.7rem;color:var(--muted);margin-top:8px">Hasta 6 fotos, las comparten todos los talles de este modelo.</div>
       </div>
     </div>
+    <!-- Precio (precio-editar-ui.js) -->
+    <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px">
+      <div style="font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Precio</div>
+      <div id="pe-actual" style="font-size:.78rem;color:var(--muted);margin-bottom:6px"></div>
+      <label for="pe-precio" style="font-size:.78rem;color:var(--text2)">Efectivo o transferencia ($)</label>
+      <input type="text" inputmode="numeric" id="pe-precio" oninput="peVista()" style="width:100%;margin-top:4px" autocomplete="off">
+      <div id="pe-vista" style="font-size:.82rem;margin-top:8px;line-height:1.5"></div>
+      <div id="pe-manual" style="font-size:.76rem;color:var(--text2);margin-top:8px"></div>
+      <div id="pe-error" style="font-size:.78rem;color:var(--danger);margin-top:6px"></div>
+      <div id="pe-confirm" style="display:none;margin-top:10px;padding:12px;border:1px solid var(--accent);border-radius:10px;font-size:.84rem;line-height:1.45"></div>
+      <button class="btn btn-gold" style="margin-top:10px;width:100%" onclick="peGuardar()">Guardar precio</button>
+      <div style="font-size:.7rem;color:var(--muted);margin-top:6px">Cambia el precio por menor de todos los talles de este producto. Mayorista, curva y costo no se tocan; las ventas ya hechas tampoco.</div>
+    </div>
   </div>
 </div>
+
+<div id="pe-undo" style="display:none;position:fixed;left:12px;right:12px;bottom:96px;z-index:700;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:10px 12px;font-size:.82rem;box-shadow:0 6px 24px rgba(0,0,0,.6)"></div>
 
 <!-- ══ MODAL EDITAR CUOTA ══ -->
 <div class="overlay" id="cuota-modal">

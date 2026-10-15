@@ -48,3 +48,11 @@ App de stock/ventas en HTML + JS modular (ES modules, sin build), Firestore proy
 - Carga rápida: lee la línea "Forma de pago:" del texto pegado (Efectivo / Transferencia / Tarjeta (hasta 3 cuotas sin interés)); sin línea = Transferencia; se puede cambiar antes de confirmar. Los precios del mensaje se IGNORAN (la venta va al precio de stock). Con Tarjeta compara su `cobradoTarjeta` calculado con el "Subtotal" del mensaje y avisa si difieren.
 - Dashboard (pestaña Ventas): "Ventas por medio de pago" (cantidad y monto a precio de venta, con "Sin dato") y "Total para facturar" = Transferencia (a precio de venta) + Tarjeta (`cobradoTarjeta`); efectivo y "Sin dato" no entran. No incluye planes en cuotas.
 - Pruebas: `node test-medio-pago.mjs`.
+
+## Editar precio desde Catálogo y sitio (etapa 6) — `precio-editar.js` y `precio-editar-ui.js`
+- Al tocar una ficha (modal de fotos) hay una sección "Precio": campo "Efectivo o transferencia ($)", vista en vivo de "Tarjeta: $X" y "3 cuotas de $Y" (`precio-tarjeta.js`, respeta `ptarjeta` manual y la config; cuota = tarjeta/3 redondeada, igual que la tienda) y botón "Guardar precio".
+- Cambia SOLO `pventa` (precio por menor) de TODAS las filas de stock del mismo producto (`claveModelo`), estén o no marcadas para el catálogo. Mayorista, curva, costo y ventas ya registradas no se tocan.
+- Validación: entero > 0 (acepta "35.000"). Confirmación en pantalla ("de $A a $B, afecta N filas/talles"); si el cambio supera 50 % (arriba o abajo) pide un segundo "¿Seguro?". Cancelar no escribe nada.
+- `ptarjeta` manual: se muestra, se mantiene, y hay una casilla para borrarlo (queda `null` = automático). Si con el precio nuevo deja de ser mayor que el de efectivo se avisa que se ignora.
+- Después de guardar, `catalogoSync` actualiza la ficha y la tienda solo; aparece una barra "Precio actualizado en la tienda ✓" con "Deshacer" durante 15 s (restaura `pventa`, y `ptarjeta` si se había borrado, fila por fila).
+- Pruebas: `node test-precio-editar.mjs`.

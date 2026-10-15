@@ -127,6 +127,7 @@ window.catalogoSync = async function () {
   if (cambios) await batch.commit();
 };
 
+window.catalogoPublicado = (key) => publicadosIds.has(key); // ¿la ficha está publicada hoy? (precio-editar-ui.js)
 window.catalogoRefresh = function () {
   clearTimeout(timer);
   timer = setTimeout(() => { catalogoSync().catch((e) => console.error('Error sincronizando catálogo:', e)); }, 500);
@@ -232,11 +233,13 @@ window.abrirFotoModal = function (key) {
   document.getElementById('fm-input').value = '';
   document.getElementById('fm-estado').textContent = '';
   renderFotoModalGaleria();
+  if (window.peAbrir) peAbrir(x.modelo, x.ficha.nombre); // sección "Precio" (precio-editar-ui.js)
   document.getElementById('foto-modal').classList.add('open');
 };
 window.cerrarFotoModal = function () {
   document.getElementById('foto-modal').classList.remove('open');
   fotoModalTarget = null;
+  if (window.peCerrar) peCerrar();
 };
 window.renderFotoModalGaleria = function () {
   const cont = document.getElementById('fm-galeria'); if (!cont || !fotoModalTarget) return;
