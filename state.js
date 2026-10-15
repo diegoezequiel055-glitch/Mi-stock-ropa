@@ -47,5 +47,6 @@ export const state = {
   catalogoBusqueda: '',
   catalogoCat: '',
 
+  configListo: false, // true cuando llegó config_sitio/config (catalogoSync espera a la configuración del precio de tarjeta)
   configSitio: {}, // copia local de config_sitio/config (textos editables del sitio público)
 };

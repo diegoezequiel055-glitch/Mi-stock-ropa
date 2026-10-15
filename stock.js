@@ -141,6 +141,8 @@ window.openProductModal=function(id){
   document.getElementById('pm-talle').value=p?.talle||'';
   document.getElementById('pm-qty').value=p?.qty??1;
   document.getElementById('pm-pventa').value=p?.pventa||'';
+  document.getElementById('pm-ptarjeta').value=p?.ptarjeta||''; // precio de tarjeta manual (precio-tarjeta-ui.js)
+  if(window.ptModalPreview)ptModalPreview();
   document.getElementById('pm-pmayorista').value=p?.pmayorista||'';
   document.getElementById('pm-pcurva').value=p?.pcurva||'';
   document.getElementById('pm-pcosto').value=p?.pcosto||'';
@@ -207,12 +209,14 @@ window.saveProduct=async function(){
   const pcosto=parseFloat(document.getElementById('pm-pcosto').value)||null;
   const pmayorista=parseFloat(document.getElementById('pm-pmayorista').value)||null;
   const pcurva=parseFloat(document.getElementById('pm-pcurva').value)||null;
+  const ptarjeta=parseFloat(document.getElementById('pm-ptarjeta').value)||null;
   if(!pcosto||pcosto<=0){toast('El precio de costo es obligatorio.','error');document.getElementById('pm-pcosto').focus();return;}
-  if([pventa,pmayorista,pcurva].some(v=>v!==null&&v<0)){toast('Los precios no pueden ser negativos.','error');return;}
+  if([pventa,pmayorista,pcurva,ptarjeta].some(v=>v!==null&&v<0)){toast('Los precios no pueden ser negativos.','error');return;}
   const avisos=precioAvisos({pcosto,pmayorista,pcurva,pventa});
   const data={cat,modelo,color:document.getElementById('pm-color').value.trim(),talle,
     qty:parseInt(document.getElementById('pm-qty').value)||0,
     pventa,pcosto,pmayorista,pcurva,
+    ptarjeta, // manual; vacío = null = automático (precio-tarjeta.js)
     notas:document.getElementById('pm-notas').value.trim()||null, // F#3
     catalogo:document.getElementById('pm-catalogo').checked,
     destacado:document.getElementById('pm-destacado').checked
