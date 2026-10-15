@@ -210,6 +210,11 @@
           <label>Fecha de la venta</label>
           <input type="date" id="uv-fecha">
         </div>
+        <div class="field" id="uv-medio-wrap">
+          <label>Medio de pago</label>
+          <select id="uv-medio" onchange="mpPreviewCarrito()"></select>
+          <div id="uv-medio-nota" style="margin-top:6px;font-size:.72rem;color:var(--muted)"></div>
+        </div>
         <div class="field" id="uv-ncuotas-wrap" style="display:none">
           <label>Cantidad de cuotas</label>
           <select id="uv-ncuotas" onchange="calcUvCuotas()">
@@ -758,6 +763,10 @@
       <div class="field">
         <label>Fecha de la venta</label>
         <input type="date" id="ev-fecha">
+      </div>
+      <div class="field">
+        <label>Medio de pago</label>
+        <select id="ev-medio"></select>
       </div>
     </div>
     <div style="background:var(--surface2);border:1px solid var(--warning-dim);border-radius:8px;padding:10px 14px;font-size:.78rem;color:var(--warning);margin-top:14px">
