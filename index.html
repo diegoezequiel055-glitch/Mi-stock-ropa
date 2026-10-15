@@ -502,6 +502,35 @@
     </div>
   </div>
 
+  <div class="panel" style="margin-top:18px" id="pt-panel">
+    <div class="panel-head">
+      <h2>💳 Precio de tarjeta</h2>
+    </div>
+    <div class="panel-body">
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:14px">El precio que cargás en cada producto es el de efectivo o transferencia. Con esto se calcula el precio de tarjeta que ve el cliente. Mayorista y curva no cambian.</p>
+      <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+        <div class="field">
+          <label>Recargo de tarjeta (%) <span style="color:var(--muted);font-size:0.7rem">— entre 0 y 100</span></label>
+          <input type="text" inputmode="decimal" id="pt-pct" placeholder="27" oninput="ptPreview()">
+        </div>
+        <div class="field">
+          <label>Redondeo del precio de tarjeta</label>
+          <select id="pt-redondeo" onchange="ptPreview()"></select>
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.85rem;color:var(--text)"><input type="checkbox" id="pt-mostrar" style="width:auto" onchange="ptPreview()"> Mostrar precio de tarjeta en la tienda</label>
+        </div>
+      </div>
+      <div id="pt-error" style="font-size:.78rem;color:var(--danger);margin:8px 0 0"></div>
+      <p style="font-size:.8rem;color:var(--text);margin:12px 0 6px"><strong>Precio de tarjeta: hasta 3 cuotas sin interés</strong></p>
+      <div id="pt-preview" style="margin-bottom:6px"></div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:14px">
+        <button class="btn btn-gold" onclick="ptGuardar()" id="pt-guardar-btn">💾 Guardar</button>
+        <span id="pt-estado" style="font-size:.78rem;color:var(--muted)"></span>
+      </div>
+    </div>
+  </div>
+
   <div class="panel" style="margin-top:18px">
     <div class="panel-head">
       <h2>🛍️ Catálogo — vista previa</h2>
@@ -869,8 +898,13 @@
       </div>
       <div class="field">
         <label>Menor / unidad ($) <span style="color:var(--muted);font-size:0.7rem">— recomendado</span></label>
-        <input type="number" id="pm-pventa" placeholder="0" min="0">
+        <input type="number" id="pm-pventa" placeholder="0" min="0" oninput="ptModalPreview()">
         <div id="pm-hist-menor" style="margin-top:6px;font-size:.72rem;color:var(--muted)"></div>
+      </div>
+      <div class="field">
+        <label>Tarjeta ($) <span style="color:var(--muted);font-size:0.7rem">— opcional: si lo dejás vacío se calcula solo</span></label>
+        <input type="number" id="pm-ptarjeta" placeholder="Automático" min="0" oninput="ptModalPreview()">
+        <div id="pm-pt-preview" style="margin-top:6px;font-size:.72rem;color:var(--muted)"></div>
       </div>
       <div class="field" style="grid-column:1/-1">
         <label>Notas <span style="color:var(--muted);font-size:0.7rem">— opcional, uso interno</span></label>

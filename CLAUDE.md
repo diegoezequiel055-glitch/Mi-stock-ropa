@@ -31,3 +31,12 @@ App de stock/ventas en HTML + JS modular (ES modules, sin build), Firestore proy
 - El período vive en `state.dbPeriodo`: no cambia al cambiar de pestaña. El gráfico de evolución solo se dibuja con la pestaña Ventas visible (oculto mide 0 de ancho).
 - No existen datos de "medio de pago" ni "canal" en las ventas (se guarda `tipo`: minorista/mayorista/curva): por eso no hay esos bloques.
 - Nombres en rankings: hasta 2 líneas, y en celular el nombre ocupa todo el ancho sobre la barra.
+
+## Precio de tarjeta (etapa 3) — `precio-tarjeta.js` y `precio-tarjeta-ui.js`
+- El precio que se carga en Stock (`pventa`) es el de efectivo/transferencia y NO se toca. Ventas, compras, dashboard y Carga rápida siguen a ese precio.
+- Configuración en `config_sitio/config` (campos nuevos, merge): `recargoTarjetaPct` (0–100, defecto 27), `redondeoTarjeta` (0/100/500/1000, siempre hacia ARRIBA, defecto 500), `mostrarPrecioTarjeta` (defecto **false**). Pantalla: "Catálogo y sitio" → "Precio de tarjeta" (guarda con confirmación; porcentaje inválido = no guarda).
+- Por producto: campo opcional `ptarjeta` en cada fila de stock (modal de edición, "Tarjeta ($)"). Si es MAYOR que `pventa` se usa tal cual (sin recargo ni redondeo); vacío o menor/igual → se ignora y se calcula `pventa × (1 + pct/100)` redondeado hacia arriba. Vacío = `null` = automático.
+- Varias filas (talles) con `ptarjeta` distinto: se usa el de la fila de MENOR `pventa` entre las que tienen un manual válido (empate: la primera).
+- `catalogoSync` (catalogo.js): con el interruptor apagado las fichas salen idénticas a antes (sin `precioTarjeta`); encendido, cada ficha suma `precioTarjeta` solo si es mayor que `precio`. Mayorista/curva/costo nunca viajan. `catalogoSync` espera a que llegue `config_sitio/config` (`state.configListo`); si la config no se puede leer, sincroniza igual sin precio de tarjeta. Solo se vuelve a sincronizar si cambian esos 3 campos de la config.
+- Antes de ENCENDER el interruptor la tienda tiene que tener publicadas las etapas 1 y 2 (ya publicadas el 2026-10-15).
+- Pruebas: `node test-precio-tarjeta.mjs`. Para probar en el navegador sin tocar Firestore real: copiar el repo a una carpeta aparte con un `firebase-config.js` en memoria (con datos de un backup) que anote las escrituras.

@@ -2,6 +2,7 @@ import { state } from './state.js';
 import { db, collection, doc, setDoc, writeBatch, onSnapshot } from './firebase-config.js';
 import { armarModelos, claveModelo, compararTalles } from './matching.js';
 import { UMBRAL_STOCK_BAJO } from './datos-negocio.js';
+import { configPrecioTarjeta, conPrecioTarjeta } from './precio-tarjeta.js';
 
 // ══════════════════════════════════════════
 // CATÁLOGO PÚBLICO — sincroniza sola la colección "catalogo_publico" con los
@@ -96,7 +97,8 @@ function armarFicha(modelo) {
   // (se repone o se corrige), el campo desaparece solo en la próxima sincronización
   // (armarFicha arma el documento entero de nuevo, no hay que borrar nada a mano).
   if (stockTotal > 0 && stockTotal <= UMBRAL_STOCK_BAJO) ficha.stockBajo = stockTotal;
-  return ficha;
+  // Precio de tarjeta: con el interruptor apagado devuelve la ficha tal cual (precio-tarjeta.js).
+  return conPrecioTarjeta(ficha, modelo.filas, configPrecioTarjeta(state.configSitio));
 }
 
 // Para que un producto se publique necesita: al menos 1 foto, precio por menor
@@ -112,6 +114,7 @@ function motivosNoPublicable(ficha) {
 function esPublicable(ficha) { return motivosNoPublicable(ficha).length === 0; }
 
 window.catalogoSync = async function () {
+  if (!state.configListo) return; // espera a leer la configuración del precio de tarjeta (ptConfigCambio vuelve a pedir la sincronización)
   const marcados = state.stockData.filter((p) => p.catalogo === true);
   const modelos = armarModelos(marcados); // agrupa por cat+modelo+color, como el resto de la app
   const fichas = modelos.map((m) => [m.key, armarFicha(m)]);

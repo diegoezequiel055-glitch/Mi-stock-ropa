@@ -20,7 +20,8 @@ window.configIniciar = function () {
   onSnapshot(doc(db, 'config_sitio', 'config'), (snap) => {
     state.configSitio = snap.exists() ? snap.data() : {};
     if (document.getElementById('tab-catalogo')?.classList.contains('active')) renderConfigSitio();
-  }, () => {});
+    if (window.ptConfigCambio) ptConfigCambio(true); // precio de tarjeta (precio-tarjeta-ui.js)
+  }, () => { if (window.ptConfigCambio) ptConfigCambio(true); }); // si no se puede leer la config, el catálogo se sincroniza igual (sin precio de tarjeta)
 };
 
 window.renderConfigSitio = function () {
@@ -30,6 +31,7 @@ window.renderConfigSitio = function () {
     if (el && document.activeElement !== el) el.value = cfg[campo] || '';
   });
   renderHeroFotos();
+  if (window.ptRender) ptRender(); // sección "Precio de tarjeta"
 };
 
 // ── fotos del inicio (tríptico): 3 fotos sueltas, elegidas a mano, no ligadas a ningún producto ──
