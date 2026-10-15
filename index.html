@@ -562,14 +562,7 @@
   <div class="modal" style="padding-bottom:90px">
     <button class="modal-close" onclick="cerrarFotoModal()">✕</button>
     <div class="modal-title" id="fm-titulo">Fotos del producto</div>
-    <div class="form-grid">
-      <div class="field" style="grid-column:1/-1">
-        <div id="fm-galeria" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px"></div>
-        <input type="file" id="fm-input" accept="image/*" onchange="fotoModalSeleccionada(this.files[0])" style="width:100%;padding:6px">
-        <div id="fm-estado" style="font-size:.72rem;margin-top:4px;color:var(--muted)"></div>
-        <div style="font-size:.7rem;color:var(--muted);margin-top:8px">Hasta 6 fotos, las comparten todos los talles de este modelo.</div>
-      </div>
-    </div>
+    <div id="fo-root"></div> <!-- fotos (fotos-ui.js) -->
     <!-- Precio (precio-editar-ui.js) -->
     <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px">
       <div style="font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Precio</div>

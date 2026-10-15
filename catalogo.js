@@ -27,7 +27,7 @@ const leerComoDataURL = (file) => new Promise((resolve, reject) => {
   lector.readAsDataURL(file);
 });
 
-const MAX_FOTOS = 6; // por modelo
+const MAX_FOTOS = 8; // por modelo (igual que fotos.js)
 
 // Sube una foto a Cloudinary (directo desde el navegador) y devuelve la URL final.
 // El archivo se manda como texto (base64), no como binario: algunos celulares
@@ -145,7 +145,7 @@ window.catalogoIniciar = function () {
   onSnapshot(collection(db, 'producto_fotos'), (snap) => {
     state.productoFotos = Object.fromEntries(snap.docs.map((d) => [d.id, d.data().fotos || []]));
     if (document.getElementById('prod-modal')?.classList.contains('open')) actualizarFotoModal();
-    if (document.getElementById('foto-modal')?.classList.contains('open')) renderFotoModalGaleria();
+    if (document.getElementById('foto-modal')?.classList.contains('open')) window.fotosRender && fotosRender();
     if (document.getElementById('tab-catalogo')?.classList.contains('active')) renderVistaCatalogo();
     catalogoRefresh();
   }, () => {});
@@ -230,39 +230,14 @@ window.abrirFotoModal = function (key) {
   const x = modelosVista.find((v) => v.modelo.key === key); if (!x) return;
   fotoModalTarget = x.modelo;
   document.getElementById('fm-titulo').textContent = x.ficha.nombre;
-  document.getElementById('fm-input').value = '';
-  document.getElementById('fm-estado').textContent = '';
-  renderFotoModalGaleria();
+  if (window.fotosAbrir) fotosAbrir(x.modelo); // fotos: elegir varias, ordenar, quitar (fotos-ui.js)
   if (window.peAbrir) peAbrir(x.modelo, x.ficha.nombre); // sección "Precio" (precio-editar-ui.js)
   document.getElementById('foto-modal').classList.add('open');
 };
 window.cerrarFotoModal = function () {
+  if (window.fotosPuedeCerrar && !fotosPuedeCerrar()) return; // hay fotos sin subir: pregunta
+  if (window.fotosCerrar) fotosCerrar();
   document.getElementById('foto-modal').classList.remove('open');
   fotoModalTarget = null;
   if (window.peCerrar) peCerrar();
-};
-window.renderFotoModalGaleria = function () {
-  const cont = document.getElementById('fm-galeria'); if (!cont || !fotoModalTarget) return;
-  const fotos = state.productoFotos[fotoModalTarget.key] || [];
-  cont.innerHTML = fotos.map((url) => `<div style="position:relative;width:70px;height:70px;flex-shrink:0">
-    <img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid var(--border2)">
-    <button onclick="fotoModalQuitar('${url}')" title="Quitar" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:#fff;border:none;font-size:.65rem;cursor:pointer;line-height:1">✕</button>
-  </div>`).join('');
-  document.getElementById('fm-input').style.display = fotos.length >= MAX_FOTOS ? 'none' : '';
-};
-window.fotoModalSeleccionada = async function (file) {
-  if (!file || !fotoModalTarget) return;
-  const input = document.getElementById('fm-input'), estado = document.getElementById('fm-estado');
-  estado.style.color = 'var(--muted)'; estado.textContent = 'Subiendo...';
-  try {
-    await subirFotoProducto(fotoModalTarget, file);
-    estado.style.color = 'var(--success)'; estado.textContent = 'Foto agregada ✓';
-    renderFotoModalGaleria();
-  } catch (e) { estado.style.color = 'var(--danger)'; estado.textContent = e.message; }
-  finally { input.value = ''; }
-};
-window.fotoModalQuitar = async function (url) {
-  if (!fotoModalTarget) return;
-  try { await borrarFotoProducto(fotoModalTarget, url); renderFotoModalGaleria(); }
-  catch (e) { toast('Error: ' + e.message, 'error'); }
 };

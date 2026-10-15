@@ -56,3 +56,12 @@ App de stock/ventas en HTML + JS modular (ES modules, sin build), Firestore proy
 - `ptarjeta` manual: se muestra, se mantiene, y hay una casilla para borrarlo (queda `null` = automático). Si con el precio nuevo deja de ser mayor que el de efectivo se avisa que se ignora.
 - Después de guardar, `catalogoSync` actualiza la ficha y la tienda solo; aparece una barra "Precio actualizado en la tienda ✓" con "Deshacer" durante 15 s (restaura `pventa`, y `ptarjeta` si se había borrado, fila por fila).
 - Pruebas: `node test-precio-editar.mjs`.
+
+## Fotos de producto con carga múltiple (etapa 5) — `fotos.js` y `fotos-ui.js`
+- En la ficha de Catálogo y sitio (modal de fotos): "📷 Elegir fotos" acepta varias a la vez (hasta 8 por producto; si se eligen más entran las primeras y se avisa). Antes de subir se ven miniaturas y se puede sacar alguna; "Subir y guardar" las procesa.
+- Compresión en el navegador (canvas): lado mayor máx. 1600 px, JPEG 0,85, respeta la orientación EXIF (`createImageBitmap` con `imageOrientation:'from-image'`), nunca agranda; PNG con transparencia → fondo blanco.
+- Subida en paralelo (máx. 3) con la misma subida a Cloudinary de siempre (`subirFotoGenerica`); estados En cola / Subiendo / Lista / Error, contador "3 de 6", 1 reintento automático y botón "Reintentar" por foto. Las que ya subieron no se pierden ("Guardar solo las que ya subieron").
+- `producto_fotos/<claveModelo>` se escribe UNA vez al terminar las subidas (`{fotos:[...], actualizado}`: las que había + las nuevas + lo que otro dispositivo haya agregado mientras tanto). Si se cierra la pantalla en medio, se cancela la cola y no se escribe nada (las fotos ya subidas a Cloudinary quedan huérfanas, sin costo).
+- Ordenar con ◀ ▶ o arrastrando (escritorio); la primera es la principal (la de la tienda). Quitar pide confirmación y solo la saca de `producto_fotos`; no se borra nada de Cloudinary. Cada acción = una escritura; después `catalogoSync` actualiza ficha y tienda.
+- Para probar sin subir nada: reemplazar `window.fotosSubirUna` (o `fetch` a Cloudinary) y usar el Firestore en memoria. Pruebas: `node test-fotos.mjs`.
+- Pendiente conocido: el modal de edición de Stock (`stock.js`, `onFotoSeleccionada`) sigue subiendo de a una foto y oculta el selector al llegar a 6.
