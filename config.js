@@ -11,7 +11,6 @@ import { db, doc, setDoc, onSnapshot } from './firebase-config.js';
 const CAMPOS = {
   heroTitulo: 'cfg-hero-titulo',
   heroSubtitulo: 'cfg-hero-subtitulo',
-  promoBarra: 'cfg-promo-barra',
   bandaNegra: 'cfg-banda-negra',
   whatsappMensaje: 'cfg-whatsapp-mensaje',
 };
@@ -30,51 +29,11 @@ window.renderConfigSitio = function () {
     const el = document.getElementById(elId);
     if (el && document.activeElement !== el) el.value = cfg[campo] || '';
   });
-  renderHeroFotos();
   if (window.ptRender) ptRender(); // sección "Precio de tarjeta"
 };
 
-// ── fotos del inicio (tríptico): 3 fotos sueltas, elegidas a mano, no ligadas a ningún producto ──
-function renderHeroFotos() {
-  const cont = document.getElementById('cfg-hero-fotos'); if (!cont) return;
-  const fotos = state.configSitio?.heroFotos || [null, null, null];
-  cont.innerHTML = [0, 1, 2].map((i) => {
-    const url = fotos[i];
-    return `<div style="display:flex;flex-direction:column;gap:6px;align-items:center;width:100px">
-      <div style="width:100px;height:125px;border-radius:8px;overflow:hidden;background:var(--surface3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center">
-        ${url ? `<img src="${url}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:.65rem;color:var(--muted);text-align:center;padding:4px">Foto ${i + 1}</span>`}
-      </div>
-      <label class="btn btn-outline btn-sm" style="display:block;width:100px;box-sizing:border-box;text-align:center;font-size:.68rem;padding:6px 4px;white-space:nowrap;cursor:pointer">${url ? '📷 Cambiar foto' : '📷 Elegir foto'}<input type="file" accept="image/*" id="cfg-hero-foto-input-${i}" onchange="heroFotoSeleccionada(${i},this.files[0])" style="display:none"></label>
-      ${url ? `<button class="btn btn-ghost btn-sm" onclick="heroFotoQuitar(${i})" style="font-size:.65rem;padding:3px 8px">Quitar</button>` : ''}
-      <span id="cfg-hero-foto-estado-${i}" style="font-size:.6rem;color:var(--muted);text-align:center"></span>
-    </div>`;
-  }).join('');
-}
-
-window.heroFotoSeleccionada = async function (idx, file) {
-  if (!file) return;
-  const input = document.getElementById(`cfg-hero-foto-input-${idx}`);
-  const estado = document.getElementById(`cfg-hero-foto-estado-${idx}`);
-  estado.style.color = 'var(--muted)'; estado.textContent = 'Subiendo...';
-  try {
-    const url = await subirFotoGenerica(file);
-    const actuales = [...(state.configSitio?.heroFotos || [null, null, null])];
-    actuales[idx] = url;
-    await setDoc(doc(db, 'config_sitio', 'config'), { heroFotos: actuales }, { merge: true });
-    estado.style.color = 'var(--success)'; estado.textContent = 'Guardada ✓';
-    setTimeout(() => { if (estado) estado.textContent = ''; }, 3000);
-  } catch (e) {
-    estado.style.color = 'var(--danger)'; estado.textContent = e.message;
-  } finally {
-    if (input) input.value = '';
-  }
-};
-window.heroFotoQuitar = async function (idx) {
-  const actuales = [...(state.configSitio?.heroFotos || [null, null, null])];
-  actuales[idx] = null;
-  try { await setDoc(doc(db, 'config_sitio', 'config'), { heroFotos: actuales }, { merge: true }); }
-  catch (e) { toast('Error: ' + e.message, 'error'); }
-};
+// Los campos promoBarra y heroFotos de config_sitio/config ya no se editan desde acá (la tienda no usa promoBarra y heroFotos es solo un respaldo del hero).
+// Siguen guardados en Firestore tal cual y guardarConfigSitio NO los envía, así que no se pisan.
 
 window.guardarConfigSitio = async function () {
   const btn = document.getElementById('cfg-guardar-btn');
