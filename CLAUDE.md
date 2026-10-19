@@ -65,3 +65,7 @@ App de stock/ventas en HTML + JS modular (ES modules, sin build), Firestore proy
 - Ordenar con ◀ ▶ o arrastrando (escritorio); la primera es la principal (la de la tienda). Quitar pide confirmación y solo la saca de `producto_fotos`; no se borra nada de Cloudinary. Cada acción = una escritura; después `catalogoSync` actualiza ficha y tienda.
 - Para probar sin subir nada: reemplazar `window.fotosSubirUna` (o `fetch` a Cloudinary) y usar el Firestore en memoria. Pruebas: `node test-fotos.mjs`.
 - Pendiente conocido: el modal de edición de Stock (`stock.js`, `onFotoSeleccionada`) sigue subiendo de a una foto y oculta el selector al llegar a 6.
+
+## Configuración del sitio: campos que se editan (limpieza)
+- La pantalla "Configuración del sitio" edita solo los 4 textos que la tienda lee: `heroTitulo`, `heroSubtitulo`, `bandaNegra` y `whatsappMensaje` (`config.js`, merge en `config_sitio/config`).
+- Ya NO se editan desde acá `promoBarra` (la tienda no lo lee: la barra negra de arriba usa `mensajesPromo` de `datos-negocio.js` de tienda-premium) ni `heroFotos` (la tienda solo lo usa de respaldo del hero rotativo). Siguen guardados en Firestore y `guardarConfigSitio` no los envía, así que no se pisan.
