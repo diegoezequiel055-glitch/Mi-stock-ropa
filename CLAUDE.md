@@ -69,3 +69,8 @@ App de stock/ventas en HTML + JS modular (ES modules, sin build), Firestore proy
 ## Configuración del sitio: campos que se editan (limpieza)
 - La pantalla "Configuración del sitio" edita solo los 4 textos que la tienda lee: `heroTitulo`, `heroSubtitulo`, `bandaNegra` y `whatsappMensaje` (`config.js`, merge en `config_sitio/config`).
 - Ya NO se editan desde acá `promoBarra` (la tienda no lo lee: la barra negra de arriba usa `mensajesPromo` de `datos-negocio.js` de tienda-premium) ni `heroFotos` (la tienda solo lo usa de respaldo del hero rotativo). Siguen guardados en Firestore y `guardarConfigSitio` no los envía, así que no se pisan.
+
+## Recorte de fotos antes de subir (`recorte.js`, `recorte-ui.js`, `recorte.css`)
+- Al elegir fotos en la ficha de Catálogo y sitio se abre la pantalla de recorte (4:5, la proporción de las tarjetas, hero y relacionados de la tienda; la ficha usa la proporción real de la foto, así que una foto 4:5 se ve completa). Arrastrar para mover, zoom con barra / rueda / pellizco (Pointer Events: mouse y dedo), vistas previas en vivo (tarjeta, ficha, carrito), "Aplicar recorte", "Usar sin recortar", Anterior/Siguiente y "Centrar automático en todas las que faltan".
+- Cálculos puros en `recorte.js` (rect centrado, arrastre, zoom, tamaño de salida: 4:5 exacto, lado mayor ≤ 1600 px, nunca agranda). El archivo recortado (canvas → JPEG 0,92) reemplaza al que se comprime y sube (`n.comprimido`); el original no se sube. Si el recorte se cancela o falla, la foto queda como original y sube como siempre (`fotos-ui.js` no cambió su subida ni su guardado en `producto_fotos`).
+- Cada foto pendiente tiene un botón "✂ Recortar / Recortada ✓ cambiar" para volver a abrir el recorte. Sin librerías externas. Pruebas: `node test-recorte.mjs`.

@@ -19,6 +19,7 @@ import './precio-tarjeta-ui.js';
 import './medio-pago-ui.js';
 import './precio-editar-ui.js';
 import './fotos-ui.js';
+import './recorte-ui.js';
 import './config.js';
 
 // Habilita "Instalar app" / "Agregar a pantalla de inicio" (no guarda nada en caché).

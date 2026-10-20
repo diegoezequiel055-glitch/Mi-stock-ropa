@@ -37,6 +37,7 @@ async function decodificar(file) {
     return img;
   } finally { URL.revokeObjectURL(url); }
 }
+window.fotosDecodificar = decodificar; // la usa la pantalla de recorte (recorte-ui.js)
 window.fotosComprimir = async function (file) {
   let fuente;
   try { fuente = await decodificar(file); } catch (e) { throw new Error('No se pudo leer la foto (formato no soportado).'); }
@@ -80,6 +81,20 @@ function tileGuardada(url, i) {
   </div>`;
 }
 const ETIQ = { cola: ['En cola', 'var(--muted)'], subiendo: ['Subiendo…', 'var(--blue)'], lista: ['Lista ✓', 'var(--success)'], error: ['Error', 'var(--danger)'] };
+// ── Recorte (recorte-ui.js): el archivo recortado reemplaza al que se comprime y sube; si no hay, se sube el original como siempre ──
+function revocar(n) { if (n.thumbOriginal && n.thumbOriginal !== n.thumb) URL.revokeObjectURL(n.thumbOriginal); URL.revokeObjectURL(n.thumb); }
+window.fotosAplicarRecorte = function (n, file) {
+  if (n.thumbOriginal && n.thumb !== n.thumbOriginal) URL.revokeObjectURL(n.thumb);
+  n.comprimido = file; n.thumb = URL.createObjectURL(file); n.recortada = true; render();
+};
+window.fotosUsarOriginal = function (n) {
+  if (n.thumbOriginal && n.thumb !== n.thumbOriginal) { URL.revokeObjectURL(n.thumb); n.thumb = n.thumbOriginal; }
+  n.comprimido = undefined; n.recortada = false; render();
+};
+window.fotosRecortarUna = function (id) {
+  const n = nuevas.find((x) => x.id === id); if (!n || subiendo || !window.recorteAbrir) return;
+  n.recorte = undefined; recorteAbrir([n]);
+};
 function tileNueva(n) {
   const [txt, col] = ETIQ[n.estado];
   const puedeQuitar = n.estado !== 'subiendo' && n.estado !== 'lista';
@@ -88,6 +103,7 @@ function tileNueva(n) {
       <img src="${esc(n.thumb)}" alt="" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px dashed var(--border2);background:var(--surface2)">
       ${puedeQuitar && !subiendo ? `<button onclick="fotosSacarNueva(${n.id})" title="Sacar" style="position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;background:var(--danger);color:#fff;border:none;font-size:.7rem;cursor:pointer;line-height:1">✕</button>` : ''}
     </div>
+    ${(n.estado === 'cola' || n.estado === 'error') && !subiendo && window.recorteAbrir ? `<button class="rc-tile-btn" onclick="fotosRecortarUna(${n.id})">${n.recortada ? '✂ Recortada ✓<br>cambiar' : '✂ Recortar'}</button>` : ''}
     <div style="font-size:.68rem;color:${col};margin-top:4px;line-height:1.25">${txt}${n.estado === 'error' ? `<div style="color:var(--text2)">${esc(n.error || '')}</div><button onclick="fotosReintentar(${n.id})" style="margin-top:3px;background:var(--surface3);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;font-size:.7rem;cursor:pointer">Reintentar</button>` : ''}</div>
   </div>`;
 }
@@ -122,7 +138,8 @@ window.fotosPuedeCerrar = function () {
 };
 window.fotosCerrar = function () {
   sesion++; // cualquier subida en curso termina sola pero ya no escribe nada
-  nuevas.forEach((n) => URL.revokeObjectURL(n.thumb));
+  if (window.recorteCerrarTodo) recorteCerrarTodo();
+  nuevas.forEach(revocar);
   nuevas = []; quitando = null; subiendo = false; clave = null;
   const raiz = $('fo-root'); if (raiz) raiz.innerHTML = '';
 };
@@ -135,16 +152,17 @@ window.fotosElegidas = function (input) {
   const imagenes = todos.filter((f) => /^image\//.test(f.type) || /\.(jpe?g|png|webp|heic|heif|gif)$/i.test(f.name));
   const salteadas = todos.length - imagenes.length;
   const lim = limitarSeleccion(guardadas.length + nuevas.length, imagenes.length, MAX_FOTOS);
-  imagenes.slice(0, lim.tomar).forEach((file) => nuevas.push({ id: ++seq, file, thumb: URL.createObjectURL(file), estado: 'cola' }));
+  const agregadas = imagenes.slice(0, lim.tomar).map((file) => { const n = { id: ++seq, file, thumb: URL.createObjectURL(file), estado: 'cola' }; nuevas.push(n); return n; });
   const partes = [];
   if (lim.aviso) partes.push(lim.aviso);
   if (salteadas) partes.push(`${salteadas} ${salteadas === 1 ? 'archivo no era una imagen y se salteó' : 'archivos no eran imágenes y se saltearon'}.`);
   decir(partes.join(' '), partes.length ? 'var(--warning)' : 'var(--muted)');
   render();
+  if (agregadas.length && window.recorteAbrir) recorteAbrir(agregadas); // paso de recorte antes de subir (recorte-ui.js)
 };
 window.fotosSacarNueva = function (id) {
   const n = nuevas.find((x) => x.id === id); if (!n || subiendo) return;
-  URL.revokeObjectURL(n.thumb); nuevas = nuevas.filter((x) => x.id !== id); decir(''); render();
+  revocar(n); nuevas = nuevas.filter((x) => x.id !== id); decir(''); render();
 };
 
 // ── Subir (en paralelo, máx. 3) y guardar con UNA escritura ──
@@ -185,7 +203,7 @@ async function guardarListas() {
   catch (e) { if (s === sesion) { decir('No se pudo guardar: ' + e.message + '. Las fotos subidas siguen acá; probá de nuevo.', 'var(--danger)'); render(); } return; }
   if (s !== sesion) return;
   guardadas = final;
-  listas.forEach((n) => URL.revokeObjectURL(n.thumb));
+  listas.forEach(revocar);
   nuevas = nuevas.filter((n) => n.estado !== 'lista');
   decir(`${listas.length === 1 ? 'Foto guardada' : `${listas.length} fotos guardadas`} ✓ — la ficha y la tienda se actualizan solas.`, 'var(--success)');
   render();

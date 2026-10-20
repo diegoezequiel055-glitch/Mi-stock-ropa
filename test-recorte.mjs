@@ -1,0 +1,48 @@
+// Pruebas puras de recorte.js. Correr: node test-recorte.mjs
+import assert from 'node:assert/strict';
+import { RATIO_BASE, rectBase, rectCentrado, rectDeVista, clampCentro, arrastrar, zoomEn, tamanoSalida, clampZoom } from './recorte.js';
+let n = 0; const ok = (t) => { n++; console.log('  ✔ ' + t); };
+const cerca = (a, b, e = 1e-6) => assert.ok(Math.abs(a - b) <= e, `${a} ≠ ${b}`);
+const ratioDe = (r) => r.w / r.h;
+console.log('Proporción base y encuadre automático');
+assert.equal(RATIO_BASE, 0.8);
+let r = rectCentrado(4000, 3000); cerca(r.h, 3000); cerca(r.w, 2400); cerca(r.x, 800); cerca(r.y, 0);
+ok('horizontal 4000x3000 → recorte 2400x3000 centrado (x=800)');
+r = rectCentrado(3000, 4000); cerca(r.w, 3000); cerca(r.h, 3750); cerca(r.x, 0); cerca(r.y, 125);
+ok('vertical 3000x4000 → 3000x3750 centrado (y=125)');
+r = rectCentrado(800, 1000); cerca(r.w, 800); cerca(r.h, 1000);
+ok('una foto que ya es 4:5 no pierde nada');
+for (const [w, h] of [[4000, 3000], [3000, 4000], [1000, 1000], [500, 300], [6000, 1000], [1000, 6000], [320, 400]]) cerca(ratioDe(rectCentrado(w, h)), 0.8, 1e-9);
+ok('siempre queda exactamente 4:5, sea cual sea la foto (cuadrada, panorámica, muy alta, chica)');
+console.log('Zoom y movimiento');
+r = rectDeVista({ w: 4000, h: 3000, zoom: 2, cx: 2000, cy: 1500 }); cerca(r.w, 1200); cerca(r.h, 1500); cerca(ratioDe(r), 0.8, 1e-9);
+r = rectDeVista({ w: 4000, h: 3000, zoom: 100, cx: 2000, cy: 1500 }); cerca(r.h, 750);
+assert.equal(clampZoom(0.2), 1); assert.equal(clampZoom(9), 4); assert.equal(clampZoom(NaN), 1);
+ok('zoom 2 → mitad del recorte; el zoom se limita entre 1 y 4');
+r = rectDeVista({ w: 4000, h: 3000, zoom: 1, cx: 0, cy: 0 }); assert.ok(r.x >= 0 && r.y >= 0 && r.x + r.w <= 4000 && r.y + r.h <= 3000);
+r = rectDeVista({ w: 4000, h: 3000, zoom: 3, cx: 99999, cy: 99999 }); assert.ok(r.x >= 0 && r.x + r.w <= 4000 + 1e-9 && r.y + r.h <= 3000 + 1e-9);
+ok('el recorte nunca se sale de la foto (centro fuera de rango se corrige)');
+let c = arrastrar({ w: 4000, h: 3000, zoom: 2, cx: 2000, cy: 1500 }, 50, 0, 300); // recuadro de 300 px muestra 1200 px de foto → 4 px de foto por px
+cerca(c.cx, 2000 - 200); cerca(c.cy, 1500);
+c = arrastrar({ w: 4000, h: 3000, zoom: 2, cx: 2000, cy: 1500 }, 0, -30, 300); cerca(c.cy, 1500 + 30 * 4);
+ok('arrastrar: la foto sigue al dedo (dedo a la derecha → el centro va a la izquierda)');
+c = arrastrar({ w: 4000, h: 3000, zoom: 2, cx: 2000, cy: 1500 }, 100000, 100000, 300); assert.ok(c.cx >= 600 && c.cy >= 750);
+ok('arrastrar de más se frena en el borde de la foto');
+let z = zoomEn({ w: 4000, h: 3000, zoom: 1, cx: 2000, cy: 1500 }, 2); cerca(z.zoom, 2); cerca(z.cx, 2000); cerca(z.cy, 1500);
+z = zoomEn({ w: 4000, h: 3000, zoom: 1, cx: 2000, cy: 1500 }, 2, 0.5, 0.5); cerca(rectDeVista({ w: 4000, h: 3000, ...z }).w, 1200);
+const r0 = rectDeVista({ w: 4000, h: 3000, zoom: 1, cx: 2000, cy: 1500 }); const p = { x: r0.x + 0.25 * r0.w, y: r0.y + 0.25 * r0.h };
+z = zoomEn({ w: 4000, h: 3000, zoom: 1, cx: 2000, cy: 1500 }, 2, 0.25, 0.25); const r1 = rectDeVista({ w: 4000, h: 3000, ...z });
+cerca(r1.x + 0.25 * r1.w, p.x, 1e-6); cerca(r1.y + 0.25 * r1.h, p.y, 1e-6);
+ok('zoom con pellizco: el punto bajo el dedo queda en su lugar');
+console.log('Archivo de salida');
+let s = tamanoSalida(rectCentrado(4000, 3000)); assert.deepEqual(s, { ancho: 1280, alto: 1600 }); cerca(s.ancho / s.alto, 0.8, 0.002);
+s = tamanoSalida(rectCentrado(3000, 4000)); assert.deepEqual(s, { ancho: 1280, alto: 1600 }); cerca(s.ancho / s.alto, 0.8, 0.002);
+ok('4000x3000 → archivo 1280x1600; 3000x4000 → también 1280x1600 (4:5 exacto, lado mayor ≤ 1600)');
+s = tamanoSalida(rectCentrado(500, 400)); assert.deepEqual(s, { ancho: 320, alto: 400 });
+s = tamanoSalida(rectCentrado(320, 400)); assert.deepEqual(s, { ancho: 320, alto: 400 });
+ok('fotos chicas: no se agrandan (500x400 → 320x400)');
+s = tamanoSalida(rectDeVista({ w: 4000, h: 3000, zoom: 4, cx: 2000, cy: 1500 })); assert.deepEqual(s, { ancho: 600, alto: 750 });
+ok('con zoom 4 el archivo es lo que se ve (600x750), sin inflarlo');
+for (const [w, h, zm] of [[4000, 3000, 1], [3000, 4000, 1.7], [1234, 987, 2.3], [5000, 800, 1], [900, 4800, 3]]) { const o = tamanoSalida(rectDeVista({ w, h, zoom: zm, cx: w / 2, cy: h / 2 })); cerca(o.ancho / o.alto, 0.8, 0.01); assert.ok(Math.max(o.ancho, o.alto) <= 1600); }
+ok('la proporción del archivo es 4:5 en cualquier caso y nunca pasa de 1600 px');
+console.log(`\nTodo OK: ${n} grupos de pruebas pasaron.`);
