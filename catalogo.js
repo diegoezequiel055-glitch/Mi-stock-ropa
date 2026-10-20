@@ -27,7 +27,6 @@ const leerComoDataURL = (file) => new Promise((resolve, reject) => {
   lector.readAsDataURL(file);
 });
 
-const MAX_FOTOS = 8; // por modelo (igual que fotos.js)
 
 // Sube una foto a Cloudinary (directo desde el navegador) y devuelve la URL final.
 // El archivo se manda como texto (base64), no como binario: algunos celulares
@@ -49,22 +48,7 @@ async function subirACloudinary(file) {
 // Para fotos sueltas que no pertenecen a ningún modelo (ej: las del inicio del sitio).
 window.subirFotoGenerica = subirACloudinary;
 
-// Sube y AGREGA la foto a la galería de ESE MODELO (todos sus talles la comparten).
-window.subirFotoProducto = async function (prod, file) {
-  const key = claveModelo(prod);
-  const actuales = state.productoFotos[key] || [];
-  if (actuales.length >= MAX_FOTOS) throw new Error(`Ya tiene ${MAX_FOTOS} fotos, el máximo por producto. Borrá alguna para agregar otra.`);
-  const url = await subirACloudinary(file);
-  await setDoc(doc(db, 'producto_fotos', key), { fotos: [...actuales, url], actualizado: Date.now() });
-  return url;
-};
-
-// Saca una foto de la galería de un modelo (no borra nada en Cloudinary, solo deja de usarla).
-window.borrarFotoProducto = async function (prod, url) {
-  const key = claveModelo(prod);
-  const actuales = state.productoFotos[key] || [];
-  await setDoc(doc(db, 'producto_fotos', key), { fotos: actuales.filter((u) => u !== url), actualizado: Date.now() });
-};
+// Agregar, ordenar y quitar fotos de un modelo: fotos.js / fotos-ui.js (ficha del catálogo y modal de edición de Stock).
 
 // Talles con stock disponible para vender (descuenta lo reservado, nunca negativo), de chico a grande.
 function tallesDisponibles(modelo) {
@@ -144,7 +128,7 @@ window.catalogoIniciar = function () {
   }, () => {}); // si todavía no existe la colección o no hay permiso, no rompe nada
   onSnapshot(collection(db, 'producto_fotos'), (snap) => {
     state.productoFotos = Object.fromEntries(snap.docs.map((d) => [d.id, d.data().fotos || []]));
-    if (document.getElementById('prod-modal')?.classList.contains('open')) actualizarFotoModal();
+    if (document.getElementById('prod-modal')?.classList.contains('open')) window.fotosRender && fotosRender();
     if (document.getElementById('foto-modal')?.classList.contains('open')) window.fotosRender && fotosRender();
     if (document.getElementById('tab-catalogo')?.classList.contains('active')) renderVistaCatalogo();
     catalogoRefresh();
@@ -222,7 +206,7 @@ window.toggleDestacadoDesdeCatalogo = async function (key, checked) {
 
 // ══════════════════════════════════════════
 // MODAL DE FOTOS — se abre tocando una ficha del catálogo, sin pasar por Stock.
-// Reutiliza subirFotoProducto/borrarFotoProducto (mismo storage por modelo).
+// La galería la dibuja fotos-ui.js (mismo storage por modelo: producto_fotos).
 // ══════════════════════════════════════════
 let fotoModalTarget = null; // {cat, modelo, color, key} del modelo que está abierto
 

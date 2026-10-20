@@ -863,7 +863,7 @@
 
 <!-- ══ MODAL PRODUCTO ══ -->
 <div class="overlay" id="prod-modal">
-  <div class="modal">
+  <div class="modal" style="padding-bottom:90px">
     <button class="modal-close" onclick="closeProdModal()">✕</button>
     <div class="modal-title" id="prod-modal-title">Agregar Producto</div>
     <input type="hidden" id="pm-id">
@@ -929,10 +929,8 @@
         <div style="font-size:.7rem;color:var(--muted);margin-top:4px">Aparece en la sección "Destacados" y en las fotos grandes del inicio. Tiene que estar también tildado "Mostrar en catálogo".</div>
       </div>
       <div class="field" style="grid-column:1/-1">
-        <label>Fotos del catálogo <span style="color:var(--muted);font-size:0.7rem">— opcional, hasta 6, las comparten todos los talles de este modelo</span></label>
-        <div id="pm-foto-galeria" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px"></div>
-        <input type="file" id="pm-foto-input" accept="image/*" onchange="onFotoSeleccionada(this.files[0])" style="width:100%;padding:6px">
-        <div id="pm-foto-estado" style="font-size:.72rem;margin-top:4px;color:var(--muted)"></div>
+        <label>Fotos del catálogo <span style="color:var(--muted);font-size:0.7rem">— opcional, hasta 8, las comparten todos los talles de este modelo</span></label>
+        <div id="pm-fo-root"></div> <!-- fotos (fotos-ui.js) -->
       </div>
     </div>
     <div class="modal-actions">
