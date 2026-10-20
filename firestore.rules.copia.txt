@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /catalogo_publico/{docId} { allow read: if true; allow write: if request.auth != null && request.auth.token.email == 'diegoezequiel055@gmail.com'; }
+    match /envios_publico/{docId} { allow read: if true; allow write: if request.auth != null && request.auth.token.email == 'diegoezequiel055@gmail.com'; }
+    match /config_sitio/{docId} { allow read: if true; allow write: if request.auth != null && request.auth.token.email == 'diegoezequiel055@gmail.com'; }
+    match /{document=**} { allow read, write: if request.auth != null && request.auth.token.email == 'diegoezequiel055@gmail.com'; }
+  }
+}
