@@ -1,9 +1,12 @@
 # GitHub Pages (Jekyll) NO publica estos archivos de StockMGR.
 # Siguen en el repo para trabajar (Claude Code lee CLAUDE.md; las pruebas se corren con `node test-*.mjs`),
 # pero /CLAUDE.md, /CLAUDE.html y los tests dejan de ser públicos (dan 404).
-# Un archivo nuevo de notas o pruebas que no deba verse en la web se agrega acá.
+# También quedan fuera: worker/wrangler.jsonc (config del worker, muestra el email autorizado) y firestore.rules.copia.txt
+# (copia de las reglas de Firestore, solo documentación). Un archivo nuevo de notas o pruebas que no deba verse en la web se agrega acá.
 exclude:
   - CLAUDE.md
   - "*.md"
   - "test-*.mjs"
   - "_config.yml"
+  - "worker/wrangler.jsonc"
+  - "firestore.rules.copia.txt"
