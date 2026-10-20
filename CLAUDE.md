@@ -64,7 +64,7 @@ App de stock/ventas en HTML + JS modular (ES modules, sin build), Firestore proy
 - `producto_fotos/<claveModelo>` se escribe UNA vez al terminar las subidas (`{fotos:[...], actualizado}`: las que había + las nuevas + lo que otro dispositivo haya agregado mientras tanto). Si se cierra la pantalla en medio, se cancela la cola y no se escribe nada (las fotos ya subidas a Cloudinary quedan huérfanas, sin costo).
 - Ordenar con ◀ ▶ o arrastrando (escritorio); la primera es la principal (la de la tienda). Quitar pide confirmación y solo la saca de `producto_fotos`; no se borra nada de Cloudinary. Cada acción = una escritura; después `catalogoSync` actualiza ficha y tienda.
 - Para probar sin subir nada: reemplazar `window.fotosSubirUna` (o `fetch` a Cloudinary) y usar el Firestore en memoria. Pruebas: `node test-fotos.mjs`.
-- Pendiente conocido: el modal de edición de Stock (`stock.js`, `onFotoSeleccionada`) sigue subiendo de a una foto y oculta el selector al llegar a 6.
+- El modal de edición de Stock usa esta misma pantalla (`#pm-fo-root`, `fotosAbrir(..., {raiz, claveFn, campos})`): la clave `categoría|modelo|color` se toma de los campos del formulario (si faltan categoría o modelo avisa y no deja subir; si se cambian, recarga la galería de ese producto). Cerrar o guardar el producto con fotos elegidas sin subir pregunta antes. Ya no existen `subirFotoProducto` / `borrarFotoProducto` / `onFotoSeleccionada`.
 
 ## Configuración del sitio: campos que se editan (limpieza)
 - La pantalla "Configuración del sitio" edita solo los 4 textos que la tienda lee: `heroTitulo`, `heroSubtitulo`, `bandaNegra` y `whatsappMensaje` (`config.js`, merge en `config_sitio/config`).

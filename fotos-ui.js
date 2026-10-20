@@ -13,6 +13,10 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 
 let sesion = 0; // sube cada vez que se abre o cierra la pantalla: lo que termine de una sesión vieja se descarta
 let clave = null;
+let abierto = false; // ¿hay una pantalla de fotos abierta? (ficha del catálogo o modal de edición de Stock)
+let rootId = 'fo-root'; // dónde se dibuja: 'fo-root' (catálogo) o 'pm-fo-root' (Stock)
+let claveFn = null; // en Stock el producto puede ser nuevo o cambiar de modelo/color mientras se edita: la clave se calcula de los campos
+let escuchas = []; // [{ el, fn }] campos de Stock que vuelven a dibujar al cambiar
 let guardadas = []; // fotos del producto (orden actual; la primera es la principal)
 let conocidas = []; // las que ya vimos en Firestore (para no pisar lo que otro dispositivo agregue mientras tanto)
 let nuevas = []; // [{ id, file, thumb, estado: 'cola'|'subiendo'|'lista'|'error', url, error, comprimido }]
@@ -23,6 +27,15 @@ let cadenaEscrituras = Promise.resolve();
 let seq = 0;
 
 const urlsDe = () => state.productoFotos[clave] || [];
+// Si la clave sale de los campos del formulario (Stock) y cambió, se vuelve a cargar la galería de ese producto. false = todavía no hay clave (faltan categoría o modelo).
+function refrescarClave() {
+  if (!abierto) return false;
+  if (claveFn) {
+    const k = claveFn() || null;
+    if (k !== clave) { clave = k; guardadas = k ? urlsDe().slice() : []; conocidas = guardadas.slice(); quitando = null; }
+  }
+  return !!clave;
+}
 
 function decir(texto, color = 'var(--muted)') { aviso = { texto, color }; const e = $('fo-aviso'); if (e) { e.textContent = texto; e.style.color = color; } }
 
@@ -108,7 +121,8 @@ function tileNueva(n) {
   </div>`;
 }
 function render() {
-  const raiz = $('fo-root'); if (!raiz || !clave) return;
+  const raiz = $(rootId); if (!raiz || !abierto) return;
+  if (!refrescarClave()) { raiz.innerHTML = `<div style="font-size:.78rem;color:var(--warning)">Completá categoría y modelo para poder agregar fotos: se guardan por modelo y color.</div>`; return; }
   const pend = nuevas.filter((n) => n.estado !== 'lista');
   const cont = contador(nuevas.map((n) => n.estado));
   const quedaLugar = guardadas.length + nuevas.length < MAX_FOTOS;
@@ -127,26 +141,33 @@ function render() {
 }
 window.fotosRender = render;
 
-window.fotosAbrir = function (modelo) {
-  sesion++; clave = modelo.key; nuevas = []; quitando = null; subiendo = false; aviso = { texto: '', color: 'var(--muted)' };
-  guardadas = urlsDe().slice(); conocidas = guardadas.slice();
+// modelo = { key } (ficha del catálogo). opc.raiz = id del contenedor; opc.claveFn = función que devuelve la clave del producto; opc.campos = ids de campos que, al cambiar, redibujan.
+window.fotosAbrir = function (modelo, opc = {}) {
+  if (abierto) window.fotosCerrar();
+  sesion++; abierto = true; rootId = opc.raiz || 'fo-root'; claveFn = opc.claveFn || null;
+  clave = claveFn ? (claveFn() || null) : modelo.key;
+  nuevas = []; quitando = null; subiendo = false; aviso = { texto: '', color: 'var(--muted)' };
+  guardadas = clave ? urlsDe().slice() : []; conocidas = guardadas.slice();
+  escuchas = (opc.campos || []).map((id) => { const el = $(id); const fn = () => render(); if (el) el.addEventListener('change', fn); return { el, fn }; });
   render();
 };
+window.fotosHayPendientes = () => abierto && nuevas.length > 0;
 window.fotosPuedeCerrar = function () {
-  if (!clave || !nuevas.length) return true;
+  if (!abierto || !nuevas.length) return true;
   return window.confirm(subiendo ? 'Se están subiendo fotos. Si salís ahora se cancela y no se guarda nada. ¿Salir igual?' : 'Hay fotos elegidas que todavía no se subieron. Si salís se descartan. ¿Salir igual?');
 };
 window.fotosCerrar = function () {
   sesion++; // cualquier subida en curso termina sola pero ya no escribe nada
   if (window.recorteCerrarTodo) recorteCerrarTodo();
   nuevas.forEach(revocar);
-  nuevas = []; quitando = null; subiendo = false; clave = null;
-  const raiz = $('fo-root'); if (raiz) raiz.innerHTML = '';
+  nuevas = []; quitando = null; subiendo = false; clave = null; abierto = false; claveFn = null;
+  escuchas.forEach(({ el, fn }) => el && el.removeEventListener('change', fn)); escuchas = [];
+  const raiz = $(rootId); if (raiz) raiz.innerHTML = '';
 };
 
 // ── Elegir fotos ──
 window.fotosElegidas = function (input) {
-  if (!clave) return;
+  if (!refrescarClave()) return;
   const todos = [...(input.files || [])];
   input.value = '';
   const imagenes = todos.filter((f) => /^image\//.test(f.type) || /\.(jpe?g|png|webp|heic|heif|gif)$/i.test(f.name));
@@ -188,13 +209,14 @@ async function subirLista(items) {
   if (nuevas.some((n) => n.estado === 'error')) { decir('Alguna foto no se pudo subir. Las que subieron no se pierden: podés reintentar la que falló o guardar solo las listas.', 'var(--warning)'); render(); return; }
   await guardarListas();
 }
-window.fotosSubir = function () { if (subiendo || !clave) return; decir(''); subirLista(nuevas.filter((n) => n.estado === 'cola' || n.estado === 'error')); };
+window.fotosSubir = function () { if (subiendo || !refrescarClave()) return; decir(''); subirLista(nuevas.filter((n) => n.estado === 'cola' || n.estado === 'error')); };
 window.fotosReintentar = function (id) {
   const n = nuevas.find((x) => x.id === id); if (!n || subiendo) return;
   decir(''); n.estado = 'cola'; subirLista([n]);
 };
 window.fotosGuardarListas = function () { if (!subiendo) guardarListas(); };
 async function guardarListas() {
+  if (!refrescarClave()) return; // si en Stock cambiaron categoría/modelo/color, se guarda en la galería del producto actual
   const s = sesion;
   const listas = nuevas.filter((n) => n.estado === 'lista');
   if (!listas.length) { render(); return; }
@@ -215,7 +237,7 @@ async function aplicarLista(nueva) {
   try { await escribir(nueva); }
   catch (e) { guardadas = antes; decir('No se pudo guardar el cambio: ' + e.message, 'var(--danger)'); render(); }
 }
-window.fotosMover = function (i, dir) { if (!clave) return; const r = mover(guardadas, i, i + dir); if (r.some((u, k) => u !== guardadas[k])) { quitando = null; aplicarLista(r); } };
+window.fotosMover = function (i, dir) { if (!refrescarClave()) return; const r = mover(guardadas, i, i + dir); if (r.some((u, k) => u !== guardadas[k])) { quitando = null; aplicarLista(r); } };
 let arrastrando = null;
 window.fotosDragInicio = function (ev, i) { arrastrando = i; if (ev.dataTransfer) { ev.dataTransfer.effectAllowed = 'move'; try { ev.dataTransfer.setData('text/plain', String(i)); } catch (e) {} } };
 window.fotosDrop = function (ev, j) {

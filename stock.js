@@ -157,50 +157,23 @@ window.openProductModal=function(id){
     el.innerHTML=hist?.length?'Historial: '+hist.slice(-5).reverse().map(h=>`$${fmt(h.precio)} (${new Date(h.fecha).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'})})`).join(' → '):'';
   });
   document.getElementById('pm-del-btn').style.display=p?'inline-flex':'none';
-  document.getElementById('pm-foto-estado').textContent='';
-  document.getElementById('pm-foto-input').value='';
-  actualizarFotoModal();
+  // Fotos del catálogo: misma pantalla que en "Catálogo y sitio" (fotos-ui.js), con la clave tomada de categoría/modelo/color del formulario
+  if(window.fotosAbrir)fotosAbrir({}, {raiz:'pm-fo-root', claveFn:()=>(document.getElementById('pm-cat').value.trim()&&document.getElementById('pm-modelo').value.trim())?claveModeloForm():null, campos:['pm-cat','pm-modelo','pm-color']});
   document.getElementById('prod-modal').classList.add('open');
 }
 // La foto se comparte por modelo (cat+modelo+color), no por talle: la busca/guarda con esa clave.
 function claveModeloForm(){
   return claveModelo({cat:document.getElementById('pm-cat').value.trim(),modelo:document.getElementById('pm-modelo').value.trim(),color:document.getElementById('pm-color').value.trim()});
 }
-window.actualizarFotoModal=function(){
-  const cont=document.getElementById('pm-foto-galeria'); if(!cont)return;
-  const fotos=state.productoFotos[claveModeloForm()]||[];
-  cont.innerHTML=fotos.map((url,i)=>`<div style="position:relative;width:70px;height:70px;flex-shrink:0">
-    <img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid var(--border2)">
-    <button onclick="quitarFotoModal(${i})" title="Quitar" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:#fff;border:none;font-size:.65rem;cursor:pointer;line-height:1">✕</button>
-  </div>`).join('');
-  document.getElementById('pm-foto-input').style.display=fotos.length>=6?'none':'';
-}
-window.quitarFotoModal=async function(i){
-  const cat=document.getElementById('pm-cat').value.trim(), modelo=document.getElementById('pm-modelo').value.trim(), color=document.getElementById('pm-color').value.trim();
-  const fotos=state.productoFotos[claveModeloForm()]||[];
-  const url=fotos[i]; if(!url)return;
-  try{ await borrarFotoProducto({cat,modelo,color},url); actualizarFotoModal(); }
-  catch(e){ toast('Error: '+e.message,'error'); }
-}
-window.onFotoSeleccionada=async function(file){
-  if(!file)return;
-  const cat=document.getElementById('pm-cat').value.trim(), modelo=document.getElementById('pm-modelo').value.trim(), color=document.getElementById('pm-color').value.trim();
-  const input=document.getElementById('pm-foto-input'), estado=document.getElementById('pm-foto-estado');
-  if(!cat||!modelo){toast('Completá categoría y modelo antes de subir la foto.','error');input.value='';return;}
-  estado.style.color='var(--muted)';estado.textContent='Subiendo...';
-  try{
-    await subirFotoProducto({cat,modelo,color},file);
-    estado.style.color='var(--success)';estado.textContent='Foto agregada ✓ — se usa en todos los talles de este modelo';
-    actualizarFotoModal();
-  }catch(e){estado.style.color='var(--danger)';estado.textContent=e.message;}
-  finally{input.value='';}
-}
-window.closeProdModal=function(){
+window.closeProdModal=function(forzar){
+  if(!forzar&&window.fotosPuedeCerrar&&!fotosPuedeCerrar())return; // hay fotos elegidas sin subir: pregunta
+  if(window.fotosCerrar)fotosCerrar();
   document.getElementById('prod-modal').classList.remove('open');
   document.getElementById('ac-cat').classList.remove('open');
   state.currentEditId=null;
 }
 window.saveProduct=async function(){
+  if(window.fotosHayPendientes&&fotosHayPendientes()&&!confirm('Hay fotos elegidas que todavía no se subieron y se perderían. ¿Guardar el producto igual?'))return;
   const cat=catCanonica(document.getElementById('pm-cat').value.trim());
   const modelo=document.getElementById('pm-modelo').value.trim();
   const talle=document.getElementById('pm-talle').value.trim();
@@ -228,7 +201,7 @@ window.saveProduct=async function(){
   try{
     if(id){await updateDoc(doc(db,'stock',id),{...data,...hist});toast('Producto actualizado ✓'+avisos,'success');}
     else{await addDoc(collection(db,'stock'),{...data,...hist,createdAt:Date.now()});toast('Producto agregado ✓'+avisos,'success');}
-    closeProdModal();
+    closeProdModal(true);
   }catch(e){toast('Error: '+e.message,'error');}
   finally{btn.disabled=false;btn.textContent='Guardar';}
 }
@@ -256,7 +229,7 @@ window.delProductFromModal=async function(){
   const id=document.getElementById('pm-id').value; if(!id)return;
   const ok=await confirm2('¿Eliminar producto?','Esta acción no se puede deshacer.'); if(!ok)return;
   const btn=document.getElementById('pm-del-btn'); btn.disabled=true; btn.textContent='Eliminando...';
-  try{await deleteDoc(doc(db,'stock',id));toast('Producto eliminado');closeProdModal();}
+  try{await deleteDoc(doc(db,'stock',id));toast('Producto eliminado');closeProdModal(true);}
   catch(e){toast('Error: '+e.message,'error');btn.disabled=false;btn.textContent='🗑 Eliminar';}
 }
 window.exportCSV=function(){
