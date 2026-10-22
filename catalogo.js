@@ -3,6 +3,7 @@ import { db, collection, doc, setDoc, writeBatch, onSnapshot } from './firebase-
 import { armarModelos, claveModelo, compararTalles } from './matching.js';
 import { UMBRAL_STOCK_BAJO } from './datos-negocio.js';
 import { configPrecioTarjeta, conPrecioTarjeta } from './precio-tarjeta.js';
+import { planSync, crearPlanificador, enLotes } from './catalogo-sync.js';
 
 // ══════════════════════════════════════════
 // CATÁLOGO PÚBLICO — sincroniza sola la colección "catalogo_publico" con los
@@ -17,8 +18,9 @@ const CLOUDINARY_CLOUD = 'd5fzjp10';
 const CLOUDINARY_PRESET = 'stock mgr';
 
 let publicadosIds = new Set(); // ids que existen HOY en catalogo_publico (para saber qué borrar)
+let publicadosDocs = new Map(); // id → documento publicado hoy (para escribir SOLO lo que cambió, ver catalogo-sync.js)
+let catalogoListo = false; // ya llegó la primera lectura de catalogo_publico (sin ella no se sabe qué cambió y no se sincroniza)
 let escuchando = false;
-let timer = null;
 
 const leerComoDataURL = (file) => new Promise((resolve, reject) => {
   const lector = new FileReader();
@@ -98,24 +100,31 @@ function motivosNoPublicable(ficha) {
 function esPublicable(ficha) { return motivosNoPublicable(ficha).length === 0; }
 
 window.catalogoSync = async function () {
-  if (!state.configListo) return; // espera a leer la configuración del precio de tarjeta (ptConfigCambio vuelve a pedir la sincronización)
+  if (!state.configListo || !catalogoListo) return; // espera a leer la configuración del precio de tarjeta y lo ya publicado (ambos vuelven a pedir la sincronización)
   const marcados = state.stockData.filter((p) => p.catalogo === true);
   const modelos = armarModelos(marcados); // agrupa por cat+modelo+color, como el resto de la app
   const fichas = modelos.map((m) => [m.key, armarFicha(m)]);
   const deseados = new Map(fichas.filter(([, ficha]) => esPublicable(ficha)));
 
-  const batch = writeBatch(db);
-  let cambios = 0;
-  for (const [key, ficha] of deseados) { batch.set(doc(db, 'catalogo_publico', key), ficha); cambios++; }
-  for (const idViejo of publicadosIds) if (!deseados.has(idViejo)) { batch.delete(doc(db, 'catalogo_publico', idViejo)); cambios++; }
-  if (cambios) await batch.commit();
+  // Solo se escribe lo que REALMENTE cambió (comparando sin `actualizado`); sin cambios no se escribe nada, así los demás oyentes no releen.
+  const plan = planSync(deseados, publicadosDocs, { sello: Date.now() });
+  const ops = [...plan.escribir.map(([id, ficha]) => ({ tipo: 'set', id, ficha })), ...plan.borrar.map((id) => ({ tipo: 'del', id }))];
+  for (const lote of enLotes(ops)) {
+    const batch = writeBatch(db);
+    for (const op of lote) {
+      if (op.tipo === 'set') batch.set(doc(db, 'catalogo_publico', op.id), op.ficha);
+      else batch.delete(doc(db, 'catalogo_publico', op.id));
+    }
+    await batch.commit();
+  }
+  // Se recuerda lo escrito sin esperar al oyente (así una corrida seguida no vuelve a escribir lo mismo).
+  for (const op of ops) { if (op.tipo === 'set') { publicadosDocs.set(op.id, op.ficha); publicadosIds.add(op.id); } else { publicadosDocs.delete(op.id); publicadosIds.delete(op.id); } }
 };
 
 window.catalogoPublicado = (key) => publicadosIds.has(key); // ¿la ficha está publicada hoy? (precio-editar-ui.js)
-window.catalogoRefresh = function () {
-  clearTimeout(timer);
-  timer = setTimeout(() => { catalogoSync().catch((e) => console.error('Error sincronizando catálogo:', e)); }, 500);
-};
+// Al abrir StockMGR llegan varias lecturas seguidas (stock, reservas, fotos, config...): se juntan en UNA sola sincronización (2,5 s sin novedades).
+const planificador = crearPlanificador({ ejecutar: () => catalogoSync(), espera: 2500, alError: (e) => console.error('Error sincronizando catálogo:', e) });
+window.catalogoRefresh = function () { planificador.pedir(); };
 
 // Escucha la colección pública para saber qué hay publicado hoy (y así poder borrar lo que sobra).
 window.catalogoIniciar = function () {
@@ -123,9 +132,12 @@ window.catalogoIniciar = function () {
   escuchando = true;
   onSnapshot(collection(db, 'catalogo_publico'), (snap) => {
     publicadosIds = new Set(snap.docs.map((d) => d.id));
+    publicadosDocs = new Map(snap.docs.map((d) => [d.id, d.data()]));
     state.catalogoPublico = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const primera = !catalogoListo; catalogoListo = true;
+    if (primera) catalogoRefresh(); // ya se sabe qué hay publicado: ahora sí se puede comparar
     if (document.getElementById('tab-catalogo')?.classList.contains('active')) renderVistaCatalogo();
-  }, () => {}); // si todavía no existe la colección o no hay permiso, no rompe nada
+  }, () => { if (!catalogoListo) { catalogoListo = true; catalogoRefresh(); } }); // si todavía no existe la colección o no hay permiso, no rompe nada (se publica todo, como antes)
   onSnapshot(collection(db, 'producto_fotos'), (snap) => {
     state.productoFotos = Object.fromEntries(snap.docs.map((d) => [d.id, d.data().fotos || []]));
     if (document.getElementById('prod-modal')?.classList.contains('open')) window.fotosRender && fotosRender();

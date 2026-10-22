@@ -1,5 +1,6 @@
 import { state } from './state.js';
 import { db, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, writeBatch } from './firebase-config.js';
+import { planSync, crearPlanificador, enLotes } from './catalogo-sync.js';
 import { norm } from './matching.js';
 import { MOTOMENSAJERIA_INICIAL } from './envios-data.js';
 
@@ -86,19 +87,23 @@ window.enviosBuscar = function (v) { state.enviosBusqueda = v; renderEnvios(); }
 // ── sincroniza "envios_publico" (localidad + precio al cliente, NUNCA el costo) ──
 // Es lo único que puede leer el sitio de ventas. Corre sola cada vez que cambia la tabla.
 let enviosPublicadosIds = new Set();
-let enviosSyncTimer = null;
+let enviosPublicadosDocs = new Map(); // id → documento publicado hoy
+let enviosPublicadosListos = false; // ya llegó la primera lectura de envios_publico
 async function enviosPublicoSync() {
+  if (!enviosPublicadosListos) return; // sin saber qué hay publicado no se puede comparar (el oyente vuelve a pedir la sincronización)
   const deseados = new Map(state.enviosMoto.map((m) => [m.id, { localidad: m.localidad, precio: m.precio || 0, estimado: !!m.estimado }]));
-  const batch = writeBatch(db);
-  let cambios = 0;
-  for (const [id, datos] of deseados) { batch.set(doc(db, 'envios_publico', id), datos); cambios++; }
-  for (const idViejo of enviosPublicadosIds) if (!deseados.has(idViejo)) { batch.delete(doc(db, 'envios_publico', idViejo)); cambios++; }
-  if (cambios) await batch.commit();
+  // Solo se escribe lo que cambió (antes se reescribían las 152 localidades en cada apertura de StockMGR). Estos documentos no llevan fecha.
+  const plan = planSync(deseados, enviosPublicadosDocs);
+  const ops = [...plan.escribir.map(([id, datos]) => ({ tipo: 'set', id, datos })), ...plan.borrar.map((id) => ({ tipo: 'del', id }))];
+  for (const lote of enLotes(ops)) {
+    const batch = writeBatch(db);
+    for (const op of lote) { if (op.tipo === 'set') batch.set(doc(db, 'envios_publico', op.id), op.datos); else batch.delete(doc(db, 'envios_publico', op.id)); }
+    await batch.commit();
+  }
+  for (const op of ops) { if (op.tipo === 'set') { enviosPublicadosDocs.set(op.id, op.datos); enviosPublicadosIds.add(op.id); } else { enviosPublicadosDocs.delete(op.id); enviosPublicadosIds.delete(op.id); } }
 }
-function enviosPublicoRefresh() {
-  clearTimeout(enviosSyncTimer);
-  enviosSyncTimer = setTimeout(() => { enviosPublicoSync().catch((e) => console.error('Error sincronizando envíos públicos:', e)); }, 500);
-}
+const enviosPlanificador = crearPlanificador({ ejecutar: () => enviosPublicoSync(), espera: 2500, alError: (e) => console.error('Error sincronizando envíos públicos:', e) });
+function enviosPublicoRefresh() { enviosPlanificador.pedir(); }
 
 // ── dibujo ──
 const inp = (v, extra = '') => `style="background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:6px 8px;border-radius:6px;font-size:.8rem;font-family:inherit;${extra}"`;
@@ -151,7 +156,10 @@ window.enviosIniciar = function () {
   }, () => {});
   onSnapshot(collection(db, 'envios_publico'), (snap) => {
     enviosPublicadosIds = new Set(snap.docs.map((d) => d.id));
-  }, () => {});
+    enviosPublicadosDocs = new Map(snap.docs.map((d) => [d.id, d.data()]));
+    const primera = !enviosPublicadosListos; enviosPublicadosListos = true;
+    if (primera) enviosPublicoRefresh();
+  }, () => { if (!enviosPublicadosListos) { enviosPublicadosListos = true; enviosPublicoRefresh(); } });
   onSnapshot(collection(db, 'envios_correo_argentino'), (snap) => {
     state.enviosCorreo = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     renderEnvios();
