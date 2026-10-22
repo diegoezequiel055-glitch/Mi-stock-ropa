@@ -30,6 +30,7 @@ window.renderConfigSitio = function () {
     if (el && document.activeElement !== el) el.value = cfg[campo] || '';
   });
   if (window.ptRender) ptRender(); // sección "Precio de tarjeta"
+  if (window.mantRender) mantRender(); // tarjeta "Modo mantenimiento" (mantenimiento-admin.js)
 };
 
 // Los campos promoBarra y heroFotos de config_sitio/config ya no se editan desde acá (la tienda no usa promoBarra y heroFotos es solo un respaldo del hero).
