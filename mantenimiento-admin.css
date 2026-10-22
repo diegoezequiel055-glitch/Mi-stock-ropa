@@ -1,0 +1,18 @@
+/* Tarjeta "Modo mantenimiento" de Catálogo y sitio (mantenimiento-admin.js). Estética oscura/dorada de StockMGR. */
+.mant-adm-ayuda{font-size:.78rem;color:var(--muted);line-height:1.55;margin-bottom:16px}
+.mant-adm-estado{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:999px;font-size:.74rem;font-weight:600;letter-spacing:1px;border:1px solid}
+.mant-adm-estado::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor}
+.mant-adm-estado.activo{color:var(--danger);background:var(--danger-dim);border-color:var(--danger)}
+.mant-adm-estado.apagado{color:var(--success);background:var(--success-dim);border-color:var(--success)}
+.mant-adm-aviso{display:none;font-size:.8rem;line-height:1.5;color:var(--text);background:var(--danger-dim);border:1px solid var(--danger);border-radius:8px;padding:10px 12px;margin-bottom:16px}
+.mant-adm.on .mant-adm-aviso{display:block}
+.mant-adm-fila{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.mant-adm-toggle{min-height:46px;padding:0 22px;font-size:.88rem;font-weight:600;border:1px solid var(--border2);background:var(--surface2);color:var(--text)}
+.mant-adm-toggle.encender{background:var(--danger);border-color:var(--danger);color:#fff}
+.mant-adm-toggle.apagar{background:var(--success);border-color:var(--success);color:#04170c}
+.mant-adm textarea{height:72px;resize:vertical}
+.mant-adm-clave{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}
+.mant-adm-clave input{flex:1 1 220px;min-width:0;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.5px}
+.mant-adm-link{display:block;font-size:.7rem;color:var(--muted);word-break:break-all;margin-top:8px}
+.mant-adm .btn{min-height:42px}
+.mant-adm-pie{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:6px}

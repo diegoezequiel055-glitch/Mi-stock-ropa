@@ -21,6 +21,7 @@ import './precio-editar-ui.js';
 import './fotos-ui.js';
 import './recorte-ui.js';
 import './config.js';
+import './mantenimiento-admin.js';
 
 // Habilita "Instalar app" / "Agregar a pantalla de inicio" (no guarda nada en caché).
 if('serviceWorker' in navigator){
