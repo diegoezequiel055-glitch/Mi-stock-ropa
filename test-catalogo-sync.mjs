@@ -1,6 +1,7 @@
 // ══════════════════════════════════════════
 // PRUEBAS DE LA SINCRONIZACIÓN DIFERENCIAL del catálogo público y de los envíos públicos. NO toca Firestore real:
 //   A) catalogo-sync.js (puro): qué se escribe y qué no, planificador (debounce) y lotes.
+//   A2) catalogo-bundle.js (puro): el documento único para la tienda (partes, hash, plan de escritura).
 //   B) Simulación de costos: algoritmo VIEJO (reescribir todo con actualizado=Date.now()) contra el NUEVO, con 73 fichas y 40 visitantes en línea.
 //   C) Navegador (Chrome): el catalogo.js y el envios.js REALES con un Firestore simulado en memoria que cuenta escrituras y lecturas:
 //      primera publicación, sincronización sin cambios (debe dar 0 y 0), un cambio de stock (1 escritura), despublicar (1 borrado),
@@ -15,6 +16,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { textoEstable, fichasIguales, planSync, crearPlanificador, enLotes } from './catalogo-sync.js';
+import { armarPartes, planBundle, itemsCatalogo, itemsEnvios, hashTexto, idParte, LIMITE_PARTE } from './catalogo-bundle.js';
 
 let ok = 0, fallos = 0;
 const t = async (n, f) => { try { await f(); ok++; console.log('ok', n); } catch (e) { fallos++; console.log('FALLA', n, '\n   ', String(e.message).split('\n')[0]); } };
@@ -47,6 +49,37 @@ await t('planificador: un pedido durante una corrida provoca UNA corrida más y 
   assert.equal(maxActivas, 1); liberar(); await p1; await new Promise((r) => setTimeout(r, 0));
   assert.equal(cola.length >= 1, true, 'debía quedar una corrida pendiente'); const f3 = cola.shift(); const p3 = f3(); liberar(); await p3;
   assert.equal(corridas, 2); assert.equal(maxActivas, 1);
+});
+
+
+console.log('— A2) documento único para la tienda (catalogo-bundle.js) —');
+const itemsDe = (n) => itemsCatalogo(catalogo(n));
+await t('hashTexto: valores fijos (la tienda calcula el mismo hash) y sensible a cualquier cambio', () => { assert.equal(hashTexto('hola'), hashTexto('hola')); assert.notEqual(hashTexto('hola'), hashTexto('holA')); assert.equal(hashTexto(''), hashTexto('')); assert.equal(hashTexto('tienda'), '979890cdc7de9'); });
+await t('itemsCatalogo: agrega el id y SACA `actualizado`', () => { const it = itemsDe(3); assert.equal(it.length, 3); assert.ok(it.every((x) => typeof x.id === 'string' && !('actualizado' in x))); });
+await t('73 fichas caben en UNA parte y el contenido se puede leer de vuelta idéntico', () => {
+  const partes = armarPartes('catalogo', itemsDe(73)); assert.equal(partes.length, 1); const d = partes[0].data;
+  assert.deepEqual([d.v, d.parte, d.partes, d.total], [1, 1, 1, 73]); assert.equal(partes[0].id, 'catalogo'); assert.equal(JSON.parse(d.datos).length, 73);
+  console.log(`   73 fichas = ${new TextEncoder().encode(d.datos).length.toLocaleString('es-AR')} bytes (límite de una parte: ${LIMITE_PARTE.toLocaleString('es-AR')}; el de Firestore: 1.048.576)`);
+});
+await t('el orden de entrada no cambia el resultado (mismo hash)', () => { const a = itemsDe(20), b = [...a].reverse(); assert.equal(armarPartes('catalogo', a)[0].data.hash, armarPartes('catalogo', b)[0].data.hash); });
+await t('cuando se pasa del límite se reparte SOLO en más partes (ids catalogo, catalogo_2, catalogo_3...), todas con el mismo hash y total', () => {
+  const partes = armarPartes('catalogo', itemsDe(73), { limite: 5000 }); assert.ok(partes.length > 2, 'partes: ' + partes.length);
+  assert.deepEqual(partes.map((x) => x.id), partes.map((_, i) => idParte('catalogo', i + 1))); assert.equal(idParte('catalogo', 2), 'catalogo_2');
+  assert.ok(partes.every((x) => x.data.partes === partes.length && x.data.total === 73 && x.data.hash === partes[0].data.hash));
+  assert.ok(partes.every((x) => new TextEncoder().encode(x.data.datos).length <= 5000 + 1100), 'una parte se pasó del límite');
+  assert.equal(partes.flatMap((x) => JSON.parse(x.data.datos)).length, 73);
+});
+await t('sin fichas: queda una parte con [] (la tienda muestra el catálogo vacío en vez de caer al respaldo)', () => { const p = armarPartes('catalogo', []); assert.equal(p.length, 1); assert.equal(p[0].data.datos, '[]'); assert.equal(p[0].data.total, 0); });
+await t('planBundle: mismo contenido = 0 escrituras; contenido nuevo = escribe todas las partes con `actualizado`; menos partes = borra las sobrantes', () => {
+  const a = armarPartes('catalogo', itemsDe(73)); const igual = planBundle('catalogo', a, { hash: a[0].data.hash, partes: 1 }, 5); assert.deepEqual(igual, { escribir: [], borrar: [] });
+  const b = armarPartes('catalogo', itemsDe(72)); const camb = planBundle('catalogo', b, { hash: a[0].data.hash, partes: 1 }, 5); assert.equal(camb.escribir.length, 1); assert.equal(camb.escribir[0][1].actualizado, 5);
+  const nuevo = planBundle('catalogo', a, null, 7); assert.equal(nuevo.escribir.length, 1);
+  const grande = armarPartes('catalogo', itemsDe(73), { limite: 5000 }); const chico = armarPartes('catalogo', itemsDe(3));
+  const baja = planBundle('catalogo', chico, { hash: grande[0].data.hash, partes: grande.length }, 9); assert.deepEqual(baja.borrar, grande.slice(1).map((x) => x.id)); assert.equal(baja.escribir.length, 1);
+});
+await t('envíos: itemsEnvios deja { id, localidad, precio, estimado } y 152 localidades ocupan una sola parte', () => {
+  const m = new Map(Array.from({ length: 152 }, (_, i) => ['loc' + i, { localidad: 'Localidad ' + i, precio: 10000 + i, estimado: false }])); const it = itemsEnvios(m); assert.deepEqual(Object.keys(it[0]).sort(), ['estimado', 'id', 'localidad', 'precio']);
+  const p = armarPartes('envios', it); assert.equal(p.length, 1); console.log(`   152 localidades = ${new TextEncoder().encode(p[0].data.datos).length.toLocaleString('es-AR')} bytes`);
 });
 
 console.log('— B) costo de una sincronización: VIEJO contra NUEVO (73 fichas, 40 visitantes en línea) —');
@@ -84,19 +117,25 @@ export const doc = (a, b, c) => (a && a.tipo === 'col' ? { tipo: 'doc', name: a.
 export const setDoc = async () => {};
 export const addDoc = async () => {}; export const updateDoc = async () => {}; export const deleteDoc = async () => {};
 export const onSnapshot = (ref, okf) => {
-  if (ref.tipo !== 'col') { setTimeout(() => okf({ exists: () => false, data: () => ({}) }), 5); return () => {}; }
+  if (ref.tipo !== 'col') {
+    const o = { doc: true, name: ref.name, id: ref.id, okf, lecturas: 0 }; FS.oyentes.push(o);
+    setTimeout(() => { const d = col(ref.name).get(ref.id); o.lecturas += 1; FS.lecturas += 1; okf({ exists: () => !!d, data: () => copia(d) }); }, 5);
+    return () => { FS.oyentes = FS.oyentes.filter((x) => x !== o); };
+  }
   const o = { name: ref.name, okf, visitante: !!window.__ES_VISITANTE, lecturas: 0 }; FS.oyentes.push(o);
   setTimeout(() => { o.lecturas += col(ref.name).size; FS.lecturas += col(ref.name).size; okf(snap(ref.name)); }, 5);
   return () => { FS.oyentes = FS.oyentes.filter((x) => x !== o); };
 };
 export const writeBatch = () => { const ops = []; return {
   set: (r, data) => ops.push(['set', r, copia(data)]), delete: (r) => ops.push(['del', r]),
-  commit: async () => { FS.lotes++; const tocadas = new Set();
+  commit: async () => { if (window.__FALLAR_BUNDLE && ops.some((x) => x[1].name === 'config_sitio')) throw new Error('mock: sin permiso en config_sitio'); FS.lotes++; const tocadas = new Set();
     for (const [tipo, r, data] of ops) { FS.escrituras++; const m = col(r.name); const antes = m.get(r.id);
       if (tipo === 'set') { if (JSON.stringify(antes) !== JSON.stringify(data)) FS.cambios = (FS.cambios || 0) + 1; m.set(r.id, data); if (JSON.stringify(antes) !== JSON.stringify(data)) tocadas.add(r.name + '|' + r.id); }
       else if (m.has(r.id)) { m.delete(r.id); tocadas.add(r.name + '|' + r.id); } }
     // cada oyente se factura por cada documento que cambió de verdad en su colección
-    for (const o of FS.oyentes) { const n = [...tocadas].filter((x) => x.startsWith(o.name + '|')).length; if (n) { o.lecturas += n; FS.lecturas += n; o.okf(snap(o.name)); } } } }; };
+    for (const o of FS.oyentes) {
+      if (o.doc) { if (tocadas.has(o.name + '|' + o.id)) { const d = col(o.name).get(o.id); o.lecturas += 1; FS.lecturas += 1; o.okf({ exists: () => !!d, data: () => copia(d) }); } continue; }
+      const n = [...tocadas].filter((x) => x.startsWith(o.name + '|')).length; if (n) { o.lecturas += n; FS.lecturas += n; o.okf(snap(o.name)); } } } }; };
 `;
   const PAGINA = `<!doctype html><html><body><div id="tab-catalogo" class="section"></div><script type="module">
   import { state } from '/state.js'; window.__state = state;
@@ -127,7 +166,9 @@ export const writeBatch = () => { const ops = []; return {
 
   await t('primera publicación: StockMGR abre con el catálogo vacío y publica las 73 fichas (en una sola corrida)', async () => {
     await page.evaluate(() => { catalogoIniciar(); }); await esp(3800);
-    const x = await c(); assert.equal(x.docs, 73); assert.equal(x.e, 73); assert.equal(x.syncs, 1, 'corridas de sincronización: ' + x.syncs); assert.equal(x.lotes, 1);
+    const x = await c(); assert.equal(x.docs, 73); assert.equal(x.e, 74, 'escrituras: 73 fichas + 1 documento único'); assert.equal(x.syncs, 1, 'corridas de sincronización: ' + x.syncs); assert.equal(x.lotes, 2);
+    const b = await page.evaluate(() => window.__FS.col.config_sitio.get('catalogo')); assert.ok(b, 'falta config_sitio/catalogo'); assert.deepEqual([b.v, b.parte, b.partes, b.total], [1, 1, 1, 73]);
+    const items = JSON.parse(b.datos); assert.equal(items.length, 73); assert.ok(items.every((i) => i.id && !('actualizado' in i) && i.nombre && i.precio > 0), 'cada elemento lleva id, nombre y precio y NO lleva actualizado');
   });
   // se suman 40 visitantes con la tienda abierta (cada uno lee las 73 fichas al entrar)
   await page.evaluate(() => { window.__ES_VISITANTE = true; for (let i = 0; i < 40; i++) window.__FS.oyentes.push({ name: 'catalogo_publico', visitante: true, lecturas: 73, okf: () => {} }); window.__FS.lecturas += 40 * 73; window.__ES_VISITANTE = false; });
@@ -143,32 +184,42 @@ export const writeBatch = () => { const ops = []; return {
     await page.evaluate(() => { catalogoRefresh(); setTimeout(catalogoRefresh, 300); setTimeout(catalogoRefresh, 900); setTimeout(catalogoRefresh, 1500); }); await esp(5200);
     const d = dif(base, await c()); assert.equal(d.corridas, 1, 'corridas: ' + d.corridas); assert.equal(d.escrituras, 0); assert.equal(d.lecturas, 0); base = await c();
   });
-  await t('un cambio de stock en UN producto: 1 escritura y 41 lecturas (StockMGR + 40 visitantes), no 73 y 2.993', async () => {
+  await t('un cambio de stock en UN producto: 2 escrituras (ficha + documento único) y 42 lecturas, no 73 y 2.993', async () => {
     await page.evaluate(() => { const s = window.__state.stockData.find((p) => p.id === 'p7M'); s.qty = 4; catalogoRefresh(); }); await esp(3500);
-    const d = dif(base, await c()); console.log('   un cambio de stock →', JSON.stringify(d)); assert.equal(d.escrituras, 1); assert.equal(d.lecturas, 41); base = await c();
+    const d = dif(base, await c()); console.log('   un cambio de stock →', JSON.stringify(d)); assert.equal(d.escrituras, 2, 'la ficha + el documento único'); assert.equal(d.lecturas, 42, '41 de la colección (StockMGR + 40 visitantes) + 1 del documento único en StockMGR'); base = await c();
   });
-  await t('despublicar un producto (desmarcar "Mostrar en catálogo"): 1 borrado', async () => {
+  await t('despublicar un producto (desmarcar "Mostrar en catálogo"): 1 borrado + el documento único', async () => {
     await page.evaluate(() => { for (const p of window.__state.stockData) if (p.modelo === 'Modelo 9') p.catalogo = false; catalogoRefresh(); }); await esp(3500);
-    const x = await c(); const d = dif(base, x); assert.equal(d.escrituras, 1); assert.equal(x.docs, 72); base = x;
+    const x = await c(); const d = dif(base, x); assert.equal(d.escrituras, 2, 'borrado + documento único'); assert.equal(x.docs, 72); base = x;
+    assert.equal(JSON.parse(await page.evaluate(() => window.__FS.col.config_sitio.get('catalogo').datos)).length, 72);
   });
-  await t('stock bajo: al quedar pocas unidades se publica `stockBajo`, y al reponer desaparece (1 escritura cada vez)', async () => {
+  await t('stock bajo: al quedar pocas unidades se publica `stockBajo`, y al reponer desaparece (2 escrituras cada vez: ficha + documento único)', async () => {
     await page.evaluate(() => { for (const p of window.__state.stockData) if (p.modelo === 'Modelo 11') p.qty = p.talle === 'S' ? 1 : 0; catalogoRefresh(); }); await esp(3500);
     const bajo = await page.evaluate(() => window.__FS.col.catalogo_publico.get('camiseta|modelo 11|negro').stockBajo); assert.equal(bajo, 1);
-    let x = await c(); let d = dif(base, x); assert.equal(d.escrituras, 1); base = x;
+    let x = await c(); let d = dif(base, x); assert.equal(d.escrituras, 2); base = x;
     await page.evaluate(() => { for (const p of window.__state.stockData) if (p.modelo === 'Modelo 11') p.qty = 5; catalogoRefresh(); }); await esp(3500);
-    assert.equal(await page.evaluate(() => 'stockBajo' in window.__FS.col.catalogo_publico.get('camiseta|modelo 11|negro')), false); x = await c(); d = dif(base, x); assert.equal(d.escrituras, 1); base = x;
+    assert.equal(await page.evaluate(() => 'stockBajo' in window.__FS.col.catalogo_publico.get('camiseta|modelo 11|negro')), false); x = await c(); d = dif(base, x); assert.equal(d.escrituras, 2); base = x;
   });
-  await t('envíos públicos: 152 localidades ya publicadas y sin cambios = 0 escrituras; un cambio de precio = 1', async () => {
+  await t('si falla la escritura del documento único, las colecciones de respaldo igual quedan sincronizadas (y no se rompe nada)', async () => {
+    await page.evaluate(() => { window.__FALLAR_BUNDLE = true; const s = window.__state.stockData.find((p) => p.id === 'p20M'); s.qty = 1; catalogoRefresh(); }); await esp(3500);
+    const f = await page.evaluate(() => window.__FS.col.catalogo_publico.get('camiseta|modelo 20|negro').talles.find((t) => t.talle === 'M').stock); assert.equal(f, 1, 'la ficha individual debía actualizarse');
+    await page.evaluate(() => { window.__FALLAR_BUNDLE = false; catalogoRefresh(); }); await esp(3500); // al volver el permiso, el documento único se pone al día solo
+    const b = JSON.parse(await page.evaluate(() => window.__FS.col.config_sitio.get('catalogo').datos)); assert.equal(b.find((i) => i.id === 'camiseta|modelo 20|negro').talles.find((t) => t.talle === 'M').stock, 1); base = await c();
+  });
+  await t('envíos públicos: se crea el documento único una vez; un cambio de precio = 2 escrituras (localidad + documento único)', async () => {
     await page.evaluate(() => {
       const moto = (window.__FS.col.envios_motomensajeria ||= new Map()), pub = (window.__FS.col.envios_publico ||= new Map());
       for (let i = 0; i < 152; i++) { moto.set('loc' + i, { localidad: 'Localidad ' + i, precio: 10000 + i, estimado: false, costo: 7000 }); pub.set('loc' + i, { localidad: 'Localidad ' + i, precio: 10000 + i, estimado: false }); }
     });
     const a = await c(); await page.evaluate(() => { enviosIniciar(); }); await esp(3800);
-    let d = dif(a, await c()); console.log('   envíos sin cambios →', JSON.stringify({ escrituras: d.escrituras, lecturas: d.lecturas })); assert.equal(d.escrituras, 0);
+    let d = dif(a, await c()); console.log('   envíos (primera vez: solo se crea el documento único) →', JSON.stringify({ escrituras: d.escrituras, lecturas: d.lecturas })); assert.equal(d.escrituras, 1);
+    assert.equal(JSON.parse(await page.evaluate(() => window.__FS.col.config_sitio.get('envios').datos)).length, 152);
     const b = await c();
     await page.evaluate(() => { const moto = window.__FS.col.envios_motomensajeria; moto.get('loc5').precio = 12345; const o = window.__FS.oyentes.find((x) => x.name === 'envios_motomensajeria'); o.okf({ docs: [...moto].map(([id, x]) => ({ id, data: () => JSON.parse(JSON.stringify(x)) })) }); });
-    await esp(3500); d = dif(b, await c()); assert.equal(d.escrituras, 1);
+    await esp(3500); d = dif(b, await c()); assert.equal(d.escrituras, 2, 'la localidad + el documento único');
     assert.equal(await page.evaluate(() => window.__FS.col.envios_publico.get('loc5').precio), 12345);
+    assert.equal(JSON.parse(await page.evaluate(() => window.__FS.col.config_sitio.get('envios').datos)).find((e) => e.id === 'loc5').precio, 12345);
+    assert.equal(JSON.stringify(JSON.parse(await page.evaluate(() => window.__FS.col.config_sitio.get('envios').datos))).includes('costo'), false, 'el costo NUNCA va al documento único');
     assert.equal(await page.evaluate(() => 'costo' in window.__FS.col.envios_publico.get('loc5')), false, 'el costo NUNCA va a envios_publico');
   });
   await t('sin errores de JavaScript en el navegador', () => assert.equal(errores.length, 0, errores.join(' | ')));

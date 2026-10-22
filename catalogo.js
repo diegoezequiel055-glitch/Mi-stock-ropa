@@ -4,6 +4,7 @@ import { armarModelos, claveModelo, compararTalles } from './matching.js';
 import { UMBRAL_STOCK_BAJO } from './datos-negocio.js';
 import { configPrecioTarjeta, conPrecioTarjeta } from './precio-tarjeta.js';
 import { planSync, crearPlanificador, enLotes } from './catalogo-sync.js';
+import { armarPartes, planBundle, itemsCatalogo } from './catalogo-bundle.js';
 
 // ══════════════════════════════════════════
 // CATÁLOGO PÚBLICO — sincroniza sola la colección "catalogo_publico" con los
@@ -20,6 +21,8 @@ const CLOUDINARY_PRESET = 'stock mgr';
 let publicadosIds = new Set(); // ids que existen HOY en catalogo_publico (para saber qué borrar)
 let publicadosDocs = new Map(); // id → documento publicado hoy (para escribir SOLO lo que cambió, ver catalogo-sync.js)
 let catalogoListo = false; // ya llegó la primera lectura de catalogo_publico (sin ella no se sabe qué cambió y no se sincroniza)
+let bundleCatalogo = null; // { hash, partes } del documento único config_sitio/catalogo publicado hoy (null si no existe)
+let bundleCatalogoListo = false; // ya llegó la primera lectura de config_sitio/catalogo
 let escuchando = false;
 
 const leerComoDataURL = (file) => new Promise((resolve, reject) => {
@@ -100,7 +103,7 @@ function motivosNoPublicable(ficha) {
 function esPublicable(ficha) { return motivosNoPublicable(ficha).length === 0; }
 
 window.catalogoSync = async function () {
-  if (!state.configListo || !catalogoListo) return; // espera a leer la configuración del precio de tarjeta y lo ya publicado (ambos vuelven a pedir la sincronización)
+  if (!state.configListo || !catalogoListo || !bundleCatalogoListo) return; // espera a leer la configuración del precio de tarjeta y lo ya publicado (ambos vuelven a pedir la sincronización)
   const marcados = state.stockData.filter((p) => p.catalogo === true);
   const modelos = armarModelos(marcados); // agrupa por cat+modelo+color, como el resto de la app
   const fichas = modelos.map((m) => [m.key, armarFicha(m)]);
@@ -119,6 +122,20 @@ window.catalogoSync = async function () {
   }
   // Se recuerda lo escrito sin esperar al oyente (así una corrida seguida no vuelve a escribir lo mismo).
   for (const op of ops) { if (op.tipo === 'set') { publicadosDocs.set(op.id, op.ficha); publicadosIds.add(op.id); } else { publicadosDocs.delete(op.id); publicadosIds.delete(op.id); } }
+
+  // Documento único que lee la tienda (config_sitio/catalogo, ver catalogo-bundle.js): solo se escribe si su contenido cambió.
+  // Si falla, las colecciones de arriba ya quedaron sincronizadas y la tienda las usa de respaldo.
+  try {
+    const nuevas = armarPartes('catalogo', itemsCatalogo(deseados));
+    const pb = planBundle('catalogo', nuevas, bundleCatalogo, Date.now());
+    if (pb.escribir.length || pb.borrar.length) {
+      const batch = writeBatch(db);
+      for (const [id, data] of pb.escribir) batch.set(doc(db, 'config_sitio', id), data);
+      for (const id of pb.borrar) batch.delete(doc(db, 'config_sitio', id));
+      await batch.commit();
+      bundleCatalogo = { hash: nuevas[0].data.hash, partes: nuevas.length };
+    }
+  } catch (e) { console.error('Error publicando el documento único del catálogo:', e); }
 };
 
 window.catalogoPublicado = (key) => publicadosIds.has(key); // ¿la ficha está publicada hoy? (precio-editar-ui.js)
@@ -138,6 +155,12 @@ window.catalogoIniciar = function () {
     if (primera) catalogoRefresh(); // ya se sabe qué hay publicado: ahora sí se puede comparar
     if (document.getElementById('tab-catalogo')?.classList.contains('active')) renderVistaCatalogo();
   }, () => { if (!catalogoListo) { catalogoListo = true; catalogoRefresh(); } }); // si todavía no existe la colección o no hay permiso, no rompe nada (se publica todo, como antes)
+  onSnapshot(doc(db, 'config_sitio', 'catalogo'), (snap) => {
+    const d = snap.exists() ? snap.data() : null;
+    bundleCatalogo = d ? { hash: d.hash, partes: d.partes } : null;
+    const primera = !bundleCatalogoListo; bundleCatalogoListo = true;
+    if (primera) catalogoRefresh();
+  }, () => { if (!bundleCatalogoListo) { bundleCatalogoListo = true; catalogoRefresh(); } });
   onSnapshot(collection(db, 'producto_fotos'), (snap) => {
     state.productoFotos = Object.fromEntries(snap.docs.map((d) => [d.id, d.data().fotos || []]));
     if (document.getElementById('prod-modal')?.classList.contains('open')) window.fotosRender && fotosRender();
