@@ -1,6 +1,7 @@
 import { state } from './state.js';
 import { db, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, writeBatch } from './firebase-config.js';
 import { planSync, crearPlanificador, enLotes } from './catalogo-sync.js';
+import { armarPartes, planBundle, itemsEnvios } from './catalogo-bundle.js';
 import { norm } from './matching.js';
 import { MOTOMENSAJERIA_INICIAL } from './envios-data.js';
 
@@ -89,8 +90,10 @@ window.enviosBuscar = function (v) { state.enviosBusqueda = v; renderEnvios(); }
 let enviosPublicadosIds = new Set();
 let enviosPublicadosDocs = new Map(); // id → documento publicado hoy
 let enviosPublicadosListos = false; // ya llegó la primera lectura de envios_publico
+let bundleEnvios = null; // { hash, partes } del documento único config_sitio/envios publicado hoy (null si no existe)
+let bundleEnviosListo = false;
 async function enviosPublicoSync() {
-  if (!enviosPublicadosListos) return; // sin saber qué hay publicado no se puede comparar (el oyente vuelve a pedir la sincronización)
+  if (!enviosPublicadosListos || !bundleEnviosListo) return; // sin saber qué hay publicado no se puede comparar (el oyente vuelve a pedir la sincronización)
   const deseados = new Map(state.enviosMoto.map((m) => [m.id, { localidad: m.localidad, precio: m.precio || 0, estimado: !!m.estimado }]));
   // Solo se escribe lo que cambió (antes se reescribían las 152 localidades en cada apertura de StockMGR). Estos documentos no llevan fecha.
   const plan = planSync(deseados, enviosPublicadosDocs);
@@ -101,6 +104,19 @@ async function enviosPublicoSync() {
     await batch.commit();
   }
   for (const op of ops) { if (op.tipo === 'set') { enviosPublicadosDocs.set(op.id, op.datos); enviosPublicadosIds.add(op.id); } else { enviosPublicadosDocs.delete(op.id); enviosPublicadosIds.delete(op.id); } }
+
+  // Documento único que lee la tienda (config_sitio/envios, ver catalogo-bundle.js): solo se escribe si su contenido cambió.
+  try {
+    const nuevas = armarPartes('envios', itemsEnvios(deseados));
+    const pb = planBundle('envios', nuevas, bundleEnvios, Date.now());
+    if (pb.escribir.length || pb.borrar.length) {
+      const batch = writeBatch(db);
+      for (const [id, data] of pb.escribir) batch.set(doc(db, 'config_sitio', id), data);
+      for (const id of pb.borrar) batch.delete(doc(db, 'config_sitio', id));
+      await batch.commit();
+      bundleEnvios = { hash: nuevas[0].data.hash, partes: nuevas.length };
+    }
+  } catch (e) { console.error('Error publicando el documento único de envíos:', e); }
 }
 const enviosPlanificador = crearPlanificador({ ejecutar: () => enviosPublicoSync(), espera: 2500, alError: (e) => console.error('Error sincronizando envíos públicos:', e) });
 function enviosPublicoRefresh() { enviosPlanificador.pedir(); }
@@ -160,6 +176,12 @@ window.enviosIniciar = function () {
     const primera = !enviosPublicadosListos; enviosPublicadosListos = true;
     if (primera) enviosPublicoRefresh();
   }, () => { if (!enviosPublicadosListos) { enviosPublicadosListos = true; enviosPublicoRefresh(); } });
+  onSnapshot(doc(db, 'config_sitio', 'envios'), (snap) => {
+    const d = snap.exists() ? snap.data() : null;
+    bundleEnvios = d ? { hash: d.hash, partes: d.partes } : null;
+    const primera = !bundleEnviosListo; bundleEnviosListo = true;
+    if (primera) enviosPublicoRefresh();
+  }, () => { if (!bundleEnviosListo) { bundleEnviosListo = true; enviosPublicoRefresh(); } });
   onSnapshot(collection(db, 'envios_correo_argentino'), (snap) => {
     state.enviosCorreo = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     renderEnvios();
