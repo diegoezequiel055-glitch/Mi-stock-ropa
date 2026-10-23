@@ -93,7 +93,7 @@ export const doc = (_d, name, id) => ({ name, id });
 export const writeBatch = () => { const ops = []; return { update: (r, data) => ops.push({ r, data }), commit: async () => { if (window.__FALLAR) throw new Error('mock: sin red'); window.__ESCRITURAS.push(ops.map((o) => ({ doc: o.r.name + '/' + o.r.id, data: o.data }))); window.__aplicar(ops); } }; };
 `;
   // El bloque HTML de la tarjeta sale del index.html real (así se prueba lo que se publica).
-  const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+  const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8').replace(/\r\n/g, '\n'); // (en Windows el archivo puede tener CRLF)
   const a = html.indexOf('<!-- Precio en oferta'), b = html.indexOf('<div id="pe-undo"');
   assert.ok(a > 0 && b > a, 'no se encontró la tarjeta de oferta en index.html');
   const bloque = html.slice(a, html.indexOf('</div>\n  </div>\n</div>', a) + 6);
