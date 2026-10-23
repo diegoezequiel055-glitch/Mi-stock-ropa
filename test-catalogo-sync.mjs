@@ -222,6 +222,21 @@ export const writeBatch = () => { const ops = []; return {
     assert.equal(JSON.stringify(JSON.parse(await page.evaluate(() => window.__FS.col.config_sitio.get('envios').datos))).includes('costo'), false, 'el costo NUNCA va al documento único');
     assert.equal(await page.evaluate(() => 'costo' in window.__FS.col.envios_publico.get('loc5')), false, 'el costo NUNCA va a envios_publico');
   });
+  await t('OFERTAS: cargar una oferta cambia SOLO esa ficha + el documento único (2 escrituras); sacarla también; una oferta inválida no escribe nada', async () => {
+    base = await c(); const clave = 'camiseta|modelo 3|negro';
+    const ficha = () => page.evaluate((k) => window.__FS.col.catalogo_publico.get(k), clave);
+    const item = async () => JSON.parse(await page.evaluate(() => window.__FS.col.config_sitio.get('catalogo').datos)).find((i) => i.id === clave);
+    await page.evaluate(() => { for (const p of window.__state.stockData) if (p.modelo === 'Modelo 3') p.poferta = 25000; catalogoRefresh(); }); await esp(3500);
+    let x = await c(); let d = dif(base, x); console.log('   cargar una oferta →', JSON.stringify(d)); assert.equal(d.escrituras, 2, 'la ficha + el documento único'); base = x;
+    assert.equal((await ficha()).precioOferta, 25000); assert.equal((await ficha()).precio, 30003, 'precio normal intacto'); assert.equal((await item()).precioOferta, 25000);
+    await page.evaluate(() => { for (const p of window.__state.stockData) if (p.modelo === 'Modelo 3') p.poferta = 31000; catalogoRefresh(); }); await esp(3500); // mayor que el normal: no vale
+    x = await c(); d = dif(base, x); assert.equal(d.escrituras, 2, 'la oferta deja de publicarse'); base = x;
+    assert.equal('precioOferta' in (await ficha()), false); assert.equal('precioOferta' in (await item()), false);
+    await page.evaluate(() => { for (const p of window.__state.stockData) if (p.modelo === 'Modelo 3') p.poferta = 25000; catalogoRefresh(); }); await esp(3500); base = await c();
+    await page.evaluate(() => { for (const p of window.__state.stockData) if (p.modelo === 'Modelo 3') p.poferta = null; catalogoRefresh(); }); await esp(3500);
+    x = await c(); d = dif(base, x); assert.equal(d.escrituras, 2, 'sacar la oferta'); assert.equal('precioOferta' in (await ficha()), false); assert.equal('precioOferta' in (await item()), false); base = x;
+    await page.evaluate(() => { catalogoRefresh(); }); await esp(3300); d = dif(base, await c()); assert.deepEqual({ e: d.escrituras, l: d.lecturas }, { e: 0, l: 0 }, 'sin cambios vuelve a 0');
+  });
   await t('sin errores de JavaScript en el navegador', () => assert.equal(errores.length, 0, errores.join(' | ')));
   await browser.close(); servidor.close();
 }
