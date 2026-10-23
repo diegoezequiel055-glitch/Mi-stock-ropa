@@ -572,6 +572,18 @@
       <button class="btn btn-gold" style="margin-top:10px;width:100%" onclick="peGuardar()">Guardar precio</button>
       <div style="font-size:.7rem;color:var(--muted);margin-top:6px">Cambia el precio por menor de todos los talles de este producto. Mayorista, curva y costo no se tocan; las ventas ya hechas tampoco.</div>
     </div>
+    <!-- Precio en oferta (ofertas-admin.js) -->
+    <div id="of-root" style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px">
+      <div style="font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🏷️ Precio en oferta <span style="text-transform:none;letter-spacing:0">(opcional)</span></div>
+      <div id="of-actual" style="font-size:.78rem;color:var(--muted);margin-bottom:6px"></div>
+      <label for="of-precio" style="font-size:.78rem;color:var(--text2)">Efectivo o transferencia ($) — tiene que ser menor que el precio normal</label>
+      <input type="text" inputmode="numeric" id="of-precio" oninput="ofVista()" style="width:100%;margin-top:4px" autocomplete="off" placeholder="Vacío = sin oferta">
+      <div id="of-vista" style="font-size:.82rem;margin-top:8px;line-height:1.5"></div>
+      <div id="of-aviso" style="font-size:.76rem;color:var(--text2);margin-top:8px"></div>
+      <div id="of-error" style="font-size:.78rem;color:var(--danger);margin-top:6px"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn btn-gold" style="flex:1;min-width:140px;min-height:44px" onclick="ofGuardar()">Guardar oferta</button><button class="btn btn-ghost" id="of-quitar" style="display:none;min-height:44px" onclick="ofQuitar()">Quitar oferta</button></div>
+      <div style="font-size:.7rem;color:var(--muted);margin-top:6px">La tienda muestra el precio anterior tachado, el porcentaje de descuento (se calcula solo) y el tarjeta/cuotas con el mismo recargo de siempre. Carrito y WhatsApp usan el precio en oferta.</div>
+    </div>
   </div>
 </div>
 

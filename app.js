@@ -18,6 +18,7 @@ import './menu-mas.js';
 import './precio-tarjeta-ui.js';
 import './medio-pago-ui.js';
 import './precio-editar-ui.js';
+import './ofertas-admin.js';
 import './fotos-ui.js';
 import './recorte-ui.js';
 import './config.js';

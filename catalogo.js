@@ -3,6 +3,7 @@ import { db, collection, doc, setDoc, writeBatch, onSnapshot } from './firebase-
 import { armarModelos, claveModelo, compararTalles } from './matching.js';
 import { UMBRAL_STOCK_BAJO } from './datos-negocio.js';
 import { configPrecioTarjeta, conPrecioTarjeta } from './precio-tarjeta.js';
+import { conOferta } from './ofertas.js';
 import { planSync, crearPlanificador, enLotes } from './catalogo-sync.js';
 import { armarPartes, planBundle, itemsCatalogo } from './catalogo-bundle.js';
 
@@ -87,7 +88,9 @@ function armarFicha(modelo) {
   // (armarFicha arma el documento entero de nuevo, no hay que borrar nada a mano).
   if (stockTotal > 0 && stockTotal <= UMBRAL_STOCK_BAJO) ficha.stockBajo = stockTotal;
   // Precio de tarjeta: con el interruptor apagado devuelve la ficha tal cual (precio-tarjeta.js).
-  return conPrecioTarjeta(ficha, modelo.filas, configPrecioTarjeta(state.configSitio));
+  const config = configPrecioTarjeta(state.configSitio);
+  // Precio en oferta (ofertas.js): suma precioOferta / precioOfertaTarjeta solo si el producto tiene una oferta válida.
+  return conOferta(conPrecioTarjeta(ficha, modelo.filas, config), modelo.filas, config);
 }
 
 // Para que un producto se publique necesita: al menos 1 foto, precio por menor
@@ -251,6 +254,7 @@ window.abrirFotoModal = function (key) {
   document.getElementById('fm-titulo').textContent = x.ficha.nombre;
   if (window.fotosAbrir) fotosAbrir(x.modelo); // fotos: elegir varias, ordenar, quitar (fotos-ui.js)
   if (window.peAbrir) peAbrir(x.modelo, x.ficha.nombre); // sección "Precio" (precio-editar-ui.js)
+  if (window.ofAbrir) ofAbrir(x.modelo, x.ficha.nombre); // sección "Precio en oferta" (ofertas-admin.js)
   document.getElementById('foto-modal').classList.add('open');
 };
 window.cerrarFotoModal = function () {
@@ -259,4 +263,5 @@ window.cerrarFotoModal = function () {
   document.getElementById('foto-modal').classList.remove('open');
   fotoModalTarget = null;
   if (window.peCerrar) peCerrar();
+  if (window.ofCerrar) ofCerrar();
 };
