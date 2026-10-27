@@ -1,0 +1,34 @@
+/* Tarjeta "Videos de TikTok" de Catálogo y sitio (videos-admin.js). Estética oscura/dorada de StockMGR. */
+.vid-adm-ayuda{font-size:.78rem;color:var(--muted);line-height:1.55;margin-bottom:14px}
+.vid-adm-contador{display:inline-flex;align-items:center;padding:5px 12px;border-radius:999px;font-size:.74rem;font-weight:600;letter-spacing:1px;border:1px solid var(--border2);color:var(--text2);background:var(--surface2)}
+.vid-adm-lista{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+.vid-adm-vacio{font-size:.8rem;color:var(--muted);padding:14px;border:1px dashed var(--border2);border-radius:10px;text-align:center;line-height:1.5}
+.vid-adm-item{display:flex;gap:12px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--surface2)}
+.vid-adm-datos{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.vid-adm-num{font-size:.74rem;color:var(--accent);letter-spacing:1px;text-transform:uppercase}
+.vid-adm-link{font-size:.72rem;color:var(--text2);word-break:break-all;line-height:1.4}
+.vid-adm-acc{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+.vid-adm-acc .btn{min-height:44px;min-width:44px;padding:0 14px}
+.vid-adm-borrar{color:var(--danger);border-color:var(--danger)}
+.vid-adm-nuevo{border-top:1px solid var(--border);padding-top:14px;margin-top:4px;display:flex;flex-direction:column;gap:12px}
+.vid-adm-sub{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.vid-adm-nota{font-size:.72rem;color:var(--muted);margin-top:5px;line-height:1.4;word-break:break-word}
+.vid-adm-nota.ok{color:var(--success)}
+.vid-adm-nota.mal{color:var(--danger)}
+.vid-adm-error{font-size:.78rem;color:var(--danger);line-height:1.4}
+.vid-adm-error:empty{display:none}
+.vid-adm-vista{display:flex;flex-direction:column;gap:8px}
+.vid-adm-pie{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.vid-adm-estado{font-size:.78rem;color:var(--muted);line-height:1.4}
+.vid-adm-estado.ok{color:var(--success)}
+.vid-adm-estado.mal{color:var(--danger)}
+.vid-adm-estado.aviso{color:var(--warning)}
+/* La tarjeta tal como la ve el cliente, en chico: vertical 9:16, play centrado, título y "Ver en TikTok" (sin que nada se encime). */
+.vid-prev-card{width:104px;flex:0 0 104px;display:flex;flex-direction:column;gap:5px}
+.vid-prev-portada{position:relative;width:100%;aspect-ratio:9/16;background:var(--surface3);border:1px solid var(--border2);border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.vid-prev-portada img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.vid-prev-vacia{font-size:.66rem;color:var(--muted);text-align:center;padding:4px}
+.vid-prev-play{position:absolute;top:50%;left:50%;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:.7rem;display:flex;align-items:center;justify-content:center;padding-left:2px;box-sizing:border-box}
+.vid-prev-titulo{font-size:.68rem;line-height:1.3;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.vid-prev-ver{align-self:flex-start;font-size:.6rem;font-weight:700;color:var(--text);border:1px solid var(--text2);border-radius:999px;padding:2px 8px;line-height:1.2;white-space:nowrap}
+.vid-adm input[type="file"]{width:100%;font-size:.8rem;color:var(--text2)}
