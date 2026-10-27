@@ -31,7 +31,7 @@ window.renderConfigSitio = function () {
   });
   if (window.ptRender) ptRender(); // sección "Precio de tarjeta"
   if (window.vidRender) vidRender(); // tarjeta "Videos de TikTok" (videos-admin.js)
-  if (window.cfRender) cfRender(); // tarjeta "Fotos de categorías" (fotos-categorias-admin.js)
+  if (window.cpRender) cpRender(); // tarjeta "Categorías de la portada" (categorias-portada-admin.js)
   if (window.mantRender) mantRender(); // tarjeta "Modo mantenimiento" (mantenimiento-admin.js)
 };
 
