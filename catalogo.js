@@ -188,6 +188,7 @@ window.catalogoSetCat = function (v) { state.catalogoCat = v; renderVistaCatalog
 
 window.renderVistaCatalogo = function () {
   const cont = document.getElementById('catalogo-grid'); if (!cont) return;
+  if (window.cfRender) cfRender(); // tarjeta "Fotos de categorías" (fotos-categorias-admin.js): sigue al stock y a las fotos
   const marcados = state.stockData.filter((p) => p.catalogo === true);
   modelosVista = armarModelos(marcados).map((modelo) => ({ modelo, ficha: armarFicha(modelo) }));
 

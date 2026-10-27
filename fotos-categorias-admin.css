@@ -1,0 +1,20 @@
+/* Tarjeta "Fotos de categorías" de Catálogo y sitio (fotos-categorias-admin.js). Estética oscura/dorada de StockMGR. */
+.cf-adm-ayuda{font-size:.78rem;color:var(--muted);line-height:1.55;margin-bottom:12px}
+.cf-adm-reco{font-size:.8rem;color:var(--accent);background:var(--accent-dim);border:1px solid var(--accent);border-radius:8px;padding:9px 12px;margin-bottom:14px;line-height:1.4}
+.cf-adm-lista{display:flex;flex-direction:column;gap:10px}
+.cf-adm-vacio{font-size:.8rem;color:var(--muted);padding:14px;border:1px dashed var(--border2);border-radius:10px;text-align:center}
+.cf-adm-fila{display:flex;gap:12px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--surface2)}
+.cf-adm-mini{flex:0 0 112px;width:112px;aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:var(--surface3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:.66rem;color:var(--muted)}
+.cf-adm-mini img{width:100%;height:100%;object-fit:cover;display:block}
+.cf-adm-datos{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.cf-adm-nombre{font-size:.9rem;font-weight:600;color:var(--text)}
+.cf-adm-origen{font-size:.72rem;color:var(--muted);line-height:1.35}
+.cf-adm-origen.propia{color:var(--success)}
+.cf-adm-acc{display:flex;gap:8px;flex-wrap:wrap;margin-top:3px}
+.cf-adm-acc .btn,.cf-adm-subir{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0 14px;position:relative;overflow:hidden;cursor:pointer;font-size:.8rem}
+.cf-adm-subir input[type="file"]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.cf-adm-subir input[type="file"]:disabled{cursor:default}
+.cf-adm-quitar{color:var(--danger);border-color:var(--danger)}
+.cf-adm-estado{font-size:.78rem;color:var(--muted);margin-top:12px;line-height:1.4;min-height:1em}
+.cf-adm-estado.ok{color:var(--success)}
+.cf-adm-estado.mal{color:var(--danger)}
