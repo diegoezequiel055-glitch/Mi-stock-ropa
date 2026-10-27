@@ -30,6 +30,7 @@ window.renderConfigSitio = function () {
     if (el && document.activeElement !== el) el.value = cfg[campo] || '';
   });
   if (window.ptRender) ptRender(); // sección "Precio de tarjeta"
+  if (window.vidRender) vidRender(); // tarjeta "Videos de TikTok" (videos-admin.js)
   if (window.mantRender) mantRender(); // tarjeta "Modo mantenimiento" (mantenimiento-admin.js)
 };
 
