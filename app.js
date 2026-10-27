@@ -24,6 +24,7 @@ import './recorte-ui.js';
 import './config.js';
 import './mantenimiento-admin.js';
 import './videos-admin.js';
+import './categorias-portada-admin.js';
 
 // Habilita "Instalar app" / "Agregar a pantalla de inicio" (no guarda nada en caché).
 if('serviceWorker' in navigator){
